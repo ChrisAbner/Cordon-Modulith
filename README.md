@@ -142,6 +142,8 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 | `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
 | `cycles` | Modules that depend on each other in a cycle, with the shortest cycle path. |
 
+You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
+
 ## Continuous integration
 
 Use the reusable GitHub Action to get annotations on pull requests:
@@ -230,7 +232,6 @@ Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser
 
 - C4 diagrams and a documentation site generator
 - Filament plugin with the module graph
-- Extension API for custom rules
 
 See [docs/plan/roadmap.md](docs/plan/roadmap.md) (Spanish).
 

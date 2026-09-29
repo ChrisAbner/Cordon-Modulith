@@ -10,6 +10,7 @@ use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\ModuleResolver;
+use Cordon\Contracts\Rule;
 use Cordon\Laravel\Commands\DocsCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
@@ -37,7 +38,7 @@ final class CordonServiceProvider extends ServiceProvider
                 $app->make(DependencyExtractor::class),
                 new FileCollector(self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']))),
                 new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))),
-                RuleSet::fromConfig((array) $config->get('cordon.rules', [])),
+                RuleSet::fromConfig((array) $config->get('cordon.rules', []), fn (string $class): Rule => $app->make($class)),
             );
         });
 
