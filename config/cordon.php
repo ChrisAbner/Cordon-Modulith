@@ -77,12 +77,17 @@ return [
     |--------------------------------------------------------------------------
     | Rules
     |--------------------------------------------------------------------------
+    |
+    | Switch built-in rules on or off, and add your own: class names that
+    | implement Cordon\Contracts\Rule (see docs/custom-rules.md).
+    |
     */
 
     'rules' => [
         'internal_access' => true,
         'undeclared_dependency' => true,
         'cycles' => true,
+        // App\Architecture\MyRule::class,
     ],
 
     /*

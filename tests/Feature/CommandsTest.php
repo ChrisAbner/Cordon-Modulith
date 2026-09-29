@@ -1,5 +1,6 @@
 <?php
 
+use Cordon\Tests\Fixtures\Rules\DeclareDependenciesRule;
 use Illuminate\Support\Facades\Artisan;
 
 afterEach(function () {
@@ -70,4 +71,12 @@ it('rejects unknown modules and --module with --generate-baseline', function () 
     $this->artisan('cordon:verify', ['--module' => ['Billing'], '--generate-baseline' => true])->assertExitCode(2);
 
     expect((string) config('cordon.baseline'))->not->toBeFile();
+});
+
+it('runs custom rules from the config', function () {
+    config()->set('cordon.rules', [DeclareDependenciesRule::class]);
+
+    $this->artisan('cordon:verify', ['--format' => 'json'])
+        ->expectsOutputToContain('"rule": "declare_dependencies"')
+        ->assertExitCode(1);
 });
