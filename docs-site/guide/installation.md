@@ -15,6 +15,18 @@ php artisan cordon:modules
 ```
 
 ```text
+Resolver: namespace
++---------+---------------------+---------------------+----------------+------+
+| Module  | Namespace           | Path                | Depends on     | Open |
++---------+---------------------+---------------------+----------------+------+
+| Billing | App\Modules\Billing | app/Modules/Billing | (not declared) | no   |
+| Catalog | App\Modules\Catalog | app/Modules/Catalog | (not declared) | no   |
++---------+---------------------+---------------------+----------------+------+
+```
+
+With a plain `app/Modules` folder you see `Resolver: namespace`, as above. With nwidart/laravel-modules the same command prints `Resolver: nwidart`:
+
+```text
 Resolver: nwidart
 +----------+------------------+-----------------+----------------+------+
 | Module   | Namespace        | Path            | Depends on     | Open |

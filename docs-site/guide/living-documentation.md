@@ -7,6 +7,8 @@ php artisan cordon:docs                     # writes docs/architecture/
 php artisan cordon:docs --output=docs/modules
 ```
 
+The output folder (`docs/architecture` by default, relative to the project root) is created if it doesn't exist. Commit it: the diffs show how the architecture changes.
+
 | File | Content |
 |---|---|
 | `README.md` | Every module with its namespace, dependencies, users and violation count, and a Mermaid diagram of the dependencies. Edge labels count the classes used; edges with internal access are red. |

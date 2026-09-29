@@ -85,6 +85,10 @@ Only `Orders -> Payments` remains: `Orders` uses the gateway contract and listen
 Referencing `PaymentCaptured` in `Orders` is a dependency on `Payments`. The cycle is gone because `Payments` no longer references `Orders`, not because events are invisible. Check with `php artisan cordon:verify`.
 :::
 
+::: warning Events in both directions still form a cycle
+If `Payments` also listened to an `Orders` event, `Orders -> Payments -> Orders` would be back: public events count as edges too. Move one direction: publish from one side only, or introduce a shared or orchestrating module that both depend on.
+:::
+
 ## Alternative: dependency inversion
 
 When the call must stay synchronous, let the lower-level module own the interface. `Payments` defines `Contracts\PaymentListener`, `Orders` implements it and binds it in its service provider. The arrow now points from `Orders` to `Payments` only.

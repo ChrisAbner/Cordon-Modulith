@@ -68,7 +68,7 @@ export default defineConfig({
         },
         search: { provider: 'local' },
         footer: {
-            message: 'MIT licensed. A community project, not affiliated with or endorsed by Laravel.',
+            message: 'MIT licensed. A community project, not affiliated with or endorsed by Laravel or Spring.',
         },
     },
 })

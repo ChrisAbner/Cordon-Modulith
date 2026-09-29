@@ -19,7 +19,7 @@ features:
   - title: Works with your layout
     details: nwidart/laravel-modules, InterNACHI/modular or a plain app/Modules folder, detected automatically. Nothing to scaffold.
   - title: Static, never runs your code
-    details: Parses files with nikic/php-parser. Works on code that doesn't boot and classes that don't exist yet. 1,000 files in about a second.
+    details: Parses files with nikic/php-parser. Works on code that doesn't boot and classes that don't exist yet. Around a second for 1,000 files on a CI runner.
   - title: Adopt gradually
     details: Record existing violations in a baseline and fail the build only on new ones.
   - title: Where you already work

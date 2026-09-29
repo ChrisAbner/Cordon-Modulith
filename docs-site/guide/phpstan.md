@@ -2,13 +2,21 @@
 
 Cordon Modulith ships a PHPStan rule that reports `internal_access`, so you see violations in your editor while you type.
 
-With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) it is enabled automatically. Otherwise include it:
+A fresh Laravel app doesn't ship [phpstan/extension-installer](https://github.com/phpstan/extension-installer). Either require it (`composer require --dev phpstan/extension-installer`) and the rule is enabled automatically, or include the extension by hand. A complete minimal `phpstan.neon`:
 
 ```yaml
 # phpstan.neon
 includes:
     - vendor/chrisabner/cordon-modulith/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - Modules
 ```
+
+Point `paths` at the folders that contain your modules (`app-modules` for InterNACHI).
 
 ```text
  ------ ------------------------------------------------------------------------------------------
@@ -31,6 +39,20 @@ parameters:
     cordon:
         basePath: /path/to/project
 ```
+
+## Configuration errors
+
+Project config files (`config/cordon.php`, `config/modules.php`, `config/app-modules.php`) are evaluated without booting Laravel. Helpers such as `base_path()`, `app_path()` and `config_path()` resolve against the project root, but anything that needs the framework (facades, the container, `env()` values that live in a booted app) can't be evaluated. In that case the rule reports one error with the identifier `cordon.configuration` and the resolvers fall back to their defaults.
+
+Fix it by setting the values explicitly in `config/cordon.php` (for example `resolvers.nwidart.path`). To silence it, ignore the identifier:
+
+```yaml
+parameters:
+    ignoreErrors:
+        - identifier: cordon.configuration
+```
+
+With parallel workers the error may appear once per worker.
 
 ## Limits
 
