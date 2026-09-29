@@ -1,6 +1,6 @@
 # ADR 0009: Custom rules
 
-**Status:** proposed (implemented, pending maintainer approval)
+**Status:** accepted
 
 ## Context
 Teams have architecture rules beyond module boundaries (a shared kernel that must stay small, modules that must declare their dependencies...). Brief 06A asks for the `rules` config to accept classes implementing `Cordon\Contracts\Rule`.

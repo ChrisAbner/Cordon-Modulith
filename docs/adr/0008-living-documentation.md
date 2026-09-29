@@ -1,6 +1,6 @@
 # ADR 0008: Living documentation (`cordon:docs`)
 
-**Status:** proposed (implemented, pending maintainer approval)
+**Status:** accepted
 
 ## Context
 Spring Modulith generates architecture documentation from the code. Brief 05 asks for the same in Laravel: dependency diagrams, a canvas per module and an event inventory.

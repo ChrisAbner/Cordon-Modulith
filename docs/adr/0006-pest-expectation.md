@@ -1,6 +1,6 @@
 # ADR 0006: Pest expectation `toRespectBoundaries()`
 
-**Status:** proposed (implemented, pending maintainer approval)
+**Status:** accepted
 
 ## Context
 Most Laravel teams already run Pest. Brief 02A asks for `expect('Billing')->toRespectBoundaries()` and `expect(Cordon::modules())->each->toRespectBoundaries()`, reusing the analyzer.
