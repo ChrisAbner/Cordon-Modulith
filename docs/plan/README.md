@@ -49,3 +49,4 @@ Documentación interna de planificación (en español). La documentación públi
 - [enjambres/06-ecosistema.md](enjambres/06-ecosistema.md)
 - [lanzamiento/](lanzamiento/README.md): borradores de lanzamiento (brief 04).
 - [video.md](video.md): guion de vídeo (brief 03D).
+- [originales/](originales/): archivos originales entregados al inicio (`cordon.zip`, `README.md`, `PLAN.md`, `referencias.md`), sin modificar.
