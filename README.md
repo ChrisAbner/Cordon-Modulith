@@ -198,6 +198,21 @@ includes:
 
 The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
 
+## Living documentation
+
+Generate Markdown documentation of the real architecture, straight from the code:
+
+```bash
+php artisan cordon:docs                     # writes docs/architecture/
+php artisan cordon:docs --output=docs/modules
+```
+
+- `README.md`: every module and a Mermaid diagram of their dependencies (internal access in red);
+- `modules/<Module>.md`: a canvas per module with its public API, what it uses and who uses it, its events and its violations;
+- `events.md`: every module event with who publishes and who listens to it.
+
+GitHub renders the Mermaid diagrams. The output is deterministic, so you can commit it and review architecture changes in pull requests.
+
 ## AI coding agents
 
 Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources that Boost picks up when you run `php artisan boost:install`:
@@ -213,7 +228,7 @@ Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser
 
 ## Roadmap
 
-- Living documentation: Mermaid/C4 diagrams per module, event inventory
+- C4 diagrams and a documentation site generator
 - Filament plugin with the module graph
 - Extension API for custom rules
 
