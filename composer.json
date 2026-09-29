@@ -4,6 +4,12 @@
     "keywords": ["laravel", "modules", "modular-monolith", "architecture", "static-analysis", "boundaries"],
     "license": "MIT",
     "type": "library",
+    "homepage": "https://chrisabner.github.io/Cordon-Modulith/",
+    "support": {
+        "issues": "https://github.com/ChrisAbner/Cordon-Modulith/issues",
+        "source": "https://github.com/ChrisAbner/Cordon-Modulith",
+        "docs": "https://chrisabner.github.io/Cordon-Modulith/"
+    },
     "require": {
         "php": "^8.3",
         "illuminate/console": "^12.0|^13.0",

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cordon\Laravel;
 
 use ArrayAccess;
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Support\Arr;
 use Throwable;
@@ -21,25 +22,38 @@ final class StandaloneConfig implements ArrayAccess, Repository
 {
     /**
      * @param  array<string, mixed>  $items
+     * @param  list<string>  $warnings
      */
-    public function __construct(private array $items = []) {}
+    public function __construct(private array $items = [], private array $warnings = []) {}
 
     public static function load(string $basePath): self
     {
-        $defaults = self::requireArray(dirname(__DIR__, 2).'/config/cordon.php') ?? [];
-        $cordon = self::requireArray($basePath.'/config/cordon.php') ?? [];
+        $warnings = [];
+        $defaults = self::requireArray(dirname(__DIR__, 2).'/config/cordon.php', $basePath) ?? [];
+        $cordon = self::requireArray($basePath.'/config/cordon.php', $basePath, $warnings) ?? [];
 
         $items = ['cordon' => array_replace($defaults, $cordon)];
 
         foreach (['modules', 'app-modules'] as $name) {
-            $config = self::requireArray($basePath.'/config/'.$name.'.php');
+            $config = self::requireArray($basePath.'/config/'.$name.'.php', $basePath, $warnings);
 
             if ($config !== null) {
                 $items[$name] = $config;
             }
         }
 
-        return new self($items);
+        return new self($items, $warnings);
+    }
+
+    /**
+     * Project config files that could not be evaluated without the framework.
+     * Each message states the problem and the fix.
+     *
+     * @return list<string>
+     */
+    public function warnings(): array
+    {
+        return $this->warnings;
     }
 
     public function has($key): bool
@@ -114,21 +128,35 @@ final class StandaloneConfig implements ArrayAccess, Repository
     }
 
     /**
-     * Config files may call framework helpers (base_path, env...). When they
-     * cannot be loaded here, the resolvers fall back to their defaults.
+     * Config files may call framework helpers. base_path() and friends resolve
+     * against $basePath through a bare container (nothing is booted or
+     * autoloaded from the project). When a file still cannot be evaluated,
+     * a warning is recorded and the resolvers fall back to their defaults.
      *
+     * @param  list<string>  $warnings
      * @return array<string, mixed>|null
      */
-    private static function requireArray(string $file): ?array
+    private static function requireArray(string $file, string $basePath, array &$warnings = []): ?array
     {
         if (! is_file($file)) {
             return null;
         }
 
+        $previous = Container::getInstance();
+        Container::setInstance(new ProjectContainer($basePath));
+
         try {
             $config = (static fn (): mixed => require $file)();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            $warnings[] = sprintf(
+                'Cordon could not evaluate config/%s (%s), so its settings were ignored and the defaults are used. Set the matching paths in config/cordon.php (for example resolvers.nwidart.path) so it does not depend on that file.',
+                basename($file),
+                $e->getMessage(),
+            );
+
             return null;
+        } finally {
+            Container::setInstance($previous);
         }
 
         return is_array($config) ? $config : null;

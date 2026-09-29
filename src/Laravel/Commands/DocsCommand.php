@@ -8,6 +8,7 @@ use Cordon\Analysis\Analyzer;
 use Cordon\Documentation\DocumentationGenerator;
 use Cordon\Documentation\EventInventory;
 use Cordon\Laravel\Verifier;
+use Cordon\Laravel\XdebugWarning;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 
@@ -18,8 +19,12 @@ final class DocsCommand extends Command
 
     protected $description = 'Generate Markdown documentation of the modules: dependency diagrams, module canvases and an event inventory';
 
-    public function handle(Verifier $verifier, Analyzer $analyzer): int
+    public function handle(Verifier $verifier, Analyzer $analyzer, XdebugWarning $xdebug): int
     {
+        if (($message = $xdebug->message()) !== null) {
+            $this->output->getErrorStyle()->writeln('<comment>'.$message.'</comment>');
+        }
+
         $modules = $verifier->modules();
 
         if (count($modules) === 0) {

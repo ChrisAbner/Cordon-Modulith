@@ -31,8 +31,10 @@ final readonly class Module
 
     public function ownsPath(string $file): bool
     {
-        return str_starts_with($file, $this->path.DIRECTORY_SEPARATOR)
-            || str_starts_with($file, $this->path.'/');
+        $file = str_replace('\\', '/', $file);
+        $path = rtrim(str_replace('\\', '/', $this->path), '/');
+
+        return str_starts_with($file, $path.'/');
     }
 
     /**
