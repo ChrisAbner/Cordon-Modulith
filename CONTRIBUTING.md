@@ -5,10 +5,13 @@ Thanks for helping make module boundaries in Laravel verifiable.
 ## Setup
 
 ```bash
-git clone <repository-url> cordon && cd cordon
+git clone https://github.com/ChrisAbner/Cordon-Modulith.git cordon-modulith && cd cordon-modulith
 composer install
 composer check   # pint --test, phpstan, pest
+composer bench   # analyses a synthetic project of 1,000 files; fails above 10 s
 ```
+
+`php tests/Benchmark/run.php 5000 50` runs a larger benchmark (files, modules, optional time budget in seconds).
 
 ## Pull requests
 

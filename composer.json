@@ -38,7 +38,8 @@
         "test": "pest",
         "analyse": "phpstan analyse",
         "format": "pint",
-        "check": ["pint --test", "phpstan analyse", "pest"]
+        "check": ["pint --test", "phpstan analyse", "pest"],
+        "bench": "php tests/Benchmark/run.php 1000 20 10"
     },
     "config": {
         "sort-packages": true,
