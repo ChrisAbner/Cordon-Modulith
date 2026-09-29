@@ -144,7 +144,7 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 
 ## Continuous integration
 
-Use the `github` format to get annotations on pull requests:
+Use the reusable GitHub Action to get annotations on pull requests:
 
 ```yaml
 # .github/workflows/cordon.yml
@@ -155,18 +155,55 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-      - run: composer install --no-interaction --prefer-dist
-      - run: php artisan cordon:verify --format=github
+      - uses: ChrisAbner/Cordon-Modulith@v0.1.0
 ```
 
-`--format=json` prints a machine readable report. The command exits with `1` when there are violations, `0` otherwise and `2` on invalid options.
+Or add `php artisan cordon:verify --format=github` to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations, `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
+
+### One module at a time
+
+```bash
+php artisan cordon:verify --module=Billing
+```
+
+`--module` (repeatable) reports only the violations a module causes and the dependency cycles it takes part in.
+
+## Pest
+
+Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`:
+
+```php
+use Cordon\Testing\Cordon;
+
+it('keeps Billing inside its boundaries', function () {
+    expect('Billing')->toRespectBoundaries();
+});
+
+it('keeps every module inside its boundaries', function () {
+    expect(Cordon::modules())->each->toRespectBoundaries();
+});
+```
+
+The analysis runs once per test process and honours the baseline, like `cordon:verify`.
+
+## PHPStan
+
+Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) it is enabled automatically; otherwise include it:
+
+```neon
+# phpstan.neon
+includes:
+    - vendor/chrisabner/cordon-modulith/extension.neon
+```
+
+The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
 
 ## AI coding agents
 
-Cordon Modulith ships a [Laravel Boost](https://laravel.com/docs/boost) guideline (`resources/boost/guidelines/core.blade.php`) so agents know they must go through a module's public API and run `cordon:verify`. Boost picks it up when you run `php artisan boost:install`.
+Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources that Boost picks up when you run `php artisan boost:install`:
+
+- a guideline (`resources/boost/guidelines/core.blade.php`) so agents go through a module's public API and run `cordon:verify`;
+- the `cordon-fix-violations` skill (`resources/boost/skills/`), which teaches agents to read `cordon:verify --format=json` and fix each kind of violation without touching the baseline.
 
 ## How it works
 
@@ -176,7 +213,6 @@ Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser
 
 ## Roadmap
 
-- Pest expectation and PHPStan rule
 - Living documentation: Mermaid/C4 diagrams per module, event inventory
 - Filament plugin with the module graph
 - Extension API for custom rules
