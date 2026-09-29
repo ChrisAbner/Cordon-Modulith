@@ -1,0 +1,14 @@
+{
+    "description": "InterNACHI/modular with lowercase module names and several PSR-4 roots per module. Invoicing relates to Accounts' Team model; Notifications declares depends_on but also listens to an Invoicing event.",
+    "resolver": "internachi",
+    "modules": ["accounts", "invoicing", "notifications"],
+    "config": {
+        "modules": {
+            "notifications": {"depends_on": ["accounts"]}
+        }
+    },
+    "violations": [
+        "internal_access|app-modules/invoicing/src/Models/Invoice.php|Modules\\Accounts\\Models\\Team",
+        "undeclared_dependency|app-modules/notifications/src/Listeners/SendInvoiceEmail.php|invoicing"
+    ]
+}

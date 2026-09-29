@@ -1,0 +1,7 @@
+{
+    "name": "Payments",
+    "alias": "payments",
+    "providers": [
+        "Modules\\Payments\\Providers\\PaymentsServiceProvider"
+    ]
+}

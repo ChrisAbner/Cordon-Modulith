@@ -1,0 +1,9 @@
+{
+    "description": "nwidart/laravel-modules v11+ (app/ folder, factories, migrations, routes, Blade views, module tests). Orders reads Catalog's Eloquent model; Orders and Payments depend on each other through a contract and an event.",
+    "resolver": "nwidart",
+    "modules": ["Catalog", "Orders", "Payments"],
+    "violations": [
+        "internal_access|Modules/Orders/app/Models/Order.php|Modules\\Catalog\\Models\\Product",
+        "cycles||Orders -> Payments -> Orders"
+    ]
+}

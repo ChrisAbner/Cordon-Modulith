@@ -1,0 +1,9 @@
+{
+    "name": "modules/billing",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Billing\\Tests\\": "tests/",
+            "Modules\\Billing\\": "src/"
+        }
+    }
+}

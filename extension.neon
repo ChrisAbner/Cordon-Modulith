@@ -1,0 +1,16 @@
+parameters:
+    cordon:
+        basePath: %currentWorkingDirectory%
+
+parametersSchema:
+    cordon: structure([
+        basePath: string()
+    ])
+
+services:
+    -
+        class: Cordon\PHPStan\InternalAccessRule
+        arguments:
+            basePath: %cordon.basePath%
+        tags:
+            - phpstan.rules.rule

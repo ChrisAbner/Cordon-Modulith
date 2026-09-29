@@ -1,0 +1,16 @@
+{
+    "description": "Domain-driven layout in src/Domain with a custom namespace. Clean project: docblock types and string class names must not be reported.",
+    "resolver": "namespace",
+    "modules": ["Billing", "Identity"],
+    "config": {
+        "resolver": "namespace",
+        "resolvers": {
+            "namespace": {"path": "src/Domain", "namespace": "Domain"}
+        },
+        "modules": {
+            "Billing": {"depends_on": ["Identity"]},
+            "Identity": {"depends_on": []}
+        }
+    },
+    "violations": []
+}

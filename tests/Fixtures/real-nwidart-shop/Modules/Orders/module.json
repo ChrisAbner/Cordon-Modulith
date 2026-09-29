@@ -1,0 +1,7 @@
+{
+    "name": "Orders",
+    "alias": "orders",
+    "providers": [
+        "Modules\\Orders\\Providers\\OrdersServiceProvider"
+    ]
+}
