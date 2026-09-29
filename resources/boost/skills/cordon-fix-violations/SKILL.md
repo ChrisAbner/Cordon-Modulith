@@ -30,7 +30,7 @@ Run `php artisan cordon:modules` to see each module's namespace, path and declar
 - **Never add a violation to the baseline** (`--generate-baseline`) to make the build pass. The baseline is only for adopting Cordon Modulith in an existing project, and the maintainers decide when to regenerate it.
 - **Never add a module to `depends_on`** in `config/cordon.php` only to silence `undeclared_dependency`. Ask the user if the dependency is intended.
 - **Never mark a class `#[PublicApi]` just to silence `internal_access`.** Only do it when the class was designed to be used by other modules (stable, no persistence details). Prefer a contract or a data object.
-- Do not move classes into a public namespace (`Contracts`, `Events`, `Data`, `Enums`, `Exceptions`) unless they really are contracts, events, data objects, enums or exceptions.
+- Do not move classes into a public namespace (`Contracts`, `Events`, `Data`, `Enums`, `Exceptions`, at any depth) unless they really are contracts, events, data objects, enums or exceptions.
 - Re-run `php artisan cordon:verify` after each fix.
 
 ## 3. internal_access

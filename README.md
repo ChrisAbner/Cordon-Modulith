@@ -1,8 +1,14 @@
 # Cordon Modulith
 
+[![Tests](https://github.com/ChrisAbner/Cordon-Modulith/actions/workflows/tests.yml/badge.svg)](https://github.com/ChrisAbner/Cordon-Modulith/actions/workflows/tests.yml)
+[![Latest version](https://img.shields.io/packagist/v/chrisabner/cordon-modulith.svg)](https://packagist.org/packages/chrisabner/cordon-modulith)
+[![Downloads](https://img.shields.io/packagist/dt/chrisabner/cordon-modulith.svg)](https://packagist.org/packages/chrisabner/cordon-modulith)
+[![PHP](https://img.shields.io/packagist/dependency-v/chrisabner/cordon-modulith/php.svg)](composer.json)
+[![License](https://img.shields.io/github/license/ChrisAbner/Cordon-Modulith.svg)](LICENSE.md)
+
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
-> **Status: 0.1 (alpha).** The public API may change before 1.0.
+> **Status: 0.1 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
 
 Modular monoliths in Laravel usually rely on nwidart/laravel-modules, InterNACHI/modular or a hand-made `app/Modules` folder. All of them organise code, but none of them stops the `Billing` module from reaching into `Catalog`'s models. Six months later the "modules" are just folders.
 
@@ -11,6 +17,8 @@ Cordon Modulith reads your code statically, builds the dependency graph between 
 - uses **internal classes** of another module instead of its public API,
 - depends on a module it **did not declare**, or
 - takes part in a **dependency cycle**.
+
+It also keeps AI coding agents honest: Cordon Modulith ships Laravel Boost resources that teach agents to go through a module's public API and to fix the violations `cordon:verify` reports.
 
 It is inspired by [Spring Modulith](https://spring.io/projects/spring-modulith) and Shopify's Packwerk, adapted to Laravel conventions.
 
@@ -79,11 +87,7 @@ Other modules may only use classes that belong to a module's public API. A class
 4. it lives under one of the public namespaces, relative to the module: `Contracts`, `Events`, `Data`, `Enums`, `Exceptions` by default, plus the module's own `public` list → public;
 5. otherwise → **internal**.
 
-`public_namespaces` match the **first namespace segment relative to the module root** only. `Modules\Billing\Contracts\Gateway` is public, but `Modules\Billing\Invoices\Enums\Status` is **not**: its relative name starts with `Invoices`, not `Enums`. Field tests showed that nested enums and events cause a large share of violations in some apps. To expose them, do one of these:
-
-- list the nested namespace in the module's `public` list, e.g. `'Billing' => ['public' => ['Invoices\\Enums', 'Invoices\\Events']]`;
-- mark the class with `#[PublicApi]`;
-- move it to a top-level public namespace.
+`public_namespaces` match at **any depth** relative to the module: an entry counts when it appears as a whole segment (or a contiguous run of segments, such as `Http\Resources`) in the class's namespace. `Modules\Billing\Contracts\Gateway`, `Modules\Billing\Invoices\Enums\Status` and `Modules\Billing\Invoices\Events\Sub\InvoicePaid` are public; `Modules\Billing\Invoices\MyEnums\Status` and `Modules\Billing\EnumsHelper\Foo` are not (whole segments only). The module's own `public` list is different: its entries stay anchored at the module root, e.g. `Services\BillingService`. If a nested `Enums` or `Events` class must stay internal, mark it with `#[Internal]`.
 
 `DTOs` is not in the defaults (only `Data`). If you use it, add it to `public_namespaces`, e.g. `['Contracts', 'Events', 'Data', 'DTOs', 'Enums', 'Exceptions']` (setting the option replaces the default list).
 

@@ -45,7 +45,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | Other modules may only use classes that belong to a module's public API:
-    | classes under one of these namespaces (relative to the module namespace)
+    | classes under one of these namespaces, matched as whole segments at any
+    | depth relative to the module namespace (Enums also covers Invoices\Enums)
     | or classes marked with #[Cordon\Attributes\PublicApi].
     | #[Cordon\Attributes\Internal] always wins.
     |

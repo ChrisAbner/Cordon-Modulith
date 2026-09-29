@@ -10,12 +10,13 @@ use Cordon\Module\Module;
  * Decides whether a class belongs to its module's public API.
  *
  * Precedence: #[Internal] > #[PublicApi] > open module > public namespaces
- * (global config + module "public" list) > internal by default.
+ * (global config, matched at any depth; module "public" list, anchored at the
+ * module root) > internal by default.
  */
 final readonly class PublicApiPolicy
 {
     /**
-     * @param  list<string>  $publicNamespaces  Namespaces relative to each module, e.g. "Contracts".
+     * @param  list<string>  $publicNamespaces  Namespaces matched at any depth relative to each module, e.g. "Contracts".
      */
     public function __construct(
         private array $publicNamespaces = ['Contracts', 'Events', 'Data', 'Enums', 'Exceptions'],
@@ -33,7 +34,13 @@ final readonly class PublicApiPolicy
 
         $relative = $module->relativeName($fqcn);
 
-        foreach ([...$this->publicNamespaces, ...$module->publicApi] as $prefix) {
+        foreach ($this->publicNamespaces as $entry) {
+            if ($this->matchesAnywhere($relative, trim($entry, '\\'))) {
+                return true;
+            }
+        }
+
+        foreach ($module->publicApi as $prefix) {
             $prefix = trim($prefix, '\\');
 
             if ($prefix !== '' && ($relative === $prefix || str_starts_with($relative, $prefix.'\\'))) {
@@ -42,5 +49,25 @@ final readonly class PublicApiPolicy
         }
 
         return false;
+    }
+
+    /**
+     * Whether the entry appears as a contiguous run of whole segments in the
+     * namespace of the relative class name (the short class name is excluded),
+     * or is the relative name itself.
+     */
+    private function matchesAnywhere(string $relative, string $entry): bool
+    {
+        if ($entry === '') {
+            return false;
+        }
+
+        if ($relative === $entry) {
+            return true;
+        }
+
+        $namespace = substr($relative, 0, (int) strrpos($relative, '\\'));
+
+        return str_contains('\\'.$namespace.'\\', '\\'.$entry.'\\');
     }
 }
