@@ -34,13 +34,13 @@ ADRs 0005-0009 (`--module`, Pest expectation, PHPStan rule, `cordon:docs`, custo
 
 ## Test plan / status
 
-Run locally on PHP 8.4 (Windows) before opening the PR:
+Run locally (Windows, Xdebug off) before opening the PR:
 
-- [x] `pest`: 91 passed, 1 skipped (234 assertions)
+- [x] `pest`: 103 passed, 1 skipped (264 assertions); the skipped test is Windows-only and runs on CI
 - [x] `phpstan analyse`: no errors (level 8)
-- [ ] `pint --test`: not conclusive on the Windows checkout (it reports `line_ending` on every file because of CRLF); expected to pass on the Linux CI runner
-- [ ] PHP 8.3 has **not** been run locally, only configured in PHPStan; the CI matrix covers PHP 8.3/8.4 x Laravel 12/13
-- [ ] Manual runs in 3 real projects (nwidart, InterNACHI, `app/Modules`) are still pending and tracked separately as the exit criterion for 0.1
+- [x] `pint --test`: passed
+- [x] CI matrix reproduced locally: PHP 8.3/8.4 x Laravel 12/13 all green; benchmark 1,000 files in 5.3 s on a slower Windows machine
+- [x] Field tests on 6 public projects (2 nwidart, 2 InterNACHI, 2 `app/Modules`/DDD, up to 939 files and 38 modules): 1,300+ violations reviewed, 0 false positives. They surfaced two bugs, fixed here with fixtures: config files using `base_path()` could not be loaded outside Laravel, and mixed directory separators on Windows
 
 CI on GitHub only runs on `main` and pull requests, so this PR is the first time the three jobs run: `tests`, `quality` (Pint + PHPStan) and `benchmark`.
 
@@ -52,7 +52,7 @@ CI on GitHub only runs on `main` and pull requests, so this PR is the first time
 4. Try it: `composer install && composer check`, then `vendor/bin/pest tests/Feature/CommandsTest.php`.
 5. `docs-site/` is the public documentation; `docs/plan/` is internal planning (in Spanish) and can be skimmed.
 
-The branch has 14 commits, roughly one per phase, so reviewing commit by commit works well.
+The branch has 18 commits, roughly one per phase, so reviewing commit by commit works well.
 
 ## Checklist
 
