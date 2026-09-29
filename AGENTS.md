@@ -4,7 +4,7 @@ This file is for AI agents (and agent swarms) working on the Cordon Modulith cod
 
 ## Project in one paragraph
 
-Cordon Modulith is a Laravel dev-dependency that verifies boundaries between modules. It statically parses PHP files (nikic/php-parser, never loading code), maps class references to modules, and runs rules (`internal_access`, `undeclared_dependency`, `cycles`). Entry point: `php artisan cordon:verify`. Pipeline: `ModuleResolver` → `FileCollector` → `DependencyExtractor` → `Analyzer` (cross-module edges) → `Rule`s → `Baseline` → `Reporter`.
+Cordon Modulith is a Laravel dev-dependency that verifies boundaries between modules. It statically parses PHP files (nikic/php-parser, never loading code), maps class references to modules, and runs rules (`internal_access`, `undeclared_dependency`, `cycles`). Entry points: `php artisan cordon:verify` (and `cordon:docs`), the Pest expectation `toRespectBoundaries()` and the PHPStan rule. Pipeline: `ModuleResolver` → `FileCollector` → `DependencyExtractor` → `Analyzer` (cross-module edges) → `Rule`s → `Baseline` → `Reporter`.
 
 ## Hard rules
 
@@ -19,5 +19,5 @@ Cordon Modulith is a Laravel dev-dependency that verifies boundaries between mod
 ## Conventions
 
 - PHP 8.3, `declare(strict_types=1)`, `final` classes, `readonly` value objects.
-- No Laravel dependency outside `src/Laravel`; the analysis core must stay framework-agnostic.
+- The analysis core (`src/Analysis`, `src/Module`, `src/Rules`, `src/Resolvers`, `src/Reporters`, `src/Baseline`, `src/Support`, `src/Documentation`) must stay framework-agnostic. Only the integration layers (`src/Laravel`, `src/Testing`, `src/PHPStan`) may use Laravel.
 - User-facing messages: one sentence stating the problem plus one stating the fix.

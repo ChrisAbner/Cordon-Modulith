@@ -9,16 +9,23 @@ Documentación interna de planificación (en español). La documentación públi
 | Estructura del repo, CI, Pint, PHPStan, Pest | Hecho |
 | Contratos del núcleo (`src/Contracts`) | Hecho, congelados |
 | Resolvers: namespace, nwidart, InterNACHI + autodetección | Hecho |
-| Extracción estática con nikic/php-parser | Hecho |
+| Extracción estática con nikic/php-parser | Hecho, con fixtures de casos límite |
 | Reglas: `internal_access`, `undeclared_dependency`, `cycles` | Hecho |
 | Baseline | Hecho |
 | Reporters: text, json, github | Hecho |
-| Comandos `cordon:verify` y `cordon:modules` | Hecho |
-| Guideline de Laravel Boost | Hecho |
-| Tests unitarios y de feature con fixtures | Escritos, **pendientes de ejecutar** |
+| Comandos `cordon:verify` (con `--module`), `cordon:modules`, `cordon:docs` | Hecho |
+| Guideline y skill de Laravel Boost | Hecho |
+| Tests unitarios y de feature | **Ejecutados: 91 en verde** (PHP 8.4, Laravel 13 y 12), `composer check` en verde |
+| Fixtures de 5 proyectos reales | Hecho (`tests/Fixtures/real-*`) |
+| Rendimiento | 1.000 archivos en ~1,1 s; 5.000 en ~5,5 s (`composer bench`) |
+| Integraciones: Pest, PHPStan, GitHub Action | Hecho (ADR 0005–0007 propuestos) |
+| Sitio de documentación (VitePress) | Hecho (`docs-site/`), falta publicarlo en GitHub Pages |
+| Documentación viva (`cordon:docs`) | Hecho (ADR 0008 propuesto) |
+| API de reglas propias | Hecho (ADR 0009 propuesto) |
+| Materiales de lanzamiento y guion de vídeo | Borradores en `lanzamiento/` y `video.md` |
 | Nombre final y vendor de Composer | Decidido: **Cordon Modulith**, paquete `chrisabner/cordon-modulith`. Falta verificar marcas (Fase 0) |
 
-**Importante:** el código se escribió sin poder ejecutar PHP. La primera tarea obligatoria es `composer install && composer check` y corregir lo que falle (brief 01).
+**Pendiente de ti:** aprobar o rechazar los ADR 0005–0009 (estado "proposed"), verificar marcas, probar a mano en 3 proyectos reales, crear el repo `cordon-demo` (brief 03B), publicar en Packagist y los materiales de lanzamiento. El plugin de Filament (6B) y la v1.0 (6C) quedan para después de la v0.x.
 
 ## Cómo trabajar con enjambres de agentes
 
@@ -39,3 +46,5 @@ Documentación interna de planificación (en español). La documentación públi
 - [enjambres/04-lanzamiento.md](enjambres/04-lanzamiento.md)
 - [enjambres/05-documentacion-viva.md](enjambres/05-documentacion-viva.md)
 - [enjambres/06-ecosistema.md](enjambres/06-ecosistema.md)
+- [lanzamiento/](lanzamiento/README.md): borradores de lanzamiento (brief 04).
+- [video.md](video.md): guion de vídeo (brief 03D).

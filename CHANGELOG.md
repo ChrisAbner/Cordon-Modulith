@@ -13,3 +13,14 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 - Public API model: public namespaces, `#[PublicApi]`, `#[Internal]`, per-module `public` list and `open` modules.
 - Baseline file for gradual adoption (`--generate-baseline`, `--no-baseline`).
 - Laravel Boost guideline for AI coding agents.
+- `--module` option for `cordon:verify` to report the violations of one or more modules.
+- Pest expectation `toRespectBoundaries()` and `Cordon\Testing\Cordon::modules()`.
+- PHPStan rule `cordon.internalAccess` (`extension.neon`), reading `config/cordon.php` without booting Laravel.
+- Reusable GitHub Action (`action.yml`).
+- `cordon:docs` command: Mermaid dependency diagrams, a canvas per module and an event inventory.
+- Custom rules: classes implementing `Cordon\Contracts\Rule` in the `rules` config.
+- Laravel Boost skill `cordon-fix-violations`.
+- Documentation site (`docs-site/`), benchmark (`composer bench`) and real-project fixtures.
+
+### Fixed
+- Commands read the config through the repository contract (PHPStan level 8).
