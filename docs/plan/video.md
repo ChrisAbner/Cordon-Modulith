@@ -18,3 +18,5 @@ Brief 03D. Narración en inglés (audiencia global); las indicaciones de escena 
 - Sin música con letra; subtítulos en inglés y español.
 - GIF corto (0:40–1:30) para el hilo de X y el README.
 - No mostrar el logo de Laravel ni sugerir afiliación.
+- Enlaces para la descripción del vídeo: repositorio https://github.com/ChrisAbner/Cordon-Modulith, documentación https://chrisabner.github.io/Cordon-Modulith/ (guía de inicio: https://chrisabner.github.io/Cordon-Modulith/guide/introduction) y Packagist https://packagist.org/packages/chrisabner/cordon-modulith.
+- Salida real (fixture `real-nwidart-shop`, ejecutada en 0.1): `cordon:modules` lista Catalog, Orders y Payments con el resolver `nwidart`; `cordon:verify` da dos violaciones: `internal_access` en `Modules/Orders/app/Models/Order.php:13` (usa `Modules\Catalog\Models\Product`) y `cycles` `Orders -> Payments -> Orders`. Con `--generate-baseline` la segunda ejecución muestra "No boundary violations. (2 suppressed by the baseline)".

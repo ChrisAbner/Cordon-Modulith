@@ -17,10 +17,10 @@ Fases 0, 1 y la parte mínima de 3 bastan para el MVP. El resto construye adopci
 |---|---|---|---|
 | 0. Fundación | 1 | Parcial: nombre y vendor decididos, falta verificar marcas | Nombre verificado, repo en GitHub, CI ejecutándose |
 | 1. Núcleo | 2–5 | Hecho: tests en verde, 5 fixtures reales, 1.000 archivos en ~1 s; falta prueba manual en proyectos reales | Tests en verde, 5+ fixtures reales, 0 falsos positivos, 1.000 archivos en < 10 s |
-| 2. Integraciones | 6–7 | Hecho (ADR 0005–0007 propuestos) | Expectativa Pest, regla PHPStan, GitHub Action reutilizable |
+| 2. Integraciones | 6–7 | Hecho (ADR 0005–0007 aceptados) | Expectativa Pest, regla PHPStan, GitHub Action reutilizable |
 | 3. Docs e IA | 7–8 | Hecho salvo app demo (repo aparte) y prueba con persona ajena | Sitio de docs, app demo, skill de Boost, guion de vídeo |
 | 4. Lanzamiento v0.1 | 9–10 | Borradores listos en `lanzamiento/`; publicación pendiente | Artículo en Laravel News enviado, posts publicados, contacto con mantenedores |
-| 5. Documentación viva | Meses 3–4 | Hecho (`cordon:docs`, ADR 0008 propuesto) | `cordon:docs` genera diagramas Mermaid e inventario de eventos |
+| 5. Documentación viva | Meses 3–4 | Hecho (`cordon:docs`, ADR 0008 aceptado) | `cordon:docs` genera diagramas Mermaid e inventario de eventos |
 | 6. Ecosistema y v1.0 | Meses 5–6+ | API de reglas propias hecha (ADR 0009); Filament y v1.0 pendientes | Plugin Filament, API de reglas propias, v1.0 con SemVer estricto |
 
 ## Métricas objetivo (escenario realista)

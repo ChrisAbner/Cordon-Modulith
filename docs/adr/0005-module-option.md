@@ -1,6 +1,6 @@
 # ADR 0005: `--module` option and shared verification flow
 
-**Status:** proposed (implemented, pending maintainer approval)
+**Status:** accepted
 
 ## Context
 Teams want to check one module at a time: while working on it, in a module-owned CI job, or from a test. Brief 02D asks for `cordon:verify --module=Billing`, and the Pest expectation (ADR 0006) needs the same flow as the command without going through Artisan.

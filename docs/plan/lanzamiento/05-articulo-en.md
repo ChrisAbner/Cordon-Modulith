@@ -91,7 +91,7 @@ The `Money` value object is fine because `Shared` is configured as an open modul
 
 ## Fix it
 
-Billing needs a price, not a model. Catalog already publishes a contract; add a data object and use it:
+Billing needs a price, not a model. Catalog already publishes a contract; give it a `find()` method that returns a data object (for example `ProductData`, in `Catalog\Data`) and use it:
 
 ```php
 namespace App\Modules\Billing\Services;
@@ -133,3 +133,5 @@ Then pick one module per sprint: `php artisan cordon:verify --no-baseline --modu
 It doesn't replace Deptrac (great for layers) or Pest `arch()` (great for conventions inside a module); it focuses on the edges between modules. Static analysis also has limits: class names in strings and docblock-only types are not detected, by design, to avoid false positives.
 
 If you run a modular monolith in Laravel, I'd like to know how you keep boundaries today and where this approach would not fit.
+
+Links: [repository](https://github.com/ChrisAbner/Cordon-Modulith) · [documentation](https://chrisabner.github.io/Cordon-Modulith/) · [Packagist](https://packagist.org/packages/chrisabner/cordon-modulith). Cordon Modulith is a community project, not affiliated with or endorsed by Laravel.

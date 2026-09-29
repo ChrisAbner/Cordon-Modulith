@@ -1,6 +1,6 @@
 # ADR 0007: PHPStan rule and configuration outside Laravel
 
-**Status:** proposed (implemented, pending maintainer approval)
+**Status:** accepted
 
 ## Context
 Developers see PHPStan errors in their editor while they type; `cordon:verify` only runs on demand or in CI. Brief 02B asks for a PHPStan rule that reports `internal_access`. PHPStan does not boot the Laravel application, so the rule cannot read `config()`.

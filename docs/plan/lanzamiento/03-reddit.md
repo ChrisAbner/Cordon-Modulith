@@ -24,7 +24,7 @@ x [cycles]
   Modules [Orders, Payments] form a dependency cycle: Orders -> Payments -> Orders. ...
 ```
 
-It has a baseline (only new violations fail), a Pest expectation, a PHPStan rule and can generate Mermaid diagrams of the real dependencies. Repo: (link). It's early (0.1), so I'd love to hear:
+It has a baseline (only new violations fail), a Pest expectation, a PHPStan rule and can generate Mermaid diagrams of the real dependencies. Repo: https://github.com/ChrisAbner/Cordon-Modulith (docs: https://chrisabner.github.io/Cordon-Modulith/). It's early (0.1), so I'd love to hear:
 
 - how you handle this today (Deptrac? discipline? nothing?);
 - layouts it would get wrong in your projects.

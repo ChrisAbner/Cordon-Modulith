@@ -31,4 +31,10 @@ Existing projects can record current violations in a baseline and only fail on n
 
 It is inspired by Spring Modulith and Shopify's Packwerk. Requires PHP 8.3+ and Laravel 12 or 13. MIT licensed.
 
-**Links:** GitHub repository, documentation site.
+**Links:**
+
+- GitHub repository: https://github.com/ChrisAbner/Cordon-Modulith
+- Documentation: https://chrisabner.github.io/Cordon-Modulith/
+- Packagist: https://packagist.org/packages/chrisabner/cordon-modulith
+
+Cordon Modulith is a community project and is not affiliated with or endorsed by Laravel.

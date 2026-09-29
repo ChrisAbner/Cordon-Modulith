@@ -21,3 +21,5 @@ Modular monoliths promise independent modules inside one Laravel app. In practic
 **Audience:** intermediate to advanced Laravel developers working on medium or large applications.
 
 **Speaker notes:** the tool used in the demo is open source (Cordon Modulith), but the ideas apply to any tool; the talk is not a product pitch. Not affiliated with Laravel.
+
+**Links:** https://github.com/ChrisAbner/Cordon-Modulith · https://chrisabner.github.io/Cordon-Modulith/

@@ -34,3 +34,5 @@ x [internal_access] app/Modules/Billing/Services/CheckoutService.php:13
 5. Would you use the PHPStan rule, the Pest expectation or only the Artisan command in CI?
 
 Feedback, especially "this would not work for us because...", is very welcome.
+
+Repository: https://github.com/ChrisAbner/Cordon-Modulith · Docs: https://chrisabner.github.io/Cordon-Modulith/

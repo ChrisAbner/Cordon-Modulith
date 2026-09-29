@@ -17,4 +17,4 @@ Adjuntar el GIF de la terminal (escena 0:40–1:30 del guion de vídeo) en el po
 
 5. Existing app with hundreds of violations? Generate a baseline: CI only fails on new ones. Then burn it down module by module.
 
-6. Also: `expect('Billing')->toRespectBoundaries()` in Pest, a PHPStan rule for your editor, Mermaid diagrams with `cordon:docs`, and a Boost skill so AI agents respect boundaries. Early days, feedback welcome: (link)
+6. Also: `expect('Billing')->toRespectBoundaries()` in Pest, a PHPStan rule for your editor, Mermaid diagrams with `cordon:docs`, and a Boost skill so AI agents respect boundaries. Early days, feedback welcome: https://github.com/ChrisAbner/Cordon-Modulith

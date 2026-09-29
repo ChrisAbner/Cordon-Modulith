@@ -91,7 +91,7 @@ El value object `Money` no da problemas porque `Shared` está configurado como m
 
 ## Arréglalo
 
-Billing necesita un precio, no un modelo. Catalog ya publica un contrato; que devuelva un objeto de datos y úsalo:
+Billing necesita un precio, no un modelo. Catalog ya publica un contrato; añádele un método `find()` que devuelva un objeto de datos (por ejemplo `ProductData`, en `Catalog\Data`) y úsalo:
 
 ```php
 namespace App\Modules\Billing\Services;
@@ -133,3 +133,5 @@ Después, un módulo por sprint: `php artisan cordon:verify --no-baseline --modu
 No sustituye a Deptrac (muy bueno para capas) ni a `arch()` de Pest (muy bueno para convenciones dentro de un módulo); se centra en las flechas entre módulos. El análisis estático también tiene límites: los nombres de clase en strings y los tipos que solo están en docblocks no se detectan, a propósito, para evitar falsos positivos.
 
 Si mantienes un monolito modular en Laravel, me gustaría saber cómo proteges hoy los límites y dónde este enfoque no encajaría.
+
+Enlaces: [repositorio](https://github.com/ChrisAbner/Cordon-Modulith) · [documentación](https://chrisabner.github.io/Cordon-Modulith/) · [Packagist](https://packagist.org/packages/chrisabner/cordon-modulith). Cordon Modulith es un proyecto de la comunidad, sin afiliación ni respaldo de Laravel.
