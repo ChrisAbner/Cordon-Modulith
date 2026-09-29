@@ -25,7 +25,7 @@ Documentación interna de planificación (en español). La documentación públi
 | Materiales de lanzamiento y guion de vídeo | Borradores en `lanzamiento/` y `video.md` |
 | Nombre final y vendor de Composer | Decidido: **Cordon Modulith**, paquete `chrisabner/cordon-modulith`. Falta verificar marcas (Fase 0) |
 
-**Pendiente de ti:** aprobar o rechazar los ADR 0005–0009 (estado "proposed"), verificar marcas, probar a mano en 3 proyectos reales, crear el repo `cordon-demo` (brief 03B), publicar en Packagist y los materiales de lanzamiento. El plugin de Filament (6B) y la v1.0 (6C) quedan para después de la v0.x.
+**Pendiente de ti** (detalle paso a paso en [siguientes-pasos.md](siguientes-pasos.md)): aprobar o rechazar los ADR 0005–0009 (estado "proposed"), verificar marcas, probar a mano en 3 proyectos reales, crear el repo `cordon-demo` (brief 03B), publicar en Packagist y los materiales de lanzamiento. El plugin de Filament (6B) y la v1.0 (6C) quedan para después de la v0.x.
 
 ## Cómo trabajar con enjambres de agentes
 
@@ -37,6 +37,7 @@ Documentación interna de planificación (en español). La documentación públi
 
 ## Índice
 
+- [siguientes-pasos.md](siguientes-pasos.md): checklist para publicar y lanzar la v0.1.0.
 - [roadmap.md](roadmap.md): fases, calendario y criterios de salida.
 - [referencias.md](referencias.md): proyectos de referencia y qué estudiar de cada uno por brief.
 - [enjambres/00-fundacion.md](enjambres/00-fundacion.md)
