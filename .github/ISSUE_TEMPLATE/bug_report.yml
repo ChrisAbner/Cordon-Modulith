@@ -1,0 +1,31 @@
+name: Bug report
+description: A crash, a missed violation or wrong output.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Full command output or stack trace.
+      render: text
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest code or project layout that shows the problem. A failing test or fixture is even better.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: Cordon Modulith 0.1.0, PHP 8.4, Laravel 13, nwidart/laravel-modules 13
+    validations:
+      required: true

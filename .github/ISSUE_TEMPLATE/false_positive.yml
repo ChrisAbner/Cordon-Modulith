@@ -1,0 +1,41 @@
+name: False positive
+description: Cordon Modulith reports something that is not a real boundary violation.
+labels: ["bug", "false positive"]
+body:
+  - type: markdown
+    attributes:
+      value: A rule that reports correct code is a bug. The fastest way to get it fixed is the smallest code that reproduces it.
+  - type: textarea
+    id: report
+    attributes:
+      label: Reported violation
+      description: Paste the output of `php artisan cordon:verify` for this case.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Code that triggers it
+      description: The relevant lines of the file, including its `namespace` and `use` statements.
+      render: php
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it is not a violation
+    validations:
+      required: true
+  - type: input
+    id: layout
+    attributes:
+      label: Module layout
+      description: "Output of `php artisan cordon:modules` (first lines are enough), e.g. nwidart, InterNACHI or app/Modules."
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: Cordon Modulith 0.1.0, PHP 8.4, Laravel 13
+    validations:
+      required: true

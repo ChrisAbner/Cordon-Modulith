@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/ChrisAbner/Cordon-Modulith/discussions
+    about: Ask how to model your modules or propose a new rule.
+  - name: Documentation
+    url: https://chrisabner.github.io/Cordon-Modulith/
+    about: Installation, configuration, rules and recipes.
+  - name: Security vulnerability
+    url: https://github.com/ChrisAbner/Cordon-Modulith/security/advisories/new
+    about: Report security issues privately, not as a public issue.
