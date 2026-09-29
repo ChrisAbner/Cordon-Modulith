@@ -15,9 +15,11 @@ final class InternalAccessRuleTest extends RuleTestCase
 
     private const TIP = 'Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi].';
 
+    private string $app = self::APP;
+
     protected function getRule(): Rule
     {
-        return new InternalAccessRule($this->createReflectionProvider(), (string) realpath(self::APP));
+        return new InternalAccessRule($this->createReflectionProvider(), (string) realpath($this->app));
     }
 
     public function test_it_reports_internal_classes_of_other_modules(): void
@@ -40,5 +42,19 @@ final class InternalAccessRuleTest extends RuleTestCase
             self::APP.'/app/Modules/Catalog/Listeners/UpdateStockOnInvoicePaid.php',
             self::APP.'/app/Modules/Billing/tests/CheckoutServiceFixture.php',
         ], []);
+    }
+
+    public function test_it_reports_a_project_config_it_cannot_evaluate_once(): void
+    {
+        $this->app = __DIR__.'/../Fixtures/nwidart-unloadable';
+
+        $file = $this->app.'/Modules/Blog/app/Post.php';
+
+        $this->analyse([$file], [
+            [
+                'Cordon could not evaluate config/modules.php (Class "Nwidart\Modules\Commands\CommandsList" not found), so its settings were ignored and the defaults are used. Set the matching paths in config/cordon.php (for example resolvers.nwidart.path) so it does not depend on that file.',
+                1,
+            ],
+        ]);
     }
 }

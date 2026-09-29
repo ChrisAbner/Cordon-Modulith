@@ -57,3 +57,11 @@ it('applies per-module config and warns about unknown modules', function () {
         ->and($configured->get('Catalog')?->dependsOn)->toBeNull()
         ->and($modules->configurationWarnings($config))->toHaveCount(2);
 });
+
+it('matches file paths regardless of directory separators', function () {
+    $module = Module::make('Billing', 'App\Modules\Billing', 'C:\project\app/Modules\Billing');
+
+    expect($module->ownsPath('C:/project/app/Modules/Billing/Services/A.php'))->toBeTrue()
+        ->and($module->ownsPath('C:\project\app\Modules\Billing\Services\A.php'))->toBeTrue()
+        ->and($module->ownsPath('C:/project/app/Modules/BillingExtra/A.php'))->toBeFalse();
+});

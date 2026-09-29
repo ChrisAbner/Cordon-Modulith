@@ -44,6 +44,9 @@ final class InternalAccessRule implements Rule
 
     private bool $enabled = true;
 
+    /** @var list<string> */
+    private array $pendingWarnings = [];
+
     public function __construct(
         private readonly ReflectionProvider $reflectionProvider,
         private readonly string $basePath,
@@ -61,14 +64,22 @@ final class InternalAccessRule implements Rule
     {
         [$modules, $policy] = $this->boot();
 
+        $errors = [];
+
+        // Reported once, on the first analysed file, so a broken config is not silent.
+        foreach ($this->pendingWarnings as $warning) {
+            $errors[] = RuleErrorBuilder::message($warning)->identifier('cordon.configuration')->line(1)->build();
+        }
+
+        $this->pendingWarnings = [];
+
         $file = $scope->getFile();
         $from = $modules->forPath($file);
 
         if (! $this->enabled || $from === null || $this->isExcluded($from, $file)) {
-            return [];
+            return $errors;
         }
 
-        $errors = [];
         $reported = [];
 
         foreach ((new PhpParserExtractor)->extract($file)->references as $reference) {
@@ -106,6 +117,7 @@ final class InternalAccessRule implements Rule
     {
         if ($this->modules === null || $this->policy === null) {
             $config = StandaloneConfig::load($this->basePath);
+            $this->pendingWarnings = $config->warnings();
 
             $this->modules = ResolverFactory::make($config, $this->basePath)
                 ->resolve()

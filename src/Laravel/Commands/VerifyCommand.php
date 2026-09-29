@@ -8,6 +8,7 @@ use Cordon\Analysis\ModuleFilter;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\Reporter;
 use Cordon\Laravel\Verifier;
+use Cordon\Laravel\XdebugWarning;
 use Cordon\Reporters\GithubReporter;
 use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\TextReporter;
@@ -25,7 +26,7 @@ final class VerifyCommand extends Command
 
     protected $description = 'Verify that modules only depend on each other through their public API';
 
-    public function handle(Verifier $verifier): int
+    public function handle(Verifier $verifier, XdebugWarning $xdebug): int
     {
         $format = $this->option('format');
         $format = is_string($format) ? $format : 'text';
@@ -35,6 +36,10 @@ final class VerifyCommand extends Command
             $this->error(sprintf('Unknown format [%s]. Use text, json or github.', $format));
 
             return self::INVALID;
+        }
+
+        if (($message = $xdebug->message()) !== null) {
+            $this->output->getErrorStyle()->writeln('<comment>'.$message.'</comment>');
         }
 
         foreach ($verifier->configurationWarnings() as $warning) {

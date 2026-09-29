@@ -18,6 +18,7 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 - PHPStan rule `cordon.internalAccess` (`extension.neon`), reading `config/cordon.php` without booting Laravel.
 - Reusable GitHub Action (`action.yml`).
 - `cordon:docs` command: Mermaid dependency diagrams, a canvas per module and an event inventory.
+- `cordon:verify` and `cordon:docs` warn on stderr when Xdebug is active, since it makes the analysis several times slower.
 - Custom rules: classes implementing `Cordon\Contracts\Rule` in the `rules` config.
 - Laravel Boost skill `cordon-fix-violations`.
 - Documentation site (`docs-site/`), benchmark (`composer bench`) and real-project fixtures.

@@ -1,3 +1,5 @@
+* text=auto eol=lf
+
 /.github            export-ignore
 /docs               export-ignore
 /tests              export-ignore
@@ -7,5 +9,4 @@
 /phpstan.neon.dist  export-ignore
 /pint.json          export-ignore
 /AGENTS.md          export-ignore
-/action.yml         export-ignore
 /docs-site          export-ignore
