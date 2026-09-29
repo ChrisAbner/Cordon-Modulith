@@ -39,6 +39,13 @@ final class CordonServiceProvider extends ServiceProvider
                 RuleSet::fromConfig((array) $config->get('cordon.rules', [])),
             );
         });
+
+        $this->app->bind(Verifier::class, fn ($app): Verifier => new Verifier(
+            $app->make(ModuleResolver::class),
+            $app->make(Analyzer::class),
+            $app->make(Repository::class),
+            $app->basePath(),
+        ));
     }
 
     public function boot(): void

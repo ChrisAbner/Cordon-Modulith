@@ -4,28 +4,28 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel\Commands;
 
-use Cordon\Analysis\Analyzer;
+use Cordon\Analysis\ModuleFilter;
 use Cordon\Baseline\Baseline;
-use Cordon\Contracts\ModuleResolver;
 use Cordon\Contracts\Reporter;
+use Cordon\Laravel\Verifier;
 use Cordon\Reporters\GithubReporter;
 use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\TextReporter;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
-use Illuminate\Contracts\Config\Repository;
 use Symfony\Component\Console\Output\OutputInterface;
 
 final class VerifyCommand extends Command
 {
     protected $signature = 'cordon:verify
         {--format=text : Output format: text, json or github}
+        {--module=* : Only report the violations of this module (repeatable)}
         {--generate-baseline : Record every current violation in the baseline file and exit}
         {--no-baseline : Ignore the baseline file}';
 
     protected $description = 'Verify that modules only depend on each other through their public API';
 
-    public function handle(ModuleResolver $resolver, Analyzer $analyzer, Repository $config): int
+    public function handle(Verifier $verifier): int
     {
         $format = $this->option('format');
         $format = is_string($format) ? $format : 'text';
@@ -37,15 +37,11 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
-        $basePath = $this->laravel->basePath();
-        $moduleConfig = (array) $config->get('cordon.modules', []);
-        $modules = $resolver->resolve();
-
-        foreach ($modules->configurationWarnings($moduleConfig) as $warning) {
+        foreach ($verifier->configurationWarnings() as $warning) {
             $this->output->getErrorStyle()->writeln('<comment>'.$warning.'</comment>');
         }
 
-        $modules = $modules->configure($moduleConfig);
+        $modules = $verifier->modules();
 
         if (count($modules) === 0) {
             $this->output->getErrorStyle()->writeln('<comment>No modules found. Check the resolver settings in config/cordon.php (php artisan cordon:modules).</comment>');
@@ -53,10 +49,27 @@ final class VerifyCommand extends Command
             return self::SUCCESS;
         }
 
-        $result = $analyzer->analyze($modules, $basePath);
-        $baselineFile = Paths::join($basePath, (string) $config->get('cordon.baseline', 'cordon-baseline.json'));
+        $only = array_values(array_map('strval', (array) $this->option('module')));
+
+        foreach ($only as $name) {
+            if (! $modules->has($name)) {
+                $this->error(sprintf('Unknown module [%s]. Run php artisan cordon:modules to list the detected modules.', $name));
+
+                return self::INVALID;
+            }
+        }
+
+        if ($only !== [] && $this->option('generate-baseline')) {
+            $this->error('The --module option cannot be combined with --generate-baseline: the baseline must cover every module.');
+
+            return self::INVALID;
+        }
+
+        $result = $verifier->analyze();
+        $basePath = $verifier->basePath();
 
         if ($this->option('generate-baseline')) {
+            $baselineFile = $verifier->baselineFile();
             Baseline::fromViolations($result->violations, $basePath)->save($baselineFile);
 
             $this->info(sprintf(
@@ -68,8 +81,12 @@ final class VerifyCommand extends Command
             return self::SUCCESS;
         }
 
-        if (! $this->option('no-baseline') && is_file($baselineFile)) {
-            $result = $result->withBaseline(Baseline::load($baselineFile));
+        if (! $this->option('no-baseline')) {
+            $result = $verifier->applyBaseline($result);
+        }
+
+        if ($only !== []) {
+            $result = ModuleFilter::apply($result, $only);
         }
 
         $this->output->write(
