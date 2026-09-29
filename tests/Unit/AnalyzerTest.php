@@ -1,6 +1,7 @@
 <?php
 
 use Cordon\Analysis\Violation;
+use Cordon\Support\Paths;
 
 it('reports internal access across modules', function () {
     $targets = array_map(fn (Violation $v) => $v->target, violations_for(analyse_namespace_app(), 'internal_access'));
@@ -72,7 +73,7 @@ it('can disable rules', function () {
 
 it('skips excluded directories such as tests', function () {
     foreach (analyse_namespace_app()->violations as $violation) {
-        expect(str_replace('\\', '/', (string) $violation->file))->not->toContain('/tests/');
+        expect((string) Paths::relative(fixture_path('namespace-app'), $violation->file))->not->toContain('/tests/');
     }
 });
 

@@ -10,6 +10,4 @@ use Attribute;
  * Marks a class as internal to its module, even if it lives in a public namespace.
  */
 #[Attribute(Attribute::TARGET_CLASS)]
-final class Internal
-{
-}
+final class Internal {}

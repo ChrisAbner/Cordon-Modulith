@@ -13,6 +13,7 @@ use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\TextReporter;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Config\Repository;
 use Symfony\Component\Console\Output\OutputInterface;
 
 final class VerifyCommand extends Command
@@ -24,9 +25,10 @@ final class VerifyCommand extends Command
 
     protected $description = 'Verify that modules only depend on each other through their public API';
 
-    public function handle(ModuleResolver $resolver, Analyzer $analyzer): int
+    public function handle(ModuleResolver $resolver, Analyzer $analyzer, Repository $config): int
     {
-        $format = (string) $this->option('format');
+        $format = $this->option('format');
+        $format = is_string($format) ? $format : 'text';
         $reporter = $this->reporter($format);
 
         if ($reporter === null) {
@@ -36,7 +38,7 @@ final class VerifyCommand extends Command
         }
 
         $basePath = $this->laravel->basePath();
-        $moduleConfig = (array) $this->laravel['config']->get('cordon.modules', []);
+        $moduleConfig = (array) $config->get('cordon.modules', []);
         $modules = $resolver->resolve();
 
         foreach ($modules->configurationWarnings($moduleConfig) as $warning) {
@@ -52,7 +54,7 @@ final class VerifyCommand extends Command
         }
 
         $result = $analyzer->analyze($modules, $basePath);
-        $baselineFile = Paths::join($basePath, (string) $this->laravel['config']->get('cordon.baseline', 'cordon-baseline.json'));
+        $baselineFile = Paths::join($basePath, (string) $config->get('cordon.baseline', 'cordon-baseline.json'));
 
         if ($this->option('generate-baseline')) {
             Baseline::fromViolations($result->violations, $basePath)->save($baselineFile);
