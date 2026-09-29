@@ -1,0 +1,50 @@
+name: Cordon Modulith
+description: Verify the boundaries between the modules of a Laravel application.
+author: ChrisAbner
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  php-version:
+    description: PHP version used to run the verification.
+    required: false
+    default: '8.4'
+  working-directory:
+    description: Directory of the Laravel application (where artisan is).
+    required: false
+    default: '.'
+  format:
+    description: Report format (github, text or json). "github" adds annotations to pull requests.
+    required: false
+    default: github
+  args:
+    description: Extra arguments for cordon:verify, for example "--module=Billing" or "--no-baseline".
+    required: false
+    default: ''
+  install-dependencies:
+    description: Run composer install before verifying. Set to "false" if an earlier step already did.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        coverage: none
+
+    - name: Install dependencies
+      if: ${{ inputs.install-dependencies == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: composer install --no-interaction --prefer-dist --no-progress
+
+    - name: Verify module boundaries
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CORDON_FORMAT: ${{ inputs.format }}
+        CORDON_ARGS: ${{ inputs.args }}
+      run: php artisan cordon:verify --format="$CORDON_FORMAT" $CORDON_ARGS

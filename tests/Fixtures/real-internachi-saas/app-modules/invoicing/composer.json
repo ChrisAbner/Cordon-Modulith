@@ -1,0 +1,15 @@
+{
+    "name": "modules/invoicing",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Invoicing\\": "src/",
+            "Modules\\Invoicing\\Database\\Factories\\": "database/factories/",
+            "Modules\\Invoicing\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Invoicing\\Tests\\": "tests/"
+        }
+    }
+}

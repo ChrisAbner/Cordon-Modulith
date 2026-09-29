@@ -1,0 +1,7 @@
+{
+    "name": "Catalog",
+    "alias": "catalog",
+    "providers": [
+        "Modules\\Catalog\\Providers\\CatalogServiceProvider"
+    ]
+}
