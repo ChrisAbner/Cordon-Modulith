@@ -29,6 +29,8 @@ flowchart LR
 6. **Baseline** removes known violations (keyed by rule + relative file + target, without line numbers).
 7. **Reporter** renders the `Result`.
 
+`Analyzer::snapshot()` runs steps 2 to 4 and returns a `Snapshot` (context, file analyses, parse errors); `Analyzer::check()` runs the rules on it. `cordon:docs` reuses the snapshot to document modules and events.
+
 ## Contracts (frozen)
 
 | Contract | Responsibility |
@@ -43,7 +45,10 @@ Value objects: `Module`, `ModuleMap`, `ClassDeclaration`, `Reference`, `FileAnal
 ## Layers
 
 - `src/Analysis`, `src/Module`, `src/Rules`, `src/Resolvers`, `src/Reporters`, `src/Baseline`, `src/Support`: framework-agnostic core. It may use Symfony Console's `OutputFormatter` for escaping, nothing from Laravel.
-- `src/Laravel`: service provider, `ResolverFactory` (reads Laravel config), Artisan commands.
+- `src/Documentation`: event extraction and the Markdown generator behind `cordon:docs` (framework-agnostic).
+- `src/Laravel`: service provider, `ResolverFactory` (reads Laravel config), `StandaloneConfig` (config outside Laravel), `Verifier` (shared verification flow), Artisan commands.
+- `src/Testing`: the Pest expectation `toRespectBoundaries()`.
+- `src/PHPStan`: the PHPStan rule for `internal_access`.
 
 ## Decisions
 

@@ -25,6 +25,38 @@ final readonly class Analyzer
 
     public function analyze(ModuleMap $modules, ?string $basePath = null): Result
     {
+        return $this->check($this->snapshot($modules), $basePath);
+    }
+
+    /**
+     * Run the rules on an existing snapshot.
+     */
+    public function check(Snapshot $snapshot, ?string $basePath = null): Result
+    {
+        $violations = [];
+
+        foreach ($this->rules as $rule) {
+            foreach ($rule->check($snapshot->context) as $violation) {
+                $violations[] = $violation;
+            }
+        }
+
+        return new Result(
+            $snapshot->context->modules,
+            $violations,
+            count($snapshot->analyses),
+            count($snapshot->context->edges),
+            $snapshot->parseErrors,
+            0,
+            $basePath,
+        );
+    }
+
+    /**
+     * Extract every module file and build the cross-module edges, without running rules.
+     */
+    public function snapshot(ModuleMap $modules): Snapshot
+    {
         $analyses = [];
         $parseErrors = [];
         $seen = [];
@@ -64,16 +96,10 @@ final readonly class Analyzer
             }
         }
 
-        $context = new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges);
-
-        $violations = [];
-
-        foreach ($this->rules as $rule) {
-            foreach ($rule->check($context) as $violation) {
-                $violations[] = $violation;
-            }
-        }
-
-        return new Result($modules, $violations, count($analyses), count($edges), $parseErrors, 0, $basePath);
+        return new Snapshot(
+            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges),
+            $analyses,
+            $parseErrors,
+        );
     }
 }

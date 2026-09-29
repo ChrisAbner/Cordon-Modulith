@@ -10,6 +10,7 @@ use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\ModuleResolver;
+use Cordon\Laravel\Commands\DocsCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
 use Cordon\Rules\RuleSet;
@@ -61,6 +62,7 @@ final class CordonServiceProvider extends ServiceProvider
         $this->commands([
             VerifyCommand::class,
             ModulesCommand::class,
+            DocsCommand::class,
         ]);
     }
 
