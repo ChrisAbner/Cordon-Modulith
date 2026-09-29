@@ -54,3 +54,18 @@ jobs:
 
       - name: Static analysis
         run: vendor/bin/phpstan analyse
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - run: composer update --prefer-dist --no-interaction
+
+      - name: 1,000 files in less than 10 seconds
+        run: composer bench
