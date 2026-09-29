@@ -1,0 +1,9 @@
+{
+    "name": "nwidart/payments",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Payments\\": "app/",
+            "Modules\\Payments\\Database\\Factories\\": "database/factories/"
+        }
+    }
+}

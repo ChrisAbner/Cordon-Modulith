@@ -1,0 +1,16 @@
+{
+    "description": "app/Modules with Domain/Application/Infrastructure layers, per-module public namespaces and an open shared kernel. Shipping uses Sales' aggregate; Sales and Inventory depend on each other through a query interface and a domain event.",
+    "resolver": "namespace",
+    "modules": ["Inventory", "Sales", "SharedKernel", "Shipping"],
+    "config": {
+        "modules": {
+            "Sales": {"public": ["Application\\Commands", "Domain\\Events"]},
+            "Inventory": {"public": ["Application\\Queries"]},
+            "SharedKernel": {"open": true}
+        }
+    },
+    "violations": [
+        "internal_access|app/Modules/Shipping/Application/ShipOrder.php|App\\Modules\\Sales\\Domain\\Order",
+        "cycles||Inventory -> Sales -> Inventory"
+    ]
+}

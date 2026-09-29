@@ -1,0 +1,14 @@
+{
+    "description": "nwidart/laravel-modules with a custom modules path and namespace read from config/modules.php. A directory without module.json is not a module. The same internal class used twice in one file is reported once.",
+    "resolver": "nwidart",
+    "modules": ["Blog", "Media"],
+    "laravel": {
+        "modules": {
+            "namespace": "Acme",
+            "paths": {"modules": "modules"}
+        }
+    },
+    "violations": [
+        "internal_access|modules/Blog/src/Posts/Post.php|Acme\\Media\\Storage\\S3Storage"
+    ]
+}
