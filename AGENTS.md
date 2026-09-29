@@ -13,7 +13,7 @@ Cordon Modulith is a Laravel dev-dependency that verifies boundaries between mod
 3. **Never load analysed code.** No `class_exists`, `require`, reflection or autoloading of user code in `src/`.
 4. **Zero false positives.** When unsure whether something is a dependency, don't report it and document the limitation.
 5. **Do not edit `tests/Fixtures` line layout** without updating the tests that assert line numbers.
-6. **Stay in your lane.** Swarms only touch the files listed in their brief (`docs/plan/enjambres/`). Integration across swarms is done by the maintainer.
+6. **Stay in your lane.** Agents only touch the files their task names. Integration across tasks is done by the maintainer.
 7. **Quality gate:** `composer check` (Pint, PHPStan, Pest) must pass before you open a pull request.
 
 ## Conventions
