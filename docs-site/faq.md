@@ -6,7 +6,9 @@ No. It is a dev dependency that only runs when you call `cordon:verify`, `cordon
 
 ## How fast is it?
 
-About 1 ms per file on a laptop: 1,000 files in roughly one second, 5,000 in five. The analysis is linear in the number of files.
+Around 1 ms per file on a typical CI runner (Linux, no Xdebug): about a second for 1,000 files, five for 5,000. The analysis is linear in the number of files.
+
+Run it with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower. On Windows the first run can be slower because of cold file reads and antivirus scanning; measured there with Xdebug off, 1,000 synthetic files took 5-7 s and a real 584-file project about 3 s once warm.
 
 ## Does it load or execute my code?
 
@@ -23,6 +25,10 @@ An import alone is not a dependency. As soon as the class is used (type, `new`, 
 ## What about code outside modules, like `app/Http`?
 
 It is not analysed: Cordon Modulith checks the boundaries between modules. Controllers in `app/Http` may use any module; if they should not, move them into modules.
+
+## What are the known limitations?
+
+Docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected, and code outside modules is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](./guide/phpstan#configuration-errors).
 
 ## Are tests analysed?
 

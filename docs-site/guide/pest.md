@@ -23,9 +23,26 @@ Module [Billing] does not respect its boundaries (3 violations):
   - [cycles] Modules [Billing, Catalog] form a dependency cycle: Billing -> Catalog -> Billing. ...
 ```
 
+## Setup
+
+A fresh Laravel app with Pest has no binding between your tests and the framework, so the expectation fails with "needs a booted Laravel application". Install Pest with its Laravel plugin and initialise it:
+
+```bash
+composer require --dev pestphp/pest pestphp/pest-plugin-laravel
+./vendor/bin/pest --init
+```
+
+`pest --init` creates `tests/Pest.php`. If you already have that file, make sure it extends your `TestCase` for the folder where the test lives:
+
+```php
+// tests/Pest.php
+pest()->extend(Tests\TestCase::class)->in('Feature');
+```
+
 ## Details
 
-- The expectation needs a booted application: use it in tests that extend your `Tests\TestCase` (the default for `tests/Feature` in Laravel).
+- The expectation needs a booted application: use it in tests that extend your `Tests\TestCase`. Pest only does that for the folders bound in `tests/Pest.php` (see [Setup](#setup)).
+- `expect(Cordon::modules())->each->toRespectBoundaries()` stops at the first module that fails (that is how Pest's `each` works). Fix it and run again, or write one `it()` per module to see every failing module at once.
 - A module's violations are the ones it causes plus the dependency cycles it takes part in, like `cordon:verify --module`.
 - The baseline is applied, so tests and CI give the same verdict.
 - The analysis runs once per test process and is reused while the config and the baseline file don't change. Call `Cordon::flush()` if a test changes files on disk.

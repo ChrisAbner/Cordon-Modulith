@@ -79,6 +79,14 @@ Other modules may only use classes that belong to a module's public API. A class
 4. it lives under one of the public namespaces, relative to the module: `Contracts`, `Events`, `Data`, `Enums`, `Exceptions` by default, plus the module's own `public` list → public;
 5. otherwise → **internal**.
 
+`public_namespaces` match the **first namespace segment relative to the module root** only. `Modules\Billing\Contracts\Gateway` is public, but `Modules\Billing\Invoices\Enums\Status` is **not**: its relative name starts with `Invoices`, not `Enums`. Field tests showed that nested enums and events cause a large share of violations in some apps. To expose them, do one of these:
+
+- list the nested namespace in the module's `public` list, e.g. `'Billing' => ['public' => ['Invoices\\Enums', 'Invoices\\Events']]`;
+- mark the class with `#[PublicApi]`;
+- move it to a top-level public namespace.
+
+`DTOs` is not in the defaults (only `Data`). If you use it, add it to `public_namespaces`, e.g. `['Contracts', 'Events', 'Data', 'DTOs', 'Enums', 'Exceptions']` (setting the option replaces the default list).
+
 ```php
 namespace Modules\Catalog\Support;
 
@@ -172,7 +180,7 @@ php artisan cordon:verify --module=Billing
 
 ## Pest
 
-Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`:
+Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`. A fresh Laravel app with Pest doesn't bind it yet: run `composer require --dev pestphp/pest pestphp/pest-plugin-laravel` and `./vendor/bin/pest --init`, or make sure `tests/Pest.php` contains `pest()->extend(Tests\TestCase::class)->in('Feature');`.
 
 ```php
 use Cordon\Testing\Cordon;
@@ -186,16 +194,22 @@ it('keeps every module inside its boundaries', function () {
 });
 ```
 
-The analysis runs once per test process and honours the baseline, like `cordon:verify`.
+The analysis runs once per test process and honours the baseline, like `cordon:verify`. The `each` form stops at the first failing module (Pest behaviour).
 
 ## PHPStan
 
-Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) it is enabled automatically; otherwise include it:
+Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) it is enabled automatically. A fresh Laravel app doesn't ship it, so either `composer require --dev phpstan/extension-installer` or include the extension by hand in a minimal `phpstan.neon`:
 
 ```neon
 # phpstan.neon
 includes:
     - vendor/chrisabner/cordon-modulith/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - Modules
 ```
 
 The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
@@ -213,7 +227,7 @@ php artisan cordon:docs --output=docs/modules
 - `modules/<Module>.md`: a canvas per module with its public API, what it uses and who uses it, its events and its violations;
 - `events.md`: every module event with who publishes and who listens to it.
 
-GitHub renders the Mermaid diagrams. The output is deterministic, so you can commit it and review architecture changes in pull requests.
+The output folder is created if it doesn't exist. GitHub renders the Mermaid diagrams, and the output is deterministic, so commit it and review architecture changes in pull requests.
 
 ## AI coding agents
 
@@ -224,16 +238,20 @@ Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources 
 
 ## How it works
 
-Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. See [docs/architecture.md](docs/architecture.md).
+Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md).
 
-**Known limitations in 0.1:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed.
+**Known limitations in 0.1:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
 ## Roadmap
 
-- C4 diagrams and a documentation site generator
-- Filament plugin with the module graph
+What's next:
 
-See [docs/plan/roadmap.md](docs/plan/roadmap.md) (Spanish).
+- Filament plugin with the module graph
+- 1.0 with a frozen public API and a SemVer policy
+- File-hash cache for large projects
+- C4 diagrams
+
+Ideas and bugs are welcome in [GitHub issues](https://github.com/ChrisAbner/Cordon-Modulith/issues).
 
 ## Contributing
 
@@ -243,4 +261,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). AI agents: read [AGENTS.md](AGENTS.md) f
 
 MIT. See [LICENSE.md](LICENSE.md).
 
-Cordon Modulith is a community project and is not affiliated with or endorsed by Laravel.
+Cordon Modulith is a community project and is not affiliated with or endorsed by Laravel, or by the Spring team, VMware or Broadcom (Spring Modulith inspired the name and the approach).

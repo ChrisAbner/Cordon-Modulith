@@ -42,6 +42,15 @@ x [undeclared_dependency] app-modules/notifications/src/Listeners/SendInvoiceEma
 
 Add the module to `depends_on` only when the dependency is intended.
 
+Using a module's **public** class without listing that module reports only `undeclared_dependency`, never `internal_access`. With `'Orders' => ['depends_on' => ['Catalog']]`:
+
+| Orders uses | Reported |
+|---|---|
+| `Modules\Catalog\Contracts\ProductCatalog` (public, `Catalog` listed) | nothing |
+| `Modules\Catalog\Contracts\ProductCatalog` (public, `Catalog` not listed) | `undeclared_dependency` only |
+| `Modules\Catalog\Models\Product` (internal, `Catalog` listed) | `internal_access` only |
+| `Modules\Catalog\Models\Product` (internal, `Catalog` not listed) | both |
+
 ## cycles
 
 ```text
@@ -50,6 +59,8 @@ x [cycles]
 ```
 
 Listening to another module's event is a dependency on that module too. See [break a cycle with an event](../recipes/break-a-cycle).
+
+Every cross-module reference is an edge, including references to public classes such as events. Two modules that listen to each other's events still form a cycle. Break it by moving one direction: publish from one side only, or introduce a shared or orchestrating module that both depend on.
 
 ## What counts as a dependency
 
