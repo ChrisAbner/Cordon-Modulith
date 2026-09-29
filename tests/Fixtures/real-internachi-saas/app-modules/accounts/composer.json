@@ -1,0 +1,15 @@
+{
+    "name": "modules/accounts",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Accounts\\": "src/",
+            "Modules\\Accounts\\Database\\Factories\\": "database/factories/",
+            "Modules\\Accounts\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Accounts\\Tests\\": "tests/"
+        }
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "name": "modules/notifications",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Notifications\\": "src/",
+            "Modules\\Notifications\\Database\\Factories\\": "database/factories/",
+            "Modules\\Notifications\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Notifications\\Tests\\": "tests/"
+        }
+    }
+}
