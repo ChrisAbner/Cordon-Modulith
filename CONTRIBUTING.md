@@ -27,4 +27,4 @@ Please open a pull request with a failing test or fixture, even if you don't hav
 
 ## Security
 
-Please report security issues privately to the maintainers instead of opening a public issue.
+Please report security issues privately; see [SECURITY.md](SECURITY.md). Everyone taking part in the project follows the [code of conduct](CODE_OF_CONDUCT.md).
