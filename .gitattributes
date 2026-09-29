@@ -7,3 +7,4 @@
 /phpstan.neon.dist  export-ignore
 /pint.json          export-ignore
 /AGENTS.md          export-ignore
+/action.yml         export-ignore

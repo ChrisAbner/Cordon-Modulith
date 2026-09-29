@@ -26,9 +26,13 @@
     "autoload-dev": {
         "psr-4": {
             "Cordon\\Tests\\": "tests/"
-        }
+        },
+        "classmap": ["tests/Fixtures/namespace-app/app"]
     },
     "extra": {
+        "phpstan": {
+            "includes": ["extension.neon"]
+        },
         "laravel": {
             "providers": [
                 "Cordon\\Laravel\\CordonServiceProvider"
