@@ -1,0 +1,51 @@
+{
+    "name": "chrisabner/cordon-modulith",
+    "description": "Cordon off your modules: verifiable boundaries between modules in Laravel applications.",
+    "keywords": ["laravel", "modules", "modular-monolith", "architecture", "static-analysis", "boundaries"],
+    "license": "MIT",
+    "type": "library",
+    "require": {
+        "php": "^8.3",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
+        "nikic/php-parser": "^5.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Cordon\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cordon\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Cordon\\Laravel\\CordonServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse",
+        "format": "pint",
+        "check": ["pint --test", "phpstan analyse", "pest"]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
