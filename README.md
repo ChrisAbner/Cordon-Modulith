@@ -36,6 +36,8 @@ x [cycles]
 2 boundary violations.
 ```
 
+**Tried on real apps:** on [Bagisto](https://github.com/bagisto/bagisto) (42 packages, 2,000 files) Cordon found 158 internal accesses and 30 packages tangled in dependency cycles, in 6 seconds and with no false positives. See the [case studies](https://chrisabner.github.io/Cordon-Modulith/case-studies/).
+
 ## Requirements
 
 - PHP 8.3+

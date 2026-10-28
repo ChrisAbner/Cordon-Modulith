@@ -4,6 +4,9 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+### Added
+- Case studies in the documentation: Cordon run on Bagisto (namespaces), Advising App (InterNACHI/modular) and LaravelEcomm (nwidart/laravel-modules), with the configuration used for each and what remained after declaring their public API.
+
 ### Changed
 - When more modules are tangled than the reported cycle shows, the `cycles` message now says so ("are tangled in dependency cycles, such as A -> B -> A") instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two. The violation's target, and so existing baselines, are unchanged.
 
