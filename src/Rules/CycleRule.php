@@ -30,15 +30,17 @@ final class CycleRule implements Rule
             }
 
             sort($component);
-            $path = implode(' -> ', $this->shortestCycle($component[0], $graph, array_flip($component)));
+            $cycle = $this->shortestCycle($component[0], $graph, array_flip($component));
+            $path = implode(' -> ', $cycle);
+
+            // The path closes on its start, so it lists every module once plus one.
+            $message = count($cycle) - 1 === count($component)
+                ? 'Modules [%s] form a dependency cycle: %s. Break it by inverting one dependency, for example with an event or a contract.'
+                : 'Modules [%s] are tangled in dependency cycles, such as %s. Break them one dependency at a time, for example with an event or a contract.';
 
             yield new Violation(
                 self::ID,
-                sprintf(
-                    'Modules [%s] form a dependency cycle: %s. Break it by inverting one dependency, for example with an event or a contract.',
-                    implode(', ', $component),
-                    $path,
-                ),
+                sprintf($message, implode(', ', $component), $path),
                 null,
                 null,
                 $component[0],

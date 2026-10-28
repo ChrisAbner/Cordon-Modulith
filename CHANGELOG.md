@@ -2,6 +2,11 @@
 
 All notable changes to Cordon Modulith are documented here. The project follows [Semantic Versioning](https://semver.org) from 1.0.0; before that, minor versions may contain breaking changes.
 
+## [Unreleased]
+
+### Changed
+- When more modules are tangled than the reported cycle shows, the `cycles` message now says so ("are tangled in dependency cycles, such as A -> B -> A") instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two. The violation's target, and so existing baselines, are unchanged.
+
 ## [0.1.1] - 2026-09-29
 
 ### Changed
