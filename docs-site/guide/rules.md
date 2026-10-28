@@ -60,6 +60,13 @@ x [cycles]
 
 Listening to another module's event is a dependency on that module too. See [break a cycle with an event](../recipes/break-a-cycle).
 
+When more modules reach each other than one cycle shows, Cordon reports the whole group once, with the shortest cycle through its first module as an example:
+
+```text
+x [cycles]
+  Modules [Catalog, Orders, Payments] are tangled in dependency cycles, such as Catalog -> Orders -> Catalog. Break them one dependency at a time, for example with an event or a contract.
+```
+
 Every cross-module reference is an edge, including references to public classes such as events. Two modules that listen to each other's events still form a cycle. Break it by moving one direction: publish from one side only, or introduce a shared or orchestrating module that both depend on.
 
 ## What counts as a dependency

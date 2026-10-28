@@ -28,7 +28,29 @@ it('finds the shortest path of a cycle across three modules', function () {
     $violations = iterator_to_array((new CycleRule)->check($context), false);
 
     expect($violations)->toHaveCount(1)
-        ->and($violations[0]->target)->toBe('A -> B -> C -> A');
+        ->and($violations[0]->target)->toBe('A -> B -> C -> A')
+        ->and($violations[0]->message)->toBe('Modules [A, B, C] form a dependency cycle: A -> B -> C -> A. Break it by inverting one dependency, for example with an event or a contract.');
+});
+
+it('says when the reported cycle is one of several between tangled modules', function () {
+    $a = Module::make('A', 'A', '/p/A');
+    $b = Module::make('B', 'B', '/p/B');
+    $c = Module::make('C', 'C', '/p/C');
+
+    $edge = fn (Module $from, Module $to) => new Edge($from, $to, new Reference('/p/'.$from->name.'/X.php', null, $to->name.'\\Y', 1));
+
+    $context = new AnalysisContext(
+        new ModuleMap([$a, $b, $c]),
+        SymbolTable::fromAnalyses([]),
+        new PublicApiPolicy,
+        [$edge($a, $b), $edge($b, $a), $edge($b, $c), $edge($c, $a)],
+    );
+
+    $violations = iterator_to_array((new CycleRule)->check($context), false);
+
+    expect($violations)->toHaveCount(1)
+        ->and($violations[0]->target)->toBe('A -> B -> A')
+        ->and($violations[0]->message)->toBe('Modules [A, B, C] are tangled in dependency cycles, such as A -> B -> A. Break them one dependency at a time, for example with an event or a contract.');
 });
 
 it('applies the public API precedence rules', function () {
