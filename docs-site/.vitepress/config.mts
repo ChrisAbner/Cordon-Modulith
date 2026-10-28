@@ -10,6 +10,7 @@ export default defineConfig({
         nav: [
             { text: 'Guide', link: '/guide/introduction' },
             { text: 'Recipes', link: '/recipes/expose-a-service' },
+            { text: 'Case studies', link: '/case-studies/' },
             { text: 'Comparison', link: '/comparison' },
             { text: 'Changelog', link: 'https://github.com/ChrisAbner/Cordon-Modulith/blob/main/CHANGELOG.md' },
         ],
@@ -52,6 +53,15 @@ export default defineConfig({
                     { text: 'Expose a service to other modules', link: '/recipes/expose-a-service' },
                     { text: 'Break a cycle with an event', link: '/recipes/break-a-cycle' },
                     { text: 'Replace a cross-module Eloquent relation', link: '/recipes/cross-module-relations' },
+                ],
+            },
+            {
+                text: 'Case studies',
+                items: [
+                    { text: 'Overview', link: '/case-studies/' },
+                    { text: 'Bagisto', link: '/case-studies/bagisto' },
+                    { text: 'Advising App', link: '/case-studies/advisingapp' },
+                    { text: 'LaravelEcomm', link: '/case-studies/laravelecomm' },
                 ],
             },
             {
