@@ -184,7 +184,7 @@ php artisan cordon:verify --module=Billing
 
 ## Pest
 
-Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`. A fresh Laravel app with Pest doesn't bind it yet: run `composer require --dev pestphp/pest pestphp/pest-plugin-laravel` and `./vendor/bin/pest --init`, or make sure `tests/Pest.php` contains `pest()->extend(Tests\TestCase::class)->in('Feature');`.
+Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`. A fresh Laravel app with Pest doesn't bind it yet: run `composer require --dev pestphp/pest pestphp/pest-plugin-laravel -W` (`-W` lets Composer change the PHPUnit version the app has locked) and `./vendor/bin/pest --init`, or make sure `tests/Pest.php` contains `pest()->extend(Tests\TestCase::class)->in('Feature');`.
 
 ```php
 use Cordon\Testing\Cordon;
@@ -202,7 +202,7 @@ The analysis runs once per test process and honours the baseline, like `cordon:v
 
 ## PHPStan
 
-Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) it is enabled automatically. A fresh Laravel app doesn't ship it, so either `composer require --dev phpstan/extension-installer` or include the extension by hand in a minimal `phpstan.neon`:
+Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. A fresh Laravel app doesn't ship PHPStan, so install it first with `composer require --dev phpstan/phpstan` (Larastan already brings it). With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically: `composer config allow-plugins.phpstan/extension-installer true && composer require --dev phpstan/extension-installer`. Otherwise include the extension by hand in a minimal `phpstan.neon`:
 
 ```neon
 # phpstan.neon
@@ -213,8 +213,9 @@ parameters:
     level: 5
     paths:
         - app
-        - Modules
 ```
+
+List the folders your modules live in: `app` for `app/Modules`, `Modules` for nwidart/laravel-modules, `app-modules` for InterNACHI/modular. PHPStan stops if a listed path doesn't exist.
 
 The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
 
@@ -242,7 +243,7 @@ Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources 
 
 ## How it works
 
-Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md).
+Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md), and [docs/adr](docs/adr) for the design decisions behind it.
 
 **Known limitations in 0.1:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
