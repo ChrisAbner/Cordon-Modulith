@@ -2,7 +2,20 @@
 
 Cordon Modulith ships a PHPStan rule that reports `internal_access`, so you see violations in your editor while you type.
 
-A fresh Laravel app doesn't ship [phpstan/extension-installer](https://github.com/phpstan/extension-installer). Either require it (`composer require --dev phpstan/extension-installer`) and the rule is enabled automatically, or include the extension by hand. A complete minimal `phpstan.neon`:
+A fresh Laravel app doesn't ship PHPStan, so install it first (Larastan already brings it):
+
+```bash
+composer require --dev phpstan/phpstan
+```
+
+With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically. It is a Composer plugin, so allow it before requiring it:
+
+```bash
+composer config allow-plugins.phpstan/extension-installer true
+composer require --dev phpstan/extension-installer
+```
+
+Or include the extension by hand. A complete minimal `phpstan.neon` for modules in `app/Modules`:
 
 ```yaml
 # phpstan.neon
@@ -13,10 +26,9 @@ parameters:
     level: 5
     paths:
         - app
-        - Modules
 ```
 
-Point `paths` at the folders that contain your modules (`app-modules` for InterNACHI).
+Point `paths` at the folders that contain your modules: `app` for `app/Modules`, `Modules` for nwidart/laravel-modules, `app-modules` for InterNACHI/modular. PHPStan stops if a listed path doesn't exist.
 
 ```text
  ------ ------------------------------------------------------------------------------------------
