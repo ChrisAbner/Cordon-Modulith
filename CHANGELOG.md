@@ -4,6 +4,9 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+### Added
+- Case studies in the documentation: Cordon run on Bagisto (namespaces), Advising App (InterNACHI/modular) and LaravelEcomm (nwidart/laravel-modules), with the configuration used for each and what remained after declaring their public API.
+
 ## [0.2.0] - 2026-11-04
 
 This release fixes three cases where `cordon:verify` passed when it should not. Two of them change behaviour.
