@@ -5,7 +5,8 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 ## [Unreleased]
 
 ### Changed
-- When more modules are tangled than the reported cycle shows, the `cycles` message now says so ("are tangled in dependency cycles, such as A -> B -> A") instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two. The violation's target, and so existing baselines, are unchanged.
+- **Breaking:** `cycles` now reports one violation per dependency inside a cycle (target `Orders -> Payments`), with the shortest cycle that dependency closes, instead of one violation per group of modules (ADR 0011). With the old report, a module joining a cycle recorded in the baseline, or a new dependency inside it, stayed suppressed. The baseline format is now version 2: `cordon:verify` warns when a version 1 baseline has `cycles` entries, which no longer match. Regenerate the baseline once after upgrading.
+- When modules are tangled in several cycles, the `cycles` message says so and names the whole group, instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two.
 
 ## [0.1.1] - 2026-09-29
 

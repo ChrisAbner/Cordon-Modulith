@@ -11,6 +11,7 @@
     },
     "violations": [
         "internal_access|app/Modules/Shipping/Application/ShipOrder.php|App\\Modules\\Sales\\Domain\\Order",
-        "cycles||Inventory -> Sales -> Inventory"
+        "cycles||Inventory -> Sales",
+        "cycles||Sales -> Inventory"
     ]
 }

@@ -4,6 +4,7 @@
     "modules": ["Catalog", "Orders", "Payments"],
     "violations": [
         "internal_access|Modules/Orders/app/Models/Order.php|Modules\\Catalog\\Models\\Product",
-        "cycles||Orders -> Payments -> Orders"
+        "cycles||Orders -> Payments",
+        "cycles||Payments -> Orders"
     ]
 }

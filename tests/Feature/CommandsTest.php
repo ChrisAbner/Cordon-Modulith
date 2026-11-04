@@ -15,7 +15,7 @@ it('fails when there are boundary violations', function () {
 
 it('prints a machine readable report', function () {
     $this->artisan('cordon:verify', ['--format' => 'json'])
-        ->expectsOutputToContain('"violations": 3')
+        ->expectsOutputToContain('"violations": 4')
         ->assertExitCode(1);
 });
 
@@ -53,7 +53,7 @@ it('limits the report to one module with --module', function () {
         ->assertExitCode(0);
 
     $this->artisan('cordon:verify', ['--module' => ['Billing'], '--format' => 'json'])
-        ->expectsOutputToContain('"violations": 3')
+        ->expectsOutputToContain('"violations": 4')
         ->assertExitCode(1);
 });
 
@@ -62,8 +62,24 @@ it('keeps the dependency cycles a module takes part in', function () {
     $report = json_decode(Artisan::output(), true);
 
     expect($exitCode)->toBe(1)
-        ->and(array_column($report['violations'], 'rule'))->toBe(['cycles'])
-        ->and($report['violations'][0]['target'])->toBe('Billing -> Catalog -> Billing');
+        ->and(array_column($report['violations'], 'rule'))->toBe(['cycles', 'cycles'])
+        ->and(array_column($report['violations'], 'target'))->toBe(['Billing -> Catalog', 'Catalog -> Billing']);
+});
+
+it('warns when a version 1 baseline has cycle entries that no longer match', function () {
+    copy(fixture_path('baselines/v1-cycles.json'), (string) config('cordon.baseline'));
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('Regenerate the baseline with php artisan cordon:verify --generate-baseline')
+        ->assertExitCode(1);
+});
+
+it('shows the outdated baseline warning as a GitHub annotation', function () {
+    copy(fixture_path('baselines/v1-cycles.json'), (string) config('cordon.baseline'));
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain('::warning title=Cordon::The baseline has 1 cycles entry')
+        ->assertExitCode(1);
 });
 
 it('rejects unknown modules and --module with --generate-baseline', function () {

@@ -12,7 +12,7 @@ Commit `cordon-baseline.json`.
 
 ## How entries are matched
 
-Entries are keyed by **rule, file and target** (the class, module or cycle), with an occurrence count. Line numbers are left out, so unrelated edits don't invalidate them.
+Entries are keyed by **rule, file and target** (the class, the module, or for `cycles` the dependency such as `Orders -> Payments`), with an occurrence count. Line numbers are left out, so unrelated edits don't invalidate them.
 
 - Moving a violation to another file reports it again. This is intended: new code should not inherit old exceptions.
 - Only as many occurrences as recorded are suppressed.
@@ -20,7 +20,7 @@ Entries are keyed by **rule, file and target** (the class, module or cycle), wit
 
 ```json
 {
-    "version": 1,
+    "version": 2,
     "violations": [
         {
             "rule": "internal_access",
@@ -30,6 +30,14 @@ Entries are keyed by **rule, file and target** (the class, module or cycle), wit
         }
     ]
 }
+```
+
+## Upgrading from a version 1 baseline
+
+Cordon 0.1 recorded one `cycles` entry per group of modules, so a module joining that group stayed hidden. Version 2 records one entry per dependency inside a cycle. A version 1 baseline still works for the other rules, but its `cycles` entries no longer match: `cordon:verify` reports those cycles again and warns about it. Regenerate the baseline once after upgrading:
+
+```bash
+php artisan cordon:verify --generate-baseline
 ```
 
 ## A practical adoption plan
