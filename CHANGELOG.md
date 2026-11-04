@@ -4,7 +4,11 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+### Added
+- `--format=github` reports each file that does not parse as a warning annotation, and the summary counts them. Their references are not checked, and the GitHub output used to leave them out. `--fail-on-parse-error` fails the run when there are any.
+
 ### Changed
+- **Breaking:** `cordon:verify` now exits with `1` when no modules are found, instead of passing without analysing anything. A misconfigured resolver or a moved `app/Modules` used to keep CI green. With `--format=github` the reason is printed as an error annotation. Pass `--allow-empty` while a project has no modules yet.
 - **Breaking:** `cycles` now reports one violation per dependency inside a cycle (target `Orders -> Payments`), with the shortest cycle that dependency closes, instead of one violation per group of modules (ADR 0011). With the old report, a module joining a cycle recorded in the baseline, or a new dependency inside it, stayed suppressed. The baseline format is now version 2: `cordon:verify` warns when a version 1 baseline has `cycles` entries, which no longer match. Regenerate the baseline once after upgrading.
 - When modules are tangled in several cycles, the `cycles` message says so and names the whole group, instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two.
 

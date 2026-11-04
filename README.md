@@ -175,7 +175,7 @@ jobs:
       - uses: ChrisAbner/Cordon-Modulith@v0.1.0
 ```
 
-Or add `php artisan cordon:verify --format=github` to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations, `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
+Or add `php artisan cordon:verify --format=github` to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
 
 ### One module at a time
 

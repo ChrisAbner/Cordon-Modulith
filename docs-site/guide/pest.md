@@ -52,4 +52,4 @@ pest()->extend(Tests\TestCase::class)->in('Feature');
 
 ## Pest `arch()` and Cordon Modulith
 
-They complement each other. Pest's `arch()` expectations are great for rules inside a module ("models extend Model", "no `dd()`"), but they rely on reflection, so they only see classes that exist and autoload. `toRespectBoundaries()` is about the edges between modules, knows each module's public API and uses static analysis.
+They complement each other. Pest's `arch()` expectations are great for rules inside a module ("models extend Model", "no `dd()`"), but they also load each class with reflection, and a class that cannot be loaded is left out without a warning. `toRespectBoundaries()` is about the edges between modules, knows each module's public API and uses static analysis.
