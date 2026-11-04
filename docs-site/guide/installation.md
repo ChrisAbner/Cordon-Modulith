@@ -1,6 +1,6 @@
 # Installation
 
-Requirements: PHP 8.3+ and Laravel 12 or 13.
+Requirements: PHP 8.2+ and Laravel 12 or 13 (Laravel 13 needs PHP 8.3+).
 
 ```bash
 composer require --dev chrisabner/cordon-modulith
