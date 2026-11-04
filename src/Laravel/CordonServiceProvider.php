@@ -16,6 +16,7 @@ use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
 use Cordon\Rules\RuleSet;
 use Illuminate\Contracts\Config\Repository;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 
 final class CordonServiceProvider extends ServiceProvider
@@ -24,30 +25,7 @@ final class CordonServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../../config/cordon.php', 'cordon');
 
-        $this->app->bind(ModuleResolver::class, function ($app): ModuleResolver {
-            return ResolverFactory::make($app->make(Repository::class), $app->basePath());
-        });
-
-        $this->app->bind(DependencyExtractor::class, fn (): DependencyExtractor => new PhpParserExtractor);
-
-        $this->app->bind(Analyzer::class, function ($app): Analyzer {
-            /** @var Repository $config */
-            $config = $app->make(Repository::class);
-
-            return new Analyzer(
-                $app->make(DependencyExtractor::class),
-                new FileCollector(self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']))),
-                new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))),
-                RuleSet::fromConfig((array) $config->get('cordon.rules', []), fn (string $class): Rule => $app->make($class)),
-            );
-        });
-
-        $this->app->bind(Verifier::class, fn ($app): Verifier => new Verifier(
-            $app->make(ModuleResolver::class),
-            $app->make(Analyzer::class),
-            $app->make(Repository::class),
-            $app->basePath(),
-        ));
+        self::bindServices($this->app, $this->app->basePath());
     }
 
     public function boot(): void
@@ -65,6 +43,39 @@ final class CordonServiceProvider extends ServiceProvider
             ModulesCommand::class,
             DocsCommand::class,
         ]);
+    }
+
+    /**
+     * The services behind the commands, the Pest expectation and the
+     * Verifier: bound on the application here, and on a bare container by
+     * StandaloneApplication (vendor/bin/cordon).
+     */
+    public static function bindServices(Container $container, string $basePath): void
+    {
+        $container->bind(ModuleResolver::class, function ($app) use ($basePath): ModuleResolver {
+            return ResolverFactory::make($app->make(Repository::class), $basePath);
+        });
+
+        $container->bind(DependencyExtractor::class, fn (): DependencyExtractor => new PhpParserExtractor);
+
+        $container->bind(Analyzer::class, function ($app): Analyzer {
+            /** @var Repository $config */
+            $config = $app->make(Repository::class);
+
+            return new Analyzer(
+                $app->make(DependencyExtractor::class),
+                new FileCollector(self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']))),
+                new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))),
+                RuleSet::fromConfig((array) $config->get('cordon.rules', []), fn (string $class): Rule => $app->make($class)),
+            );
+        });
+
+        $container->bind(Verifier::class, fn ($app): Verifier => new Verifier(
+            $app->make(ModuleResolver::class),
+            $app->make(Analyzer::class),
+            $app->make(Repository::class),
+            $basePath,
+        ));
     }
 
     /**

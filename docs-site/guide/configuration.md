@@ -68,4 +68,4 @@ Path of the baseline file, relative to the project root. See [adopting in an exi
 
 ## Using the config outside Laravel
 
-The [PHPStan rule](./phpstan) reads `config/cordon.php` without booting Laravel. Keep it a plain array; `env()` is fine.
+The [PHPStan rule](./phpstan) and `vendor/bin/cordon` read `config/cordon.php` without booting Laravel. Keep it a plain array; `env()` is fine, but `.env` is not loaded, so it only sees real environment variables.

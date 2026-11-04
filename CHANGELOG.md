@@ -6,8 +6,10 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ### Changed
 - PHP 8.2 is now supported, with Laravel 12. Nothing in Cordon needed 8.3; only the test tooling did. CI now runs the suite on PHP 8.2, 8.3, 8.4 and 8.5 (Laravel 13 on 8.3 and later).
+- `vlucas/phpdotenv` is now a dependency. Without it, `env()` failed outside a Laravel app, so the package defaults in `config/cordon.php` were silently dropped there. Laravel apps already have it.
 
 ### Added
+- `vendor/bin/cordon verify|modules|docs` runs the same commands as artisan without booting the application, so CI needs no `.env`, database or `APP_KEY`. The GitHub Action uses it by default; set `artisan: true` to keep `php artisan cordon:verify`.
 - Case studies in the documentation: Cordon run on Bagisto (namespaces), Advising App (InterNACHI/modular) and LaravelEcomm (nwidart/laravel-modules), with the configuration used for each and what remained after declaring their public API.
 
 ## [0.2.0] - 2026-11-04

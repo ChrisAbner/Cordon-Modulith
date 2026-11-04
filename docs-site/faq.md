@@ -28,7 +28,7 @@ It is not analysed: Cordon Modulith checks the boundaries between modules. Contr
 
 ## What are the known limitations?
 
-Docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected, and code outside modules is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](./guide/phpstan#configuration-errors).
+Docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected, and code outside modules is not analysed. When Cordon runs standalone (`vendor/bin/cordon` and the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, Cordon falls back to defaults and says so: `vendor/bin/cordon` on stderr, the PHPStan rule as a `cordon.configuration` error (see [PHPStan](./guide/phpstan#configuration-errors)).
 
 ## Are tests analysed?
 
@@ -40,7 +40,7 @@ Yes: your listener references the event class. Events are public API, so it is n
 
 ## Can I use it without Laravel?
 
-The core (`src/Analysis`, `src/Rules`, `src/Resolvers`...) is framework-agnostic, and the PHPStan rule runs without booting Laravel, but the commands and the Pest expectation need a Laravel application.
+Partly. The core (`src/Analysis`, `src/Rules`, `src/Resolvers`...) is framework-agnostic, and both `vendor/bin/cordon` and the PHPStan rule run without booting an application; they only use a few Illuminate components, which Composer installs with the package. The artisan commands and the Pest expectation need a Laravel application. See [without booting Laravel](./guide/ci#without-booting-laravel).
 
 ## Is it affiliated with Laravel?
 
