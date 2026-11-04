@@ -1,0 +1,16 @@
+Cordon analysed 12 files in 3 modules (9 cross-module references).
+
+x [internal_access] app/Modules/Billing/Services/CheckoutService.php:13
+  Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
+
+x [internal_access] app/Modules/Billing/Services/InvoiceRenderer.php:10
+  Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
+
+x [internal_access] app/Modules/Billing/Services/Unloadable.php:11
+  Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
+
+x [cycles]
+  Modules [Billing, Catalog] form a dependency cycle: Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
+
+4 boundary violations.
+exit=1

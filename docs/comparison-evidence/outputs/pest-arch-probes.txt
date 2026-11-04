@@ -1,0 +1,16 @@
+
+   FAIL  Tests\Arch\ProbeTest
+  ⨯ probe App\Modules\Billing\Services\CheckoutService                   0.03s  
+  ✓ probe App\Modules\Billing\Services\Unloadable
+  ✓ probe App\Modules\Billing\Services\DocblockOnly
+  ✓ probe App\Modules\Billing\Services\StringName
+  ✓ probe App\Modules\Billing\Tests\CheckoutServiceFixture
+  ────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Arch\ProbeTest > probe App\Modules\Billing\Services\Checkou…   
+  Expecting 'App\Modules\Billing\Services\…ervice' not to use 'App\Modules\Catalog\Models\Product'.
+
+
+  Tests:    1 failed, 4 passed (9 assertions)
+  Duration: 0.08s
+
+exit=1

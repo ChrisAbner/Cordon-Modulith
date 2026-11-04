@@ -59,6 +59,7 @@ export default defineConfig({
                 items: [
                     { text: 'Comparison', link: '/comparison' },
                     { text: 'FAQ', link: '/faq' },
+                    { text: 'Comparison in practice', link: '/comparison-in-practice' },
                 ],
             },
         ],
