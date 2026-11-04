@@ -41,9 +41,16 @@ Most of the first report came from things Bagisto shares on purpose:
 'modules' => [
     'Core' => ['open' => true],
     'DataGrid' => ['open' => true],
-    'Sales' => ['public' => ['Models\\OrderProxy', 'Models\\OrderItemProxy', 'Models\\InvoiceProxy']],
-    'Customer' => ['public' => ['Models\\CustomerProxy', 'Models\\CustomerGroupProxy']],
-    // ... one entry per package that exposes proxies (10 packages)
+    'Attribute' => ['public' => ['Models\\AttributeFamilyProxy', 'Models\\AttributeProxy']],
+    'BookingProduct' => ['public' => ['Models\\BookingProductProxy', 'Models\\BookingProxy']],
+    'CatalogRule' => ['public' => ['Models\\CatalogRuleProductPriceProxy']],
+    'Category' => ['public' => ['Models\\CategoryProxy', 'Models\\CategoryTranslationProxy']],
+    'Checkout' => ['public' => ['Models\\CartProxy']],
+    'Customer' => ['public' => ['Models\\CustomerGroupProxy', 'Models\\CustomerProxy']],
+    'Inventory' => ['public' => ['Models\\InventorySourceProxy']],
+    'Product' => ['public' => ['Models\\ProductProxy', 'Models\\ProductReviewProxy']],
+    'Sales' => ['public' => ['Models\\InvoiceProxy', 'Models\\OrderItemProxy', 'Models\\OrderProxy']],
+    'User' => ['public' => ['Models\\AdminProxy']],
 ],
 ```
 

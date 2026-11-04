@@ -42,7 +42,7 @@ public function __invoke(?string $email, bool $includingArchived = false): Stude
 if (($this->record->sender instanceof Prospect || $this->record->sender instanceof Student) && ...
 ```
 
-Cordon gives the team a list of exactly where to move from `Student | Prospect` to `Educatable`, module by module.
+Cordon's report lists, module by module, every place that names the concrete classes, which is where a move to `Educatable` would start.
 
 `Auditable` is a trait that 16 modules use on their models. That is a deliberate shared mechanism, and declaring it (`'audit' => ['public' => ['Models\\Concerns\\Auditable']]`) would be a one-line decision.
 
