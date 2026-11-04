@@ -50,7 +50,7 @@ If nothing is found, publish the config and set the resolver and its path (see [
 php artisan cordon:verify
 ```
 
-It exits with `1` when there are violations, `0` otherwise and `2` on invalid options.
+It exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options.
 
 ## Publish the config (optional)
 

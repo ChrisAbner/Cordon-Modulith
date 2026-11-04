@@ -66,6 +66,24 @@ it('keeps the dependency cycles a module takes part in', function () {
         ->and($report['violations'][0]['target'])->toBe('Billing -> Catalog -> Billing');
 });
 
+it('fails when no modules are found, unless --allow-empty is given', function () {
+    config()->set('cordon.resolvers.namespace.path', fixture_path('edge-cases/no-modules-here'));
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('No modules found')
+        ->assertExitCode(1);
+
+    $this->artisan('cordon:verify', ['--allow-empty' => true])->assertExitCode(0);
+});
+
+it('reports a missing module setup as a GitHub annotation', function () {
+    config()->set('cordon.resolvers.namespace.path', fixture_path('edge-cases/no-modules-here'));
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain('::error title=Cordon::No modules found')
+        ->assertExitCode(1);
+});
+
 it('rejects unknown modules and --module with --generate-baseline', function () {
     $this->artisan('cordon:verify', ['--module' => ['Ghost']])->assertExitCode(2);
     $this->artisan('cordon:verify', ['--module' => ['Billing'], '--generate-baseline' => true])->assertExitCode(2);
