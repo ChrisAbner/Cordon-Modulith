@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ChrisAbner/Cordon-Modulith@v0.1.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.2.0
 ```
 
 The action installs PHP and your Composer dependencies, then runs `php artisan cordon:verify --format=github`, which adds an annotation to the pull request for every violation.
@@ -32,7 +32,7 @@ If your workflow already sets up PHP and installs dependencies (for example in a
 
 ## Other CI systems
 
-`cordon:verify` exits with `1` when there are violations, `0` otherwise and `2` on invalid options. Use `--format=json` for a machine readable report:
+`cordon:verify` exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. Use `--format=json` for a machine readable report:
 
 ```bash
 php artisan cordon:verify --format=json > cordon-report.json
@@ -48,9 +48,13 @@ Teams that own modules can check only theirs:
         module: [Billing, Catalog, Orders]
     steps:
       - uses: actions/checkout@v4
-      - uses: ChrisAbner/Cordon-Modulith@v0.1.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.2.0
         with:
           args: --module=${{ matrix.module }}
 ```
 
 `--module` reports the violations a module causes and the dependency cycles it takes part in. The analysis still covers the whole application.
+
+## Files that do not parse
+
+A file that does not parse is skipped, so its references are not checked. Every format reports it: `text` as a comment, `json` under `parse_errors` and `github` as a warning annotation on the file. The job still passes. Add `--fail-on-parse-error` to fail it instead, for example with the action's `args` input.

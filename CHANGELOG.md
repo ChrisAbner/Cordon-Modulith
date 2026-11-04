@@ -7,8 +7,21 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 ### Added
 - Case studies in the documentation: Cordon run on Bagisto (namespaces), Advising App (InterNACHI/modular) and LaravelEcomm (nwidart/laravel-modules), with the configuration used for each and what remained after declaring their public API.
 
+## [0.2.0] - 2026-11-04
+
+This release fixes three cases where `cordon:verify` passed when it should not. Two of them change behaviour.
+
+**Upgrading from 0.1:**
+- If `cordon-baseline.json` has `cycles` entries, regenerate it once with `php artisan cordon:verify --generate-baseline`. Cycles are now recorded per dependency, so the old entries no longer match and `cordon:verify` warns about them.
+- A project with no modules yet now fails `cordon:verify`. Pass `--allow-empty` until the first module exists.
+
+### Added
+- `--format=github` reports each file that does not parse as a warning annotation, and the summary counts them. Their references are not checked, and the GitHub output used to leave them out. `--fail-on-parse-error` fails the run when there are any.
+
 ### Changed
-- When more modules are tangled than the reported cycle shows, the `cycles` message now says so ("are tangled in dependency cycles, such as A -> B -> A") instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two. The violation's target, and so existing baselines, are unchanged.
+- **Breaking:** `cordon:verify` now exits with `1` when no modules are found, instead of passing without analysing anything. A misconfigured resolver or a moved `app/Modules` used to keep CI green. With `--format=github` the reason is printed as an error annotation. Pass `--allow-empty` while a project has no modules yet.
+- **Breaking:** `cycles` now reports one violation per dependency inside a cycle (target `Orders -> Payments`), with the shortest cycle that dependency closes, instead of one violation per group of modules (ADR 0011). With the old report, a module joining a cycle recorded in the baseline, or a new dependency inside it, stayed suppressed. The baseline format is now version 2: `cordon:verify` warns when a version 1 baseline has `cycles` entries, which no longer match. Regenerate the baseline once after upgrading.
+- When modules are tangled in several cycles, the `cycles` message says so and names the whole group, instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two.
 
 ## [0.1.1] - 2026-09-29
 

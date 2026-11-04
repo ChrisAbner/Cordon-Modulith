@@ -20,6 +20,12 @@ final class CycleRule implements Rule
         return self::ID;
     }
 
+    /**
+     * One violation per dependency inside a group of modules that reach each
+     * other, so the baseline tracks dependencies: a module joining the group
+     * or a new dependency inside it is reported, and removing one dependency
+     * leaves the others suppressed.
+     */
     public function check(AnalysisContext $context): iterable
     {
         $graph = $this->graph($context);
@@ -30,23 +36,44 @@ final class CycleRule implements Rule
             }
 
             sort($component);
-            $cycle = $this->shortestCycle($component[0], $graph, array_flip($component));
-            $path = implode(' -> ', $cycle);
+            $members = array_flip($component);
+            $dependencies = [];
 
-            // The path closes on its start, so it lists every module once plus one.
-            $message = count($cycle) - 1 === count($component)
-                ? 'Modules [%s] form a dependency cycle: %s. Break it by inverting one dependency, for example with an event or a contract.'
-                : 'Modules [%s] are tangled in dependency cycles, such as %s. Break them one dependency at a time, for example with an event or a contract.';
+            foreach ($component as $from) {
+                foreach ($graph[$from] as $to) {
+                    if (isset($members[$to])) {
+                        $dependencies[] = [$from, $to];
+                    }
+                }
+            }
 
-            yield new Violation(
-                self::ID,
-                sprintf($message, implode(', ', $component), $path),
-                null,
-                null,
-                $component[0],
-                null,
-                $path,
-            );
+            // A plain ring has exactly one dependency per module; anything more is several cycles.
+            $tangled = count($dependencies) > count($component);
+
+            foreach ($dependencies as [$from, $to]) {
+                $cycle = [$from, ...$this->shortestPath($to, $from, $graph, $members)];
+
+                $message = sprintf(
+                    'Module %s depends on %s, which closes the dependency cycle %s. ',
+                    $from,
+                    $to,
+                    implode(' -> ', $cycle),
+                );
+
+                $message .= $tangled
+                    ? sprintf('Modules [%s] are tangled in several cycles: break them one dependency at a time, for example with an event or a contract.', implode(', ', $component))
+                    : 'Break it by inverting one dependency, for example with an event or a contract.';
+
+                yield new Violation(
+                    self::ID,
+                    $message,
+                    null,
+                    null,
+                    $from,
+                    $to,
+                    $from.' -> '.$to,
+                );
+            }
         }
     }
 
@@ -130,13 +157,14 @@ final class CycleRule implements Rule
     }
 
     /**
-     * Shortest path from $start back to itself inside one component (breadth first).
+     * Shortest path from $start to $end inside one component (breadth first).
+     * Both are members of the component, so a path always exists.
      *
      * @param  array<string, list<string>>  $graph
      * @param  array<string, int>  $members
      * @return list<string>
      */
-    private function shortestCycle(string $start, array $graph, array $members): array
+    private function shortestPath(string $start, string $end, array $graph, array $members): array
     {
         $queue = [[$start]];
         $visited = [$start => true];
@@ -145,22 +173,18 @@ final class CycleRule implements Rule
             $path = array_shift($queue);
             $node = $path[array_key_last($path)];
 
+            if ($node === $end) {
+                return $path;
+            }
+
             foreach ($graph[$node] ?? [] as $next) {
-                if (! isset($members[$next])) {
-                    continue;
-                }
-
-                if ($next === $start) {
-                    return [...$path, $start];
-                }
-
-                if (! isset($visited[$next])) {
+                if (isset($members[$next]) && ! isset($visited[$next])) {
                     $visited[$next] = true;
                     $queue[] = [...$path, $next];
                 }
             }
         }
 
-        return [...array_map('strval', array_keys($members)), $start];
+        return [$start, $end];
     }
 }

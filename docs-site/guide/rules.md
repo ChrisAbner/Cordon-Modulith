@@ -4,7 +4,7 @@
 |---|---|
 | `internal_access` | A module using a class that is not part of another module's [public API](./public-api). One report per file and target class. |
 | `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
-| `cycles` | Modules that depend on each other in a cycle, with the shortest cycle path. |
+| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. |
 
 All three are enabled by default. Switch them off in the config:
 
@@ -53,19 +53,28 @@ Using a module's **public** class without listing that module reports only `unde
 
 ## cycles
 
+Cordon reports each dependency that takes part in a cycle, with the shortest cycle it closes. Two modules that depend on each other give two reports:
+
 ```text
 x [cycles]
-  Modules [Orders, Payments] form a dependency cycle: Orders -> Payments -> Orders. Break it by inverting one dependency, for example with an event or a contract.
+  Module Orders depends on Payments, which closes the dependency cycle Orders -> Payments -> Orders. Break it by inverting one dependency, for example with an event or a contract.
+
+x [cycles]
+  Module Payments depends on Orders, which closes the dependency cycle Payments -> Orders -> Payments. Break it by inverting one dependency, for example with an event or a contract.
 ```
+
+Removing one of them breaks the cycle, and both reports go away.
 
 Listening to another module's event is a dependency on that module too. See [break a cycle with an event](../recipes/break-a-cycle).
 
-When more modules reach each other than one cycle shows, Cordon reports the whole group once, with the shortest cycle through its first module as an example:
+When the modules reach each other through several cycles, the message names the whole group:
 
 ```text
 x [cycles]
-  Modules [Catalog, Orders, Payments] are tangled in dependency cycles, such as Catalog -> Orders -> Catalog. Break them one dependency at a time, for example with an event or a contract.
+  Module Orders depends on Catalog, which closes the dependency cycle Orders -> Catalog -> Orders. Modules [Catalog, Orders, Payments] are tangled in several cycles: break them one dependency at a time, for example with an event or a contract.
 ```
+
+Reporting per dependency keeps the [baseline](./baseline) honest: a module that joins a recorded cycle, or a new dependency inside it, is reported as new, and removing one dependency does not bring back the others.
 
 Every cross-module reference is an edge, including references to public classes such as events. Two modules that listen to each other's events still form a cycle. Break it by moving one direction: publish from one side only, or introduce a shared or orchestrating module that both depend on.
 

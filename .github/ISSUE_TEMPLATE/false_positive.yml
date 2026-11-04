@@ -36,6 +36,6 @@ body:
     id: versions
     attributes:
       label: Versions
-      placeholder: Cordon Modulith 0.1.0, PHP 8.4, Laravel 13
+      placeholder: Cordon Modulith 0.2.0, PHP 8.4, Laravel 13
     validations:
       required: true

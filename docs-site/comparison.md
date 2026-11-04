@@ -6,8 +6,8 @@ Cordon Modulith is not the only way to keep a Laravel codebase in shape. Here is
 
 [Deptrac](https://github.com/deptrac/deptrac) is the reference static architecture checker for PHP. You define layers with collectors (by namespace, directory, class name, inheritance...) and which layers may depend on which.
 
-- **What it does well:** framework-agnostic, very flexible, mature, fast, with caching, a baseline and several output formats. It can express layered rules *inside* modules.
-- **What Cordon Modulith adds:** module discovery from nwidart, InterNACHI or `app/Modules` with no layer definitions; a public API model per module (public namespaces, `#[PublicApi]`/`#[Internal]`, open modules) instead of "may depend on the whole layer"; cycle detection with the shortest path; Laravel integration (Artisan, Pest expectation, Boost skill, living documentation).
+- **What it does well:** framework-agnostic, very flexible, mature, fast, with caching, a baseline and several output formats. It can express layered rules *inside* modules, and it also reads types written in docblocks, which Cordon Modulith ignores.
+- **What Cordon Modulith adds:** module discovery from nwidart, InterNACHI or `app/Modules` with no layer definitions; a public API model per module (public namespaces, `#[PublicApi]`/`#[Internal]`, open modules) without writing a layer map; cycle detection with the shortest path; Laravel integration (Artisan, Pest expectation, Boost skill, living documentation). Deptrac can express a per-module public API too, by splitting each module into a public and an internal layer and using its `attribute` collector. It checks the rules between layers, not cycles in the code.
 - **Choose Deptrac** when you need layered rules or you are not on Laravel. You can use both: Deptrac for layers inside modules, Cordon Modulith for the edges between them.
 
 ## Pest `arch()`
@@ -15,7 +15,7 @@ Cordon Modulith is not the only way to keep a Laravel codebase in shape. Here is
 [Pest's architecture testing](https://pestphp.com/docs/arch-testing) ships with Laravel's default test setup.
 
 - **What it does well:** zero setup, readable expectations (`expect('App\Models')->toExtend(Model::class)`), presets, great for conventions *inside* a module.
-- **Limits for boundaries:** expectations rely on reflection, so they only see classes that exist and can be autoloaded. They express namespace-to-namespace rules, so the notion of a module's public API, per-module `depends_on`, cycles and a baseline are left to you.
+- **Limits for boundaries:** it parses each file but also loads the class with reflection, and a class that cannot be loaded is left out without a warning. A missing parent class, or a folder that does not match its namespace, is enough for a rule to pass without checking that file. Expectations are namespace-to-namespace rules, so the notion of a module's public API, per-module `depends_on`, cycles and a baseline are left to you.
 - **Use both:** `arch()` for conventions, `expect('Billing')->toRespectBoundaries()` for module boundaries.
 
 ## laravel-true-modular

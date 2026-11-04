@@ -21,7 +21,7 @@ Each entry in `violations` has:
 | `file`, `line` | Where the offending reference is (null for `cycles`) |
 | `source_module` | The module that has the problem |
 | `target_module` | The module it reaches into |
-| `target` | The class used (`internal_access`), the module (`undeclared_dependency`) or the cycle path (`cycles`) |
+| `target` | The class used (`internal_access`), the module (`undeclared_dependency`) or the dependency inside the cycle, such as `Orders -> Payments` (`cycles`) |
 
 Run `php artisan cordon:modules` to see each module's namespace, path and declared dependencies.
 
@@ -135,7 +135,7 @@ The source module declares `depends_on` in `config/cordon.php` and uses a module
 
 ## 5. cycles
 
-Two or more modules depend on each other, for example `Orders -> Payments -> Orders`. The `target` field shows the shortest cycle.
+Two or more modules depend on each other, for example `Orders -> Payments -> Orders`. There is one violation per dependency inside the cycle: its `target` is that dependency (`Orders -> Payments`) and the message shows the shortest cycle it closes.
 
 **Fix: invert one of the dependencies.** Pick the edge that is least essential and replace it:
 

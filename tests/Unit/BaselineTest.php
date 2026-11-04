@@ -37,3 +37,20 @@ it('only suppresses as many occurrences as were recorded', function () {
     expect($remaining)->toHaveCount(1)
         ->and($suppressed)->toBe(1);
 });
+
+it('writes version 2 baselines', function () {
+    $file = sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json';
+
+    Baseline::fromViolations([violation('/app/X.php')], '/app')->save($file);
+    $data = json_decode((string) file_get_contents($file), true);
+    unlink($file);
+
+    expect($data['version'])->toBe(2)
+        ->and(Baseline::load(fixture_path('baselines/v1-internal-access.json'))->warnings())->toBe([]);
+});
+
+it('warns that cycle entries of a version 1 baseline no longer match', function () {
+    expect(Baseline::load(fixture_path('baselines/v1-cycles.json'))->warnings())->toBe([
+        'The baseline has 1 cycles entry from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so that entry no longer matches. Regenerate the baseline with php artisan cordon:verify --generate-baseline.',
+    ]);
+});

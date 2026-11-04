@@ -50,8 +50,8 @@ it('ignores namespaced function calls', function () {
 it('detects dependency cycles between modules', function () {
     $cycles = violations_for(analyse_namespace_app(), 'cycles');
 
-    expect($cycles)->toHaveCount(1)
-        ->and($cycles[0]->target)->toBe('Billing -> Catalog -> Billing');
+    expect(array_map(fn (Violation $violation) => $violation->target, $cycles))->toBe(['Billing -> Catalog', 'Catalog -> Billing'])
+        ->and($cycles[0]->message)->toContain('Billing -> Catalog -> Billing');
 });
 
 it('only checks depends_on for modules that declare it', function () {
@@ -80,7 +80,7 @@ it('skips excluded directories such as tests', function () {
 it('reports the expected totals for the fixture app', function () {
     $result = analyse_namespace_app();
 
-    expect($result->violations)->toHaveCount(3)
+    expect($result->violations)->toHaveCount(4)
         ->and(count($result->modules))->toBe(3)
         ->and($result->parseErrors)->toBeEmpty();
 });

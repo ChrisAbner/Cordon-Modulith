@@ -1,0 +1,11 @@
+{
+    "version": 1,
+    "violations": [
+        {
+            "rule": "internal_access",
+            "file": "app/Modules/Billing/Invoice.php",
+            "target": "App\\Modules\\Catalog\\Internal\\Price",
+            "count": 1
+        }
+    ]
+}

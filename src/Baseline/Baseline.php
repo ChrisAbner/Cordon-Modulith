@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cordon\Baseline;
 
 use Cordon\Analysis\Violation;
+use Cordon\Rules\CycleRule;
 use Cordon\Support\Paths;
 use RuntimeException;
 
@@ -14,12 +15,16 @@ use RuntimeException;
  */
 final readonly class Baseline
 {
-    public const VERSION = 1;
+    /**
+     * Version 2 records cycles per dependency ("A -> B") instead of one entry per cycle.
+     */
+    public const VERSION = 2;
 
     /**
      * @param  array<string, array{rule: string, file: string|null, target: string|null, count: int}>  $entries
+     * @param  list<string>  $warnings
      */
-    private function __construct(private array $entries) {}
+    private function __construct(private array $entries, private array $warnings = []) {}
 
     public static function empty(): self
     {
@@ -64,7 +69,9 @@ final readonly class Baseline
         }
 
         $data = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+        $version = is_array($data) && isset($data['version']) && is_numeric($data['version']) ? (int) $data['version'] : 1;
         $entries = [];
+        $outdatedCycles = 0;
 
         foreach (is_array($data) ? ($data['violations'] ?? []) : [] as $entry) {
             if (! is_array($entry) || ! isset($entry['rule'])) {
@@ -75,6 +82,10 @@ final readonly class Baseline
             $path = isset($entry['file']) ? (string) $entry['file'] : null;
             $target = isset($entry['target']) ? (string) $entry['target'] : null;
 
+            if ($version < 2 && $rule === CycleRule::ID) {
+                $outdatedCycles++;
+            }
+
             $entries[implode('|', [$rule, $path ?? '', $target ?? ''])] = [
                 'rule' => $rule,
                 'file' => $path,
@@ -83,7 +94,29 @@ final readonly class Baseline
             ];
         }
 
-        return new self($entries);
+        $warnings = [];
+
+        if ($outdatedCycles > 0) {
+            $warnings[] = sprintf(
+                'The baseline has %d cycles %s from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so %s no longer %s. Regenerate the baseline with php artisan cordon:verify --generate-baseline.',
+                $outdatedCycles,
+                $outdatedCycles === 1 ? 'entry' : 'entries',
+                $outdatedCycles === 1 ? 'that entry' : 'those entries',
+                $outdatedCycles === 1 ? 'matches' : 'match',
+            );
+        }
+
+        return new self($entries, $warnings);
+    }
+
+    /**
+     * Problems found while loading the file, such as entries an older version wrote.
+     *
+     * @return list<string>
+     */
+    public function warnings(): array
+    {
+        return $this->warnings;
     }
 
     public function save(string $file): void

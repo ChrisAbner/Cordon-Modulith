@@ -7,50 +7,68 @@ use Cordon\Analysis\Edge;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Reference;
 use Cordon\Analysis\SymbolTable;
+use Cordon\Analysis\Violation;
+use Cordon\Baseline\Baseline;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\CycleRule;
 
-it('finds the shortest path of a cycle across three modules', function () {
-    $a = Module::make('A', 'A', '/p/A');
-    $b = Module::make('B', 'B', '/p/B');
-    $c = Module::make('C', 'C', '/p/C');
+/**
+ * @param  list<array{0: string, 1: string}>  $dependencies
+ * @return list<Violation>
+ */
+function cycle_violations(array $dependencies): array
+{
+    $modules = [];
 
-    $edge = fn (Module $from, Module $to) => new Edge($from, $to, new Reference('/p/'.$from->name.'/X.php', null, $to->name.'\\Y', 1));
+    foreach (['A', 'B', 'C'] as $name) {
+        $modules[$name] = Module::make($name, $name, '/p/'.$name);
+    }
 
-    $context = new AnalysisContext(
-        new ModuleMap([$a, $b, $c]),
-        SymbolTable::fromAnalyses([]),
-        new PublicApiPolicy,
-        [$edge($a, $b), $edge($b, $c), $edge($c, $a)],
+    $edges = array_map(
+        fn (array $dependency) => new Edge($modules[$dependency[0]], $modules[$dependency[1]], new Reference('/p/'.$dependency[0].'/X.php', null, $dependency[1].'\\Y', 1)),
+        $dependencies,
     );
 
-    $violations = iterator_to_array((new CycleRule)->check($context), false);
+    $context = new AnalysisContext(new ModuleMap(array_values($modules)), SymbolTable::fromAnalyses([]), new PublicApiPolicy, $edges);
 
-    expect($violations)->toHaveCount(1)
-        ->and($violations[0]->target)->toBe('A -> B -> C -> A')
-        ->and($violations[0]->message)->toBe('Modules [A, B, C] form a dependency cycle: A -> B -> C -> A. Break it by inverting one dependency, for example with an event or a contract.');
+    return iterator_to_array((new CycleRule)->check($context), false);
+}
+
+it('reports every dependency of a cycle with the shortest cycle it closes', function () {
+    $violations = cycle_violations([['A', 'B'], ['B', 'C'], ['C', 'A']]);
+
+    expect(array_map(fn ($violation) => $violation->target, $violations))->toBe(['A -> B', 'B -> C', 'C -> A'])
+        ->and($violations[0]->sourceModule)->toBe('A')
+        ->and($violations[0]->targetModule)->toBe('B')
+        ->and($violations[0]->message)->toBe('Module A depends on B, which closes the dependency cycle A -> B -> C -> A. Break it by inverting one dependency, for example with an event or a contract.')
+        ->and($violations[1]->message)->toContain('B -> C -> A -> B');
 });
 
-it('says when the reported cycle is one of several between tangled modules', function () {
-    $a = Module::make('A', 'A', '/p/A');
-    $b = Module::make('B', 'B', '/p/B');
-    $c = Module::make('C', 'C', '/p/C');
+it('says when the modules of a cycle are tangled in several cycles', function () {
+    $violations = cycle_violations([['A', 'B'], ['B', 'A'], ['B', 'C'], ['C', 'A']]);
 
-    $edge = fn (Module $from, Module $to) => new Edge($from, $to, new Reference('/p/'.$from->name.'/X.php', null, $to->name.'\\Y', 1));
+    expect(array_map(fn ($violation) => $violation->target, $violations))->toBe(['A -> B', 'B -> A', 'B -> C', 'C -> A'])
+        ->and($violations[2]->message)->toBe('Module B depends on C, which closes the dependency cycle B -> C -> A -> B. Modules [A, B, C] are tangled in several cycles: break them one dependency at a time, for example with an event or a contract.')
+        ->and($violations[1]->message)->toContain('B -> A -> B');
+});
 
-    $context = new AnalysisContext(
-        new ModuleMap([$a, $b, $c]),
-        SymbolTable::fromAnalyses([]),
-        new PublicApiPolicy,
-        [$edge($a, $b), $edge($b, $a), $edge($b, $c), $edge($c, $a)],
-    );
+it('reports a module that joins a cycle recorded in the baseline', function () {
+    $baseline = Baseline::fromViolations(cycle_violations([['A', 'B'], ['B', 'A']]));
 
-    $violations = iterator_to_array((new CycleRule)->check($context), false);
+    [$remaining, $suppressed] = $baseline->filter(cycle_violations([['A', 'B'], ['B', 'A'], ['A', 'C'], ['C', 'A']]));
 
-    expect($violations)->toHaveCount(1)
-        ->and($violations[0]->target)->toBe('A -> B -> A')
-        ->and($violations[0]->message)->toBe('Modules [A, B, C] are tangled in dependency cycles, such as A -> B -> A. Break them one dependency at a time, for example with an event or a contract.');
+    expect(array_map(fn ($violation) => $violation->target, $remaining))->toBe(['A -> C', 'C -> A'])
+        ->and($suppressed)->toBe(2);
+});
+
+it('keeps the rest of a recorded cycle suppressed when one dependency is removed', function () {
+    $baseline = Baseline::fromViolations(cycle_violations([['A', 'B'], ['B', 'A'], ['B', 'C'], ['C', 'A']]));
+
+    [$remaining, $suppressed] = $baseline->filter(cycle_violations([['A', 'B'], ['B', 'C'], ['C', 'A']]));
+
+    expect($remaining)->toBe([])
+        ->and($suppressed)->toBe(3);
 });
 
 it('applies the public API precedence rules', function () {

@@ -17,10 +17,11 @@ it('keeps every module inside its boundaries', function () {
 A failure lists every violation of the module:
 
 ```text
-Module [Billing] does not respect its boundaries (3 violations):
+Module [Billing] does not respect its boundaries (4 violations):
   - [internal_access] app/Modules/Billing/Services/CheckoutService.php:13 Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog]. ...
   - [internal_access] app/Modules/Billing/Services/InvoiceRenderer.php:10 Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog]. ...
-  - [cycles] Modules [Billing, Catalog] form a dependency cycle: Billing -> Catalog -> Billing. ...
+  - [cycles] Module Billing depends on Catalog, which closes the dependency cycle Billing -> Catalog -> Billing. ...
+  - [cycles] Module Catalog depends on Billing, which closes the dependency cycle Catalog -> Billing -> Catalog. ...
 ```
 
 ## Setup
@@ -28,9 +29,11 @@ Module [Billing] does not respect its boundaries (3 violations):
 A fresh Laravel app with Pest has no binding between your tests and the framework, so the expectation fails with "needs a booted Laravel application". Install Pest with its Laravel plugin and initialise it:
 
 ```bash
-composer require --dev pestphp/pest pestphp/pest-plugin-laravel
+composer require --dev pestphp/pest pestphp/pest-plugin-laravel -W
 ./vendor/bin/pest --init
 ```
+
+`-W` lets Composer change the PHPUnit version the app has locked. Without it, Composer stops with a conflict on `phpunit/phpunit`.
 
 `pest --init` creates `tests/Pest.php`. If you already have that file, make sure it extends your `TestCase` for the folder where the test lives:
 
@@ -49,4 +52,4 @@ pest()->extend(Tests\TestCase::class)->in('Feature');
 
 ## Pest `arch()` and Cordon Modulith
 
-They complement each other. Pest's `arch()` expectations are great for rules inside a module ("models extend Model", "no `dd()`"), but they rely on reflection, so they only see classes that exist and autoload. `toRespectBoundaries()` is about the edges between modules, knows each module's public API and uses static analysis.
+They complement each other. Pest's `arch()` expectations are great for rules inside a module ("models extend Model", "no `dd()`"), but they also load each class with reflection, and a class that cannot be loaded is left out without a warning. `toRespectBoundaries()` is about the edges between modules, knows each module's public API and uses static analysis.

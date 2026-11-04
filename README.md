@@ -8,7 +8,7 @@
 
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
-> **Status: 0.1 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
+> **Status: 0.2 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
 
 Modular monoliths in Laravel usually rely on nwidart/laravel-modules, InterNACHI/modular or a hand-made `app/Modules` folder. All of them organise code, but none of them stops the `Billing` module from reaching into `Catalog`'s models. Six months later the "modules" are just folders.
 
@@ -31,9 +31,12 @@ x [internal_access] Modules/Billing/app/Services/CheckoutService.php:13
   Module [Billing] uses Modules\Catalog\Models\Product, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
 
 x [cycles]
-  Modules [Billing, Catalog] form a dependency cycle: Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
+  Module Billing depends on Catalog, which closes the dependency cycle Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
 
-2 boundary violations.
+x [cycles]
+  Module Catalog depends on Billing, which closes the dependency cycle Catalog -> Billing -> Catalog. Break it by inverting one dependency, for example with an event or a contract.
+
+3 boundary violations.
 ```
 
 **Tried on real apps:** on [Bagisto](https://github.com/bagisto/bagisto) (42 packages, 2,000 files) Cordon found 158 internal accesses and 30 packages tangled in dependency cycles, in 6 seconds and with no false positives. See the [case studies](https://chrisabner.github.io/Cordon-Modulith/case-studies/).
@@ -154,7 +157,7 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 |---|---|
 | `internal_access` | A module using a class that is not part of another module's public API. One report per file and target class. |
 | `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
-| `cycles` | Modules that depend on each other in a cycle, with the shortest cycle path. |
+| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. |
 
 You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
 
@@ -171,10 +174,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ChrisAbner/Cordon-Modulith@v0.1.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.2.0
 ```
 
-Or add `php artisan cordon:verify --format=github` to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations, `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
+Or add `php artisan cordon:verify --format=github` to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
 
 ### One module at a time
 
@@ -186,7 +189,7 @@ php artisan cordon:verify --module=Billing
 
 ## Pest
 
-Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`. A fresh Laravel app with Pest doesn't bind it yet: run `composer require --dev pestphp/pest pestphp/pest-plugin-laravel` and `./vendor/bin/pest --init`, or make sure `tests/Pest.php` contains `pest()->extend(Tests\TestCase::class)->in('Feature');`.
+Check boundaries from your test suite with the `toRespectBoundaries()` expectation. It needs a booted application, so use it in tests that extend your `Tests\TestCase`. A fresh Laravel app with Pest doesn't bind it yet: run `composer require --dev pestphp/pest pestphp/pest-plugin-laravel -W` (`-W` lets Composer change the PHPUnit version the app has locked) and `./vendor/bin/pest --init`, or make sure `tests/Pest.php` contains `pest()->extend(Tests\TestCase::class)->in('Feature');`.
 
 ```php
 use Cordon\Testing\Cordon;
@@ -204,7 +207,7 @@ The analysis runs once per test process and honours the baseline, like `cordon:v
 
 ## PHPStan
 
-Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) it is enabled automatically. A fresh Laravel app doesn't ship it, so either `composer require --dev phpstan/extension-installer` or include the extension by hand in a minimal `phpstan.neon`:
+Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. A fresh Laravel app doesn't ship PHPStan, so install it first with `composer require --dev phpstan/phpstan` (Larastan already brings it). With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically: `composer config allow-plugins.phpstan/extension-installer true && composer require --dev phpstan/extension-installer`. Otherwise include the extension by hand in a minimal `phpstan.neon`:
 
 ```neon
 # phpstan.neon
@@ -215,8 +218,9 @@ parameters:
     level: 5
     paths:
         - app
-        - Modules
 ```
+
+List the folders your modules live in: `app` for `app/Modules`, `Modules` for nwidart/laravel-modules, `app-modules` for InterNACHI/modular. PHPStan stops if a listed path doesn't exist.
 
 The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
 
@@ -244,7 +248,7 @@ Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources 
 
 ## How it works
 
-Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md).
+Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md), and [docs/adr](docs/adr) for the design decisions behind it.
 
 **Known limitations in 0.1:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
