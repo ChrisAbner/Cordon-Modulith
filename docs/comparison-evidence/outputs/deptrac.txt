@@ -1,0 +1,55 @@
+ -------------------------- ------------------------------------------------------------------------------------------------------------- 
+  Reason                     Billing                                                                                                      
+ -------------------------- ------------------------------------------------------------------------------------------------------------- 
+  DependsOnDisallowedLayer   App\Modules\Billing\Services\CheckoutService must not depend on App\Modules\Catalog\Models\Product           
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/Services/CheckoutService.php:13                                                     
+  DependsOnDisallowedLayer   App\Modules\Billing\Services\DocblockOnly must not depend on App\Modules\Catalog\Models\Product              
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/Services/DocblockOnly.php:9                                                         
+  DependsOnDisallowedLayer   App\Modules\Billing\Services\InvoiceRenderer must not depend on App\Modules\Catalog\Contracts\LegacyCatalog  
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/Services/InvoiceRenderer.php:10                                                     
+  DependsOnDisallowedLayer   App\Modules\Billing\Services\Unloadable must not depend on App\Modules\Catalog\Models\Product                
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/Services/Unloadable.php:13                                                          
+  DependsOnDisallowedLayer   App\Modules\Billing\Services\Unloadable must not depend on App\Modules\Catalog\Models\Product                
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/Services/Unloadable.php:11                                                          
+  DependsOnDisallowedLayer   App\Modules\Billing\Tests\CheckoutServiceFixture must not depend on App\Modules\Catalog\Models\Product       
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/tests/CheckoutServiceFixture.php:12                                                 
+  DependsOnDisallowedLayer   App\Modules\Billing\Tests\CheckoutServiceFixture must not depend on App\Modules\Catalog\Models\Product       
+                             You are depending on token that is a part of a layer that you are not allowed to depend on. (Catalog)        
+                             app/Modules/Billing/tests/CheckoutServiceFixture.php:10                                                 
+  Uncovered                  App\Modules\Billing\Services\Unloadable has uncovered dependency on Vendor\Missing\BaseService               
+                             app/Modules/Billing/Services/Unloadable.php:9                                                           
+ -------------------------- ------------------------------------------------------------------------------------------------------------- 
+
+ ----------- ---------------------------------------------------------------------------------------------------- 
+  Reason      Catalog                                                                                             
+ ----------- ---------------------------------------------------------------------------------------------------- 
+  Uncovered   App\Modules\Catalog\Contracts\LegacyCatalog has uncovered dependency on Cordon\Attributes\Internal  
+              app/Modules/Catalog/Contracts/LegacyCatalog.php:8                                              
+ ----------- ---------------------------------------------------------------------------------------------------- 
+
+ ----------- ---------------------------------------------------------------------------------------------------- 
+  Reason      CatalogPublic                                                                                       
+ ----------- ---------------------------------------------------------------------------------------------------- 
+  Uncovered   App\Modules\Catalog\Support\PriceFormatter has uncovered dependency on Cordon\Attributes\PublicApi  
+              app/Modules/Catalog/Support/PriceFormatter.php:8                                               
+ ----------- ---------------------------------------------------------------------------------------------------- 
+
+
+ -------------------------- 
+  Report                    
+ -------------------- ----- 
+  Violations           7    
+  Skipped violations   0    
+  Uncovered            3    
+  Allowed              5    
+  Warnings             0    
+  Errors               0    
+ -------------------- ----- 
+
+exit=1

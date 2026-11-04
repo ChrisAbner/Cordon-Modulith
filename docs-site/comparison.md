@@ -1,6 +1,6 @@
 # Comparison
 
-Cordon Modulith is not the only way to keep a Laravel codebase in shape. Here is an honest comparison to help you choose, or combine.
+Cordon Modulith is not the only way to keep a Laravel codebase in shape. Here is an honest comparison to help you choose, or combine. For the results of running Cordon, Pest `arch()` and Deptrac on the same fixture, see [Comparison in practice](./comparison-in-practice).
 
 ## Deptrac
 

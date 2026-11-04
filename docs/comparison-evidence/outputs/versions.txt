@@ -1,0 +1,8 @@
+PHP 8.4.27 (cli) (built: Oct 28 2026 01:23:53) (NTS)
+laravel/framework v13.40.0
+nikic/php-parser v5.9.0
+chrisabner/cordon-modulith v0.1.1
+deptrac/deptrac 4.7.2
+pestphp/pest v4.7.8
+pestphp/pest-plugin-arch v4.0.2
+ta-tikoma/phpunit-architecture-test 0.8.7

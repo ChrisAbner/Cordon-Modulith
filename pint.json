@@ -1,4 +1,4 @@
 {
     "preset": "laravel",
-    "exclude": ["tests/Fixtures"]
+    "exclude": ["tests/Fixtures", "docs/comparison-evidence"]
 }

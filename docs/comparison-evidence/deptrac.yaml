@@ -1,0 +1,49 @@
+# The closest deptrac version of Cordon's rules for this fixture:
+# each module is split into a public layer and an internal one.
+deptrac:
+  paths:
+    - ./app/Modules
+  layers:
+    - name: BillingPublic
+      collectors:
+        - type: classLike
+          value: ^App\\Modules\\Billing\\Events\\.*
+    - name: Billing
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Billing/.*
+          must_not:
+            - type: layer
+              value: BillingPublic
+    - name: CatalogPublic
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: ^App\\Modules\\Catalog\\Contracts\\.*
+          must_not:
+            - type: attribute
+              value: Cordon\Attributes\Internal
+        - type: attribute
+          value: Cordon\Attributes\PublicApi
+    - name: Catalog
+      collectors:
+        - type: bool
+          must:
+            - type: directory
+              value: app/Modules/Catalog/.*
+          must_not:
+            - type: layer
+              value: CatalogPublic
+    - name: Shared
+      collectors:
+        - type: directory
+          value: app/Modules/Shared/.*
+  ruleset:
+    Billing: [BillingPublic, CatalogPublic, Shared]
+    BillingPublic: [Shared]
+    Catalog: [CatalogPublic, BillingPublic, Shared]
+    CatalogPublic: [Shared]
+    Shared: []

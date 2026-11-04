@@ -1,0 +1,18 @@
+
+   FAIL  Tests\Arch\BoundariesTest
+  ⨯ Billing only uses the public API of Catalog                          0.03s  
+  ✓ Catalog only uses the public API of Billing
+  ⨯ Catalog does not depend on Billing
+  ────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Arch\BoundariesTest > Billing only uses the public API of C…   
+  Expecting 'App\Modules\Billing' not to use 'App\Modules\Catalog\Contracts…atalog'.
+
+  ────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Arch\BoundariesTest > Catalog does not depend on Billing       
+  Expecting 'App\Modules\Catalog' not to use 'App\Modules\Billing'.
+
+
+  Tests:    2 failed, 1 passed (7 assertions)
+  Duration: 0.09s
+
+exit=1
