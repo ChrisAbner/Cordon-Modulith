@@ -12,7 +12,7 @@
 | Files analysed | 1,098 | 1,098 |
 | Cross-module references | 1,142 | 1,142 |
 | `internal_access` | 777 | 395 |
-| `cycles` | 1 group of 25 modules | 1 group of 25 modules |
+| `cycles` | 127 dependencies in 1 group of 25 modules | 127 dependencies in 1 group of 25 modules |
 | Time / memory | 2.6 s / 94 MB | 2.7 s / 92 MB |
 
 ## A shared kernel called Core

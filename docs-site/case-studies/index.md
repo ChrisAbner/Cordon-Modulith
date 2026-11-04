@@ -4,16 +4,16 @@ We ran Cordon Modulith on three open source Laravel applications, one for each k
 
 | Application | Structure | Modules | Files | Violations (default config) | Violations (public API declared) | Time |
 |---|---|---|---|---|---|---|
-| [Bagisto](./bagisto) | Namespaces (`packages/Webkul/*`) | 42 | 1,997 | 920 | 159 | 6.1 s |
-| [Advising App](./advisingapp) | InterNACHI/modular | 37 | 2,463 | 1,163 | 1,155 | 4.5 s |
-| [LaravelEcomm](./laravelecomm) | nwidart/laravel-modules | 29 | 1,098 | 778 | 396 | 2.7 s |
+| [Bagisto](./bagisto) | Namespaces (`packages/Webkul/*`) | 42 | 1,997 | 1,086 | 325 | 6.1 s |
+| [Advising App](./advisingapp) | InterNACHI/modular | 37 | 2,463 | 1,363 | 1,355 | 4.5 s |
+| [LaravelEcomm](./laravelecomm) | nwidart/laravel-modules | 29 | 1,098 | 904 | 522 | 2.7 s |
 
-All three were analysed in October 2026 on Laravel 13 and PHP 8.4. Each page lists the exact commit.
+All three were analysed in October 2026 on Laravel 13 and PHP 8.4. Each page lists the exact commit. The violation counts are those of Cordon 0.2.0, which reports one `cycles` violation per dependency inside a cycle (167, 201 and 127 here); they were recomputed at the same commits on 2026-11-04. Before 0.2.0, each group of tangled modules was a single violation.
 
 ## What we found
 
 - **No false positives.** We checked every one of the 2,858 `internal_access` reports by machine: the reported line contains the class (or its import alias), and the class is declared in the module Cordon named. We then read a sample of each kind by hand. Every report pointed at a real reference: inheritance, constructor injection, static calls, Eloquent relations or `instanceof`.
-- **Most of the first report is configuration, not coupling.** Out of the box, Cordon only treats `Contracts`, `Events`, `Data`, `Enums` and `Exceptions` as public. Real apps share more on purpose: a `Core` module every other module extends, repositories meant as the access layer, facades. Declaring those removed 83% of Bagisto's report and half of LaravelEcomm's. See [what we declared and why](#how-we-declared-the-public-api).
+- **Most of the first report is configuration, not coupling.** Out of the box, Cordon only treats `Contracts`, `Events`, `Data`, `Enums` and `Exceptions` as public. Real apps share more on purpose: a `Core` module every other module extends, repositories meant as the access layer, facades. Declaring those removed 83% of Bagisto's `internal_access` reports and half of LaravelEcomm's. See [what we declared and why](#how-we-declared-the-public-api).
 - **What remains is real.** A handful of models used by almost every module (`User` in 25 of 29 modules in LaravelEcomm, `Student` in 21 of 37 in Advising App), order status constants read straight from the `Order` model, and storefront code reaching into sales internals.
 - **Cycles are the norm.** In all three apps, most modules belong to one large group that depends on itself: 30 of 42 modules in Bagisto, 29 of 37 in Advising App, 25 of 29 in LaravelEcomm. Counting direct back-and-forth pairs (`A` uses `B` and `B` uses `A`): 26, 54 and 34.
 - **Fast enough for CI.** Between 3 and 6 seconds and under 160 MB of memory for 1,000 to 2,500 files, on a developer machine (8 cores, Docker on WSL2).

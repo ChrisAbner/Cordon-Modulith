@@ -12,7 +12,7 @@
 | Files analysed | 2,463 | 2,463 |
 | Cross-module references | 2,774 | 2,774 |
 | `internal_access` | 1,162 | 1,154 |
-| `cycles` | 1 group of 29 modules | 1 group of 29 modules |
+| `cycles` | 201 dependencies in 1 group of 29 modules | 201 dependencies in 1 group of 29 modules |
 | Time / memory | 3.8 s / 152 MB | 4.5 s / 152 MB |
 
 The only addition was `DataTransferObjects` as a public namespace (8 reports). Unlike the other two apps, Advising App has no shared kernel, and the default public namespaces already match how it is organised: its contracts live in `Contracts` folders (14 of them, in 8 modules), which Cordon treats as public at any depth.

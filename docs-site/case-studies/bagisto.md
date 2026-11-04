@@ -12,7 +12,7 @@
 | Files analysed | 1,997 | 1,997 |
 | Cross-module references | 1,497 | 1,497 |
 | `internal_access` | 919 | 158 |
-| `cycles` | 1 group of 30 modules | 1 group of 30 modules |
+| `cycles` | 167 dependencies in 1 group of 30 modules | 167 dependencies in 1 group of 30 modules |
 | Time / memory | 5.7 s / 113 MB | 6.1 s / 113 MB |
 
 No parse errors and no false positives: every report points at a real reference (see [how we checked](./#what-we-found)).
@@ -119,8 +119,8 @@ Neither package can change or be tested without the other. The [break a cycle](.
 With the configuration above, Bagisto could adopt Cordon today without touching its code:
 
 ```bash
-php artisan cordon:verify --generate-baseline   # records the 159 current violations
+php artisan cordon:verify --generate-baseline   # records the 325 current violations
 php artisan cordon:verify                       # passes
 ```
 
-From then on, a new controller in `Shop` that reads `Webkul\Sales\Models\Order` fails the build, while the 159 recorded ones are paid down over time. See [adopting in an existing project](../guide/baseline).
+From then on, a new controller in `Shop` that reads `Webkul\Sales\Models\Order` fails the build, while the 325 recorded ones are paid down over time. See [adopting in an existing project](../guide/baseline).
