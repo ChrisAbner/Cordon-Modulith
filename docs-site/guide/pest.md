@@ -28,9 +28,11 @@ Module [Billing] does not respect its boundaries (3 violations):
 A fresh Laravel app with Pest has no binding between your tests and the framework, so the expectation fails with "needs a booted Laravel application". Install Pest with its Laravel plugin and initialise it:
 
 ```bash
-composer require --dev pestphp/pest pestphp/pest-plugin-laravel
+composer require --dev pestphp/pest pestphp/pest-plugin-laravel -W
 ./vendor/bin/pest --init
 ```
+
+`-W` lets Composer change the PHPUnit version the app has locked. Without it, Composer stops with a conflict on `phpunit/phpunit`.
 
 `pest --init` creates `tests/Pest.php`. If you already have that file, make sure it extends your `TestCase` for the folder where the test lives:
 
