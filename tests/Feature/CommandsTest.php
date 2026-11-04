@@ -80,3 +80,30 @@ it('runs custom rules from the config', function () {
         ->expectsOutputToContain('"rule": "declare_dependencies"')
         ->assertExitCode(1);
 });
+
+function app_with_a_file_that_does_not_parse(): string
+{
+    $root = sys_get_temp_dir().'/cordon-parse-error-'.getmypid();
+    @mkdir($root.'/Billing', 0777, true);
+    file_put_contents($root.'/Billing/Broken.php', "<?php\n\nnamespace App\\Modules\\Billing;\n\nfinal class Broken {\n");
+
+    config()->set('cordon.resolvers.namespace.path', $root);
+
+    return $root;
+}
+
+it('reports a file that does not parse but passes by default', function () {
+    app_with_a_file_that_does_not_parse();
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain('Broken.php,line=1,title=Cordon%3A parse error::Cordon skipped this file (parse error:')
+        ->assertExitCode(0);
+});
+
+it('fails on a file that does not parse with --fail-on-parse-error', function () {
+    app_with_a_file_that_does_not_parse();
+
+    $this->artisan('cordon:verify', ['--fail-on-parse-error' => true])
+        ->expectsOutputToContain('Failing because 1 file(s) could not be parsed')
+        ->assertExitCode(1);
+});

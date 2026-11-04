@@ -21,6 +21,7 @@ final class VerifyCommand extends Command
     protected $signature = 'cordon:verify
         {--format=text : Output format: text, json or github}
         {--module=* : Only report the violations of this module (repeatable)}
+        {--fail-on-parse-error : Fail when a file cannot be parsed, since its references are not checked}
         {--generate-baseline : Record every current violation in the baseline file and exit}
         {--no-baseline : Ignore the baseline file}';
 
@@ -100,7 +101,20 @@ final class VerifyCommand extends Command
             $reporter->formatted() ? OutputInterface::OUTPUT_NORMAL : OutputInterface::OUTPUT_RAW,
         );
 
-        return $result->hasViolations() ? self::FAILURE : self::SUCCESS;
+        if ($result->hasViolations()) {
+            return self::FAILURE;
+        }
+
+        if ($this->option('fail-on-parse-error') && $result->parseErrors !== []) {
+            $this->output->getErrorStyle()->writeln(sprintf(
+                '<error>Failing because %d file(s) could not be parsed (--fail-on-parse-error).</error>',
+                count($result->parseErrors),
+            ));
+
+            return self::FAILURE;
+        }
+
+        return self::SUCCESS;
     }
 
     private function reporter(string $format): ?Reporter
