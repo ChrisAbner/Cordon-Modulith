@@ -4,6 +4,14 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-04
+
+This release fixes three cases where `cordon:verify` passed when it should not. Two of them change behaviour.
+
+**Upgrading from 0.1:**
+- If `cordon-baseline.json` has `cycles` entries, regenerate it once with `php artisan cordon:verify --generate-baseline`. Cycles are now recorded per dependency, so the old entries no longer match and `cordon:verify` warns about them.
+- A project with no modules yet now fails `cordon:verify`. Pass `--allow-empty` until the first module exists.
+
 ### Added
 - `--format=github` reports each file that does not parse as a warning annotation, and the summary counts them. Their references are not checked, and the GitHub output used to leave them out. `--fail-on-parse-error` fails the run when there are any.
 

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ChrisAbner/Cordon-Modulith@v0.1.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.2.0
 ```
 
 The action installs PHP and your Composer dependencies, then runs `php artisan cordon:verify --format=github`, which adds an annotation to the pull request for every violation.
@@ -48,7 +48,7 @@ Teams that own modules can check only theirs:
         module: [Billing, Catalog, Orders]
     steps:
       - uses: actions/checkout@v4
-      - uses: ChrisAbner/Cordon-Modulith@v0.1.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.2.0
         with:
           args: --module=${{ matrix.module }}
 ```
