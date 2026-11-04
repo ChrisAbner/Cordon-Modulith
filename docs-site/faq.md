@@ -40,7 +40,7 @@ Yes: your listener references the event class. Events are public API, so it is n
 
 ## Can I use it without Laravel?
 
-The core (`src/Analysis`, `src/Rules`, `src/Resolvers`...) is framework-agnostic, and the PHPStan rule runs without booting Laravel, but the commands and the Pest expectation need a Laravel application.
+Partly. The core (`src/Analysis`, `src/Rules`, `src/Resolvers`...) is framework-agnostic, and both `vendor/bin/cordon` and the PHPStan rule run without booting an application; they only use a few Illuminate components, which Composer installs with the package. The artisan commands and the Pest expectation need a Laravel application. See [without booting Laravel](./guide/ci#without-booting-laravel).
 
 ## Is it affiliated with Laravel?
 

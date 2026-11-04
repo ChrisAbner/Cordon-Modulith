@@ -1,0 +1,20 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Composer 2.2+ passes its autoloader to vendor/bin proxies; the other paths
+// cover running bin/cordon from a clone or from vendor/chrisabner/cordon-modulith.
+foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__.'/../vendor/autoload.php', __DIR__.'/../../../autoload.php'] as $autoload) {
+    if (is_string($autoload) && is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+if (! class_exists(Cordon\Laravel\StandaloneApplication::class)) {
+    fwrite(STDERR, "Cordon could not find Composer's autoloader. Run composer install, then vendor/bin/cordon from the project root.\n");
+    exit(1);
+}
+
+exit(Cordon\Laravel\StandaloneApplication::run((string) getcwd()));

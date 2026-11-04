@@ -11,7 +11,7 @@ inputs:
     required: false
     default: '8.4'
   working-directory:
-    description: Directory of the Laravel application (where artisan is).
+    description: Project root (where composer.json is).
     required: false
     default: '.'
   format:
@@ -19,9 +19,13 @@ inputs:
     required: false
     default: github
   args:
-    description: Extra arguments for cordon:verify, for example "--module=Billing" or "--no-baseline".
+    description: Extra arguments for the verify command, for example "--module=Billing" or "--no-baseline".
     required: false
     default: ''
+  artisan:
+    description: Set to "true" to run php artisan cordon:verify, which boots the application, instead of vendor/bin/cordon verify, which does not.
+    required: false
+    default: 'false'
   install-dependencies:
     description: Run composer install before verifying. Set to "false" if an earlier step already did.
     required: false
@@ -47,4 +51,10 @@ runs:
       env:
         CORDON_FORMAT: ${{ inputs.format }}
         CORDON_ARGS: ${{ inputs.args }}
-      run: php artisan cordon:verify --format="$CORDON_FORMAT" $CORDON_ARGS
+        CORDON_ARTISAN: ${{ inputs.artisan }}
+      run: |
+        if [ "$CORDON_ARTISAN" = "true" ]; then
+          php artisan cordon:verify --format="$CORDON_FORMAT" $CORDON_ARGS
+        else
+          "$(composer config bin-dir)/cordon" verify --format="$CORDON_FORMAT" $CORDON_ARGS
+        fi

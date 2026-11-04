@@ -53,7 +53,7 @@ final class VerifyCommand extends Command
         if (count($modules) === 0) {
             // Passing here would keep CI green without analysing anything,
             // for example after app/Modules moves or the resolver is misconfigured.
-            $message = 'No modules found. Check the resolver settings in config/cordon.php (php artisan cordon:modules), or pass --allow-empty while the project has no modules yet.';
+            $message = sprintf('No modules found. Check the resolver settings in config/cordon.php (%s), or pass --allow-empty while the project has no modules yet.', $this->sibling('modules'));
 
             if ($this->option('allow-empty')) {
                 $this->output->getErrorStyle()->writeln('<comment>No modules found.</comment>');
@@ -74,7 +74,7 @@ final class VerifyCommand extends Command
 
         foreach ($only as $name) {
             if (! $modules->has($name)) {
-                $this->error(sprintf('Unknown module [%s]. Run php artisan cordon:modules to list the detected modules.', $name));
+                $this->error(sprintf('Unknown module [%s]. Run %s to list the detected modules.', $name, $this->sibling('modules')));
 
                 return self::INVALID;
             }
@@ -138,6 +138,15 @@ final class VerifyCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * How to run another Cordon command from wherever this one was run:
+     * artisan, or vendor/bin/cordon (StandaloneApplication).
+     */
+    private function sibling(string $command): string
+    {
+        return $this->getName() === 'cordon:verify' ? 'php artisan cordon:'.$command : 'vendor/bin/cordon '.$command;
     }
 
     private function reporter(string $format): ?Reporter

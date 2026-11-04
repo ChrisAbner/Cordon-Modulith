@@ -61,6 +61,14 @@ final class ProjectContainer extends Container
         return $this->join($this->basePath('storage'), $path);
     }
 
+    /**
+     * Asked by Illuminate\Console\Command when it runs outside artisan.
+     */
+    public function runningUnitTests(): bool
+    {
+        return false;
+    }
+
     private function join(string $base, string $path): string
     {
         return $path === '' ? $base : $base.DIRECTORY_SEPARATOR.ltrim($path, '/\\');
