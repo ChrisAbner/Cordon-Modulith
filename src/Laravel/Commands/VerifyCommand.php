@@ -103,6 +103,14 @@ final class VerifyCommand extends Command
         }
 
         if (! $this->option('no-baseline')) {
+            foreach ($verifier->baselineWarnings() as $warning) {
+                if ($format === 'github') {
+                    $this->output->writeln('::warning title=Cordon::'.$warning, OutputInterface::OUTPUT_RAW);
+                } else {
+                    $this->output->getErrorStyle()->writeln('<comment>'.$warning.'</comment>');
+                }
+            }
+
             $result = $verifier->applyBaseline($result);
         }
 

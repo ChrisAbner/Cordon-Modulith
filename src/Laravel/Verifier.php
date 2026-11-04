@@ -68,9 +68,19 @@ final class Verifier
 
     public function applyBaseline(Result $result): Result
     {
-        $file = $this->baselineFile();
+        $baseline = $this->baseline();
 
-        return is_file($file) ? $result->withBaseline(Baseline::load($file)) : $result;
+        return $baseline !== null ? $result->withBaseline($baseline) : $result;
+    }
+
+    /**
+     * Problems with the baseline file, such as entries an older version wrote.
+     *
+     * @return list<string>
+     */
+    public function baselineWarnings(): array
+    {
+        return $this->baseline()?->warnings() ?? [];
     }
 
     public function baselineFile(): string
@@ -78,6 +88,13 @@ final class Verifier
         $file = $this->config->get('cordon.baseline', 'cordon-baseline.json');
 
         return Paths::join($this->basePath, is_string($file) && $file !== '' ? $file : 'cordon-baseline.json');
+    }
+
+    private function baseline(): ?Baseline
+    {
+        $file = $this->baselineFile();
+
+        return is_file($file) ? Baseline::load($file) : null;
     }
 
     /**

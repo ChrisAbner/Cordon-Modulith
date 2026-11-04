@@ -37,7 +37,10 @@ x [internal_access] Modules/Billing/app/Services/CheckoutService.php:13
   Module [Billing] uses Modules\Catalog\Models\Product, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
 
 x [cycles]
-  Modules [Billing, Catalog] form a dependency cycle: Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
+  Module Billing depends on Catalog, which closes the dependency cycle Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
 
-2 boundary violations.
+x [cycles]
+  Module Catalog depends on Billing, which closes the dependency cycle Catalog -> Billing -> Catalog. Break it by inverting one dependency, for example with an event or a contract.
+
+3 boundary violations.
 ```

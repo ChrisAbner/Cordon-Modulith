@@ -31,9 +31,12 @@ x [internal_access] Modules/Billing/app/Services/CheckoutService.php:13
   Module [Billing] uses Modules\Catalog\Models\Product, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
 
 x [cycles]
-  Modules [Billing, Catalog] form a dependency cycle: Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
+  Module Billing depends on Catalog, which closes the dependency cycle Billing -> Catalog -> Billing. Break it by inverting one dependency, for example with an event or a contract.
 
-2 boundary violations.
+x [cycles]
+  Module Catalog depends on Billing, which closes the dependency cycle Catalog -> Billing -> Catalog. Break it by inverting one dependency, for example with an event or a contract.
+
+3 boundary violations.
 ```
 
 ## Requirements
@@ -152,7 +155,7 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 |---|---|
 | `internal_access` | A module using a class that is not part of another module's public API. One report per file and target class. |
 | `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
-| `cycles` | Modules that depend on each other in a cycle, with the shortest cycle path. |
+| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. |
 
 You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
 

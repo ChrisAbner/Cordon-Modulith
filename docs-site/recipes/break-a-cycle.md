@@ -4,7 +4,10 @@
 
 ```text
 x [cycles]
-  Modules [Orders, Payments] form a dependency cycle: Orders -> Payments -> Orders. Break it by inverting one dependency, for example with an event or a contract.
+  Module Orders depends on Payments, which closes the dependency cycle Orders -> Payments -> Orders. Break it by inverting one dependency, for example with an event or a contract.
+
+x [cycles]
+  Module Payments depends on Orders, which closes the dependency cycle Payments -> Orders -> Payments. Break it by inverting one dependency, for example with an event or a contract.
 ```
 
 With a cycle, neither module can change, be tested or be extracted on its own.
