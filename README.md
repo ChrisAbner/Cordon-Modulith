@@ -43,8 +43,8 @@ x [cycles]
 
 ## Requirements
 
-- PHP 8.3+
-- Laravel 12 or 13
+- PHP 8.2+
+- Laravel 12 or 13 (Laravel 13 needs PHP 8.3+)
 
 ## Installation
 

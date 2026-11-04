@@ -18,6 +18,6 @@ Cordon Modulith is a Laravel dev-dependency that verifies boundaries between mod
 
 ## Conventions
 
-- PHP 8.3, `declare(strict_types=1)`, `final` classes, `readonly` value objects.
+- PHP 8.2 (no syntax or functions added in 8.3+; CI runs the suite on 8.2), `declare(strict_types=1)`, `final` classes, `readonly` value objects.
 - The analysis core (`src/Analysis`, `src/Module`, `src/Rules`, `src/Resolvers`, `src/Reporters`, `src/Baseline`, `src/Support`, `src/Documentation`) must stay framework-agnostic. Only the integration layers (`src/Laravel`, `src/Testing`, `src/PHPStan`) may use Laravel.
 - User-facing messages: one sentence stating the problem plus one stating the fix.
