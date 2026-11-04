@@ -41,11 +41,27 @@ final class GithubReporter implements Reporter
             $lines[] = sprintf('::error %s::%s', implode(',', $encoded), self::escapeData($violation->message));
         }
 
-        $lines[] = sprintf(
-            'Cordon: %d violation(s), %d suppressed by the baseline.',
+        // A file that does not parse is skipped, so its references are not checked.
+        foreach ($result->parseErrors as $file => $error) {
+            $lines[] = sprintf(
+                '::warning file=%s,line=1,title=%s::%s',
+                self::escapeProperty((string) Paths::relative($result->basePath, $file)),
+                self::escapeProperty('Cordon: parse error'),
+                self::escapeData(sprintf('Cordon skipped this file (parse error: %s). Its references were not checked.', $error)),
+            );
+        }
+
+        $summary = sprintf(
+            'Cordon: %d violation(s), %d suppressed by the baseline',
             count($result->violations),
             $result->suppressed,
         );
+
+        if ($result->parseErrors !== []) {
+            $summary .= sprintf(', %d file(s) skipped because they do not parse', count($result->parseErrors));
+        }
+
+        $lines[] = $summary.'.';
 
         return implode("\n", $lines)."\n";
     }

@@ -4,6 +4,9 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+### Added
+- `--format=github` reports each file that does not parse as a warning annotation, and the summary counts them. Their references are not checked, and the GitHub output used to leave them out. `--fail-on-parse-error` fails the run when there are any.
+
 ### Changed
 - When more modules are tangled than the reported cycle shows, the `cycles` message now says so ("are tangled in dependency cycles, such as A -> B -> A") instead of reading as a single cycle. In real apps the group often spans 25 to 30 modules while the example cycle has two. The violation's target, and so existing baselines, are unchanged.
 
