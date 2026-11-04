@@ -32,7 +32,7 @@ If your workflow already sets up PHP and installs dependencies (for example in a
 
 ## Other CI systems
 
-`cordon:verify` exits with `1` when there are violations, `0` otherwise and `2` on invalid options. Use `--format=json` for a machine readable report:
+`cordon:verify` exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. Use `--format=json` for a machine readable report:
 
 ```bash
 php artisan cordon:verify --format=json > cordon-report.json

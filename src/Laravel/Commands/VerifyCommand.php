@@ -22,7 +22,8 @@ final class VerifyCommand extends Command
         {--format=text : Output format: text, json or github}
         {--module=* : Only report the violations of this module (repeatable)}
         {--generate-baseline : Record every current violation in the baseline file and exit}
-        {--no-baseline : Ignore the baseline file}';
+        {--no-baseline : Ignore the baseline file}
+        {--allow-empty : Pass when no modules are found, for projects that have none yet}';
 
     protected $description = 'Verify that modules only depend on each other through their public API';
 
@@ -49,9 +50,23 @@ final class VerifyCommand extends Command
         $modules = $verifier->modules();
 
         if (count($modules) === 0) {
-            $this->output->getErrorStyle()->writeln('<comment>No modules found. Check the resolver settings in config/cordon.php (php artisan cordon:modules).</comment>');
+            // Passing here would keep CI green without analysing anything,
+            // for example after app/Modules moves or the resolver is misconfigured.
+            $message = 'No modules found. Check the resolver settings in config/cordon.php (php artisan cordon:modules), or pass --allow-empty while the project has no modules yet.';
 
-            return self::SUCCESS;
+            if ($this->option('allow-empty')) {
+                $this->output->getErrorStyle()->writeln('<comment>No modules found.</comment>');
+
+                return self::SUCCESS;
+            }
+
+            if ($format === 'github') {
+                $this->output->writeln('::error title=Cordon::'.$message, OutputInterface::OUTPUT_RAW);
+            } else {
+                $this->output->getErrorStyle()->writeln('<error>'.$message.'</error>');
+            }
+
+            return self::FAILURE;
         }
 
         $only = array_values(array_map('strval', (array) $this->option('module')));
