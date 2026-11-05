@@ -4,6 +4,9 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+### Added
+- `cordon:modules` warns when the detected modules look like the layers of a standard Laravel app (`Http`, `Models`, `Providers`...) rather than modules split by feature, and the installation guide explains which projects Cordon fits.
+
 ### Fixed
 - Class references are matched to modules and to public namespaces regardless of case, like PHP resolves class names. A reference written as `modules\catalog\Models\Product` was not attributed to `Catalog`, so its use of an internal class was not reported. Thanks to @bfs2021 (#26).
 

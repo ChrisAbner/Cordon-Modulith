@@ -212,3 +212,18 @@ it('rejects --prune-baseline with options that conflict with it or without a bas
     $this->artisan('cordon:verify', ['--prune-baseline' => true, '--generate-baseline' => true])->assertExitCode(2);
     $this->artisan('cordon:verify', ['--prune-baseline' => true, '--no-baseline' => true])->assertExitCode(2);
 });
+
+it('hints that a layered app is not split into modules', function () {
+    config()->set('cordon.resolvers.namespace.path', fixture_path('layered-app/app'));
+    config()->set('cordon.resolvers.namespace.namespace', 'App');
+
+    $this->artisan('cordon:modules')
+        ->expectsOutputToContain('These modules look like the layers of a standard Laravel app (Http, Models, Providers, Services)')
+        ->assertExitCode(0);
+});
+
+it('does not hint for modules split by feature', function () {
+    $this->artisan('cordon:modules')
+        ->doesntExpectOutputToContain('look like the layers')
+        ->assertExitCode(0);
+});

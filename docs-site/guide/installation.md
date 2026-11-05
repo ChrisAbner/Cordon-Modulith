@@ -2,6 +2,14 @@
 
 Requirements: PHP 8.2+ and Laravel 12 or 13 (Laravel 13 needs PHP 8.3+).
 
+## Is Cordon for my project?
+
+Cordon checks the boundaries between **modules split by feature**: `Billing`, `Catalog`, `Orders`, each with its own models, services and events. That is the layout of nwidart/laravel-modules, InterNACHI/modular or an `app/Modules` folder.
+
+Most Laravel apps start **split by layer** instead: `app/Http`, `app/Models`, `app/Services`, `app/Providers`. There every layer uses `Models`, so pointing Cordon at `app/` reports almost every reference as `internal_access`, plus one large cycle. That tells you the app is layered, not that it is broken. For rules between layers ("controllers may use services, services may use models"), use [Deptrac](https://github.com/deptrac/deptrac) or Pest `arch()`; see the [comparison](../comparison).
+
+`cordon:modules` warns when the modules it found look like those layers. If your app is layered today but you are moving features into modules, Cordon fits once the first module exists: point it at the modules folder, not at `app/`.
+
 ```bash
 composer require --dev chrisabner/cordon-modulith
 ```
