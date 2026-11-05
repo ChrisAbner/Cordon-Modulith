@@ -49,6 +49,14 @@ it('keeps the per-module public list anchored at the module root', function () {
         ->and($policy->isPublic('Modules\Billing\Invoices\Services\BillingService', $module))->toBeFalse();
 });
 
+it('matches a per-module public entry regardless of case and keeps it anchored at the module root', function () {
+    $policy = new PublicApiPolicy([]);
+    $module = billing_module(['services\billingservice']);
+
+    expect($policy->isPublic('Modules\Billing\Services\BillingService', $module))->toBeTrue()
+        ->and($policy->isPublic('Modules\Billing\Invoices\Services\BillingService', $module))->toBeFalse();
+});
+
 it('lets #[Internal] keep a nested public-namespace class internal', function () {
     $declaration = new ClassDeclaration('Modules\\Billing\\Invoices\\Enums\\Status', 'Status.php', 1, DeclaredVisibility::Internal);
 
@@ -74,4 +82,21 @@ it('does not report nested public-namespace classes of another module', function
         'App\Modules\Ledger\Invoices\MyEnums\Kind',
         'App\Modules\Ledger\Invoices\Enums\Hidden',
     ]);
+});
+
+it('reports a lowercase reference to another module but not to its public namespace', function () {
+    $modules = (new NamespaceResolver(fixture_path('lowercase-references/app/Modules'), 'App\Modules'))->resolve();
+    $analyzer = new Analyzer(
+        new PhpParserExtractor,
+        new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']),
+        new PublicApiPolicy,
+        RuleSet::fromConfig([]),
+    );
+
+    $targets = array_map(
+        fn (Violation $v) => $v->target,
+        violations_for($analyzer->analyze($modules, fixture_path('lowercase-references')), 'internal_access'),
+    );
+
+    expect($targets)->toEqualCanonicalizing(['app\modules\catalog\Models\Product']);
 });
