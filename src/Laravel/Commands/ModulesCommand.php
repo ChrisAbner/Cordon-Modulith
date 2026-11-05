@@ -6,6 +6,7 @@ namespace Cordon\Laravel\Commands;
 
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Laravel\ResolverFactory;
+use Cordon\Module\LayeredLayout;
 use Cordon\Module\Module;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
@@ -13,6 +14,8 @@ use Illuminate\Contracts\Config\Repository;
 
 final class ModulesCommand extends Command
 {
+    private const DOCS = 'https://chrisabner.github.io/Cordon-Modulith/guide/installation#is-cordon-for-my-project';
+
     protected $signature = 'cordon:modules';
 
     protected $description = 'List the modules Cordon detected and their boundary settings';
@@ -44,6 +47,14 @@ final class ModulesCommand extends Command
                 $module->open ? 'yes' : 'no',
             ], $modules->all()),
         );
+
+        if (($layers = LayeredLayout::layersIn($modules)) !== []) {
+            $this->warn(sprintf(
+                'These modules look like the layers of a standard Laravel app (%s), not modules split by feature. Cordon checks the boundaries between feature modules; for rules between layers, a tool like Deptrac fits better: %s',
+                implode(', ', $layers),
+                self::DOCS,
+            ));
+        }
 
         return self::SUCCESS;
     }
