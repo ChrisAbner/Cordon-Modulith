@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: ChrisAbner/Cordon-Modulith@v0.3.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.3.1
 ```
 
 The action installs PHP and your Composer dependencies, then runs `vendor/bin/cordon verify --format=github`, which adds an annotation to the pull request for every violation. It does not boot your application, so the job needs no `.env`, database or `APP_KEY` (see [without booting Laravel](#without-booting-laravel)). Set `artisan: true` to run `php artisan cordon:verify` instead.
@@ -62,7 +62,7 @@ Teams that own modules can check only theirs:
         module: [Billing, Catalog, Orders]
     steps:
       - uses: actions/checkout@v7
-      - uses: ChrisAbner/Cordon-Modulith@v0.3.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.3.1
         with:
           args: --module=${{ matrix.module }}
 ```

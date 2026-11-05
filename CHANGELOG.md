@@ -4,6 +4,10 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-05
+
+A patch release: class names are matched regardless of case, and `cordon:modules` tells you when an app is split by layer rather than by feature.
+
 ### Added
 - `cordon:modules` warns when the detected modules look like the layers of a standard Laravel app (`Http`, `Models`, `Providers`...) rather than modules split by feature, and the installation guide explains which projects Cordon fits.
 
