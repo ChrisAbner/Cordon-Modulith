@@ -174,7 +174,7 @@ jobs:
   cordon:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ChrisAbner/Cordon-Modulith@v0.3.0
 ```
 
