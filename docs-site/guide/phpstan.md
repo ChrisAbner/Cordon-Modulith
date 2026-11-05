@@ -42,7 +42,7 @@ Point `paths` at the folders that contain your modules: `app` for `app/Modules`,
 
 ## How it works
 
-- It uses the same extractor and public API rules as `cordon:verify`. `#[Internal]` and `#[PublicApi]` are read through PHPStan's static reflection.
+- It uses the same reference detection, public API rules and baseline as `cordon:verify`, on the AST PHPStan already parsed. `#[Internal]` and `#[PublicApi]` are read through PHPStan's static reflection.
 - PHPStan does not boot Laravel, so the rule reads `config/cordon.php` directly (and `config/modules.php` / `config/app-modules.php` when they load without the framework). Keep `config/cordon.php` a plain array.
 - The project root is PHPStan's working directory. If you run PHPStan from elsewhere, set it:
 
@@ -69,4 +69,4 @@ With parallel workers the error may appear once per worker.
 ## Limits
 
 - Only `internal_access` is reported: `undeclared_dependency` and `cycles` need the whole graph, so they stay in `cordon:verify`.
-- Cordon's baseline is not applied. Use PHPStan's own baseline if you want the same exceptions in the editor, or ignore the identifier `cordon.internalAccess` for specific paths.
+- `cordon-baseline.json` is applied, so the editor shows the same `internal_access` findings as `cordon:verify`; there is no need to copy them into PHPStan's baseline. A baseline file that cannot be read is reported once (identifier `cordon.configuration`) and not applied. To silence other paths, ignore the identifier `cordon.internalAccess`.

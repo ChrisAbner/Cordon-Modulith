@@ -34,7 +34,8 @@ final class ReferenceCollector extends NodeVisitorAbstract
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Stmt\ClassLike) {
-            $fqcn = $node->namespacedName?->toString();
+            // PHPStan's AST leaves namespacedName unset on anonymous classes.
+            $fqcn = isset($node->namespacedName) ? $node->namespacedName->toString() : null;
 
             if ($fqcn !== null) {
                 $this->declarations[] = new ClassDeclaration($fqcn, $this->file, $node->getStartLine(), $this->visibilityOf($node));
