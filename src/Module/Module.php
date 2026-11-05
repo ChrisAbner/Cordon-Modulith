@@ -26,7 +26,7 @@ final readonly class Module
 
     public function ownsClass(string $fqcn): bool
     {
-        return str_starts_with(ltrim($fqcn, '\\'), $this->namespace.'\\');
+        return str_starts_with(strtolower(ltrim($fqcn, '\\')), strtolower($this->namespace).'\\');
     }
 
     public function ownsPath(string $file): bool
