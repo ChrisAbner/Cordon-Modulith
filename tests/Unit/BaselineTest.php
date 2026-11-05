@@ -54,3 +54,48 @@ it('warns that cycle entries of a version 1 baseline no longer match', function 
         'The baseline has 1 cycles entry from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so that entry no longer matches. Regenerate the baseline with php artisan cordon:verify --generate-baseline.',
     ]);
 });
+
+it('counts the entries that record more occurrences than the code has', function () {
+    $baseline = Baseline::fromViolations([
+        violation('/app/Fixed.php'),
+        violation('/app/Twice.php'),
+        violation('/app/Twice.php'),
+        violation('/app/Kept.php'),
+    ], '/app');
+
+    expect($baseline->staleEntries([violation('/app/Twice.php'), violation('/app/Kept.php')], '/app'))->toBe(2)
+        ->and($baseline->staleEntries([violation('/app/Fixed.php'), violation('/app/Twice.php'), violation('/app/Twice.php'), violation('/app/Kept.php')], '/app'))->toBe(0);
+});
+
+it('prunes fixed occurrences without adding new violations', function () {
+    $baseline = Baseline::fromViolations([
+        violation('/app/Fixed.php'),
+        violation('/app/Twice.php'),
+        violation('/app/Twice.php'),
+        violation('/app/Kept.php'),
+    ], '/app');
+
+    $current = [violation('/app/Twice.php'), violation('/app/Kept.php'), violation('/app/New.php')];
+    $pruned = $baseline->prune($current, '/app');
+
+    [$remaining, $suppressed] = $pruned->filter($current, '/app');
+
+    expect($pruned->count())->toBe(2)
+        ->and($suppressed)->toBe(2)
+        ->and($remaining)->toEqual([violation('/app/New.php')])
+        ->and($pruned->staleEntries($current, '/app'))->toBe(0);
+});
+
+it('prunes the cycle entries of a version 1 baseline', function () {
+    $file = sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json';
+    $baseline = Baseline::load(fixture_path('baselines/v1-cycles.json'));
+
+    $stillThere = violation('/app/app/Modules/Billing/Invoice.php', 10, 'App\\Modules\\Catalog\\Internal\\Price');
+
+    $baseline->prune([$stillThere], '/app')->save($file);
+    $saved = json_decode((string) file_get_contents($file), true);
+    unlink($file);
+
+    expect($saved['version'])->toBe(2)
+        ->and(array_column($saved['violations'], 'rule'))->toBe(['internal_access']);
+});

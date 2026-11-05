@@ -83,6 +83,36 @@ final class Verifier
         return $this->baseline()?->warnings() ?? [];
     }
 
+    public function hasBaseline(): bool
+    {
+        return is_file($this->baselineFile());
+    }
+
+    /**
+     * Baseline entries that record more occurrences than $result contains.
+     */
+    public function staleBaselineEntries(Result $result): int
+    {
+        return $this->baseline()?->staleEntries($result->violations, $this->basePath) ?? 0;
+    }
+
+    /**
+     * Rewrites the baseline file without the occurrences $result no longer
+     * contains. New violations are never added.
+     *
+     * @return array{0: int, 1: int, 2: int} Entries pruned, entries left, and violations not in the baseline.
+     */
+    public function pruneBaseline(Result $result): array
+    {
+        $baseline = $this->baseline() ?? Baseline::empty();
+        $pruned = $baseline->prune($result->violations, $this->basePath);
+        $pruned->save($this->baselineFile());
+
+        [$new] = $pruned->filter($result->violations, $this->basePath);
+
+        return [$baseline->staleEntries($result->violations, $this->basePath), $pruned->count(), count($new)];
+    }
+
     public function baselineFile(): string
     {
         $file = $this->config->get('cordon.baseline', 'cordon-baseline.json');
