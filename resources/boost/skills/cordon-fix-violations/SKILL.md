@@ -197,5 +197,5 @@ After the change, run `php artisan cordon:verify` again: a cycle is fixed only w
 ## 6. Finish
 
 - `php artisan cordon:verify` exits with 0.
-- The baseline file is unchanged (or smaller, if you fixed violations that were in it: run `php artisan cordon:verify --generate-baseline` only if the user asks you to shrink it).
+- The baseline file is unchanged (or smaller, if you fixed violations that were in it: run `php artisan cordon:verify --prune-baseline` to remove the fixed entries; it never adds new violations. Never use `--generate-baseline` for this).
 - Explain to the user which contracts, events or data objects you added and why.

@@ -141,3 +141,74 @@ it('fails on a file that does not parse with --fail-on-parse-error', function ()
         ->expectsOutputToContain('Failing because 1 file(s) could not be parsed')
         ->assertExitCode(1);
 });
+
+/**
+ * Rewrites the baseline file through $change.
+ */
+function edit_baseline(callable $change): void
+{
+    $file = (string) config('cordon.baseline');
+    $data = json_decode((string) file_get_contents($file), true);
+    $data['violations'] = array_values($change($data['violations']));
+    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+function stale_entry(): array
+{
+    return ['rule' => 'internal_access', 'file' => 'app/Modules/Billing/Gone.php', 'target' => 'App\\Modules\\Catalog\\Models\\Product', 'count' => 1];
+}
+
+it('reports baseline entries that no longer match', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    edit_baseline(fn (array $entries) => [...$entries, stale_entry()]);
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('1 baseline entry no longer matches the code. Run php artisan cordon:verify --prune-baseline to remove it.')
+        ->assertExitCode(0);
+});
+
+it('shows baseline entries that no longer match as a GitHub notice', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    edit_baseline(fn (array $entries) => [...$entries, stale_entry(), ['target' => 'App\\Other'] + stale_entry()]);
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain('::notice title=Cordon::2 baseline entries no longer match the code.')
+        ->assertExitCode(0);
+});
+
+it('prunes fixed entries without accepting new violations', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+
+    // One violation becomes new (its entry is dropped) and one entry is stale.
+    $new = null;
+    edit_baseline(function (array $entries) use (&$new) {
+        $new = array_shift($entries);
+
+        return [...$entries, stale_entry()];
+    });
+
+    $this->artisan('cordon:verify', ['--prune-baseline' => true])
+        ->expectsOutputToContain('Pruned 1 baseline entry that no longer matched the code.')
+        ->assertExitCode(0);
+
+    $saved = json_decode((string) file_get_contents((string) config('cordon.baseline')), true);
+
+    expect($saved['violations'])->not->toContain(stale_entry())
+        ->and($saved['violations'])->not->toContain($new);
+
+    $this->artisan('cordon:verify')
+        ->doesntExpectOutputToContain('no longer match')
+        ->assertExitCode(1);
+});
+
+it('rejects --prune-baseline with options that conflict with it or without a baseline', function () {
+    $this->artisan('cordon:verify', ['--prune-baseline' => true])
+        ->expectsOutputToContain('There is no baseline file to prune')
+        ->assertExitCode(2);
+
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+
+    $this->artisan('cordon:verify', ['--prune-baseline' => true, '--module' => ['Billing']])->assertExitCode(2);
+    $this->artisan('cordon:verify', ['--prune-baseline' => true, '--generate-baseline' => true])->assertExitCode(2);
+    $this->artisan('cordon:verify', ['--prune-baseline' => true, '--no-baseline' => true])->assertExitCode(2);
+});

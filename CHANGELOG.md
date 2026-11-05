@@ -12,6 +12,7 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 - With PHPStan 2.3 or later, changing `cordon-baseline.json`, `config/cordon.php`, `config/modules.php` or `config/app-modules.php` now invalidates PHPStan's result cache. It used to keep showing the old `internal_access` errors until the analysed files changed.
 
 ### Added
+- `cordon:verify` reports baseline entries that no longer match the code, and `--prune-baseline` removes them without adding new violations. Regenerating the baseline to shrink it also accepted any violation that had slipped in. The Boost skill now tells agents to prune instead.
 - The PHPStan rule applies `cordon-baseline.json`, so the editor shows the same `internal_access` findings as `cordon:verify` and teams no longer keep a second baseline in PHPStan. It also reads the AST PHPStan already parsed instead of parsing each file again.
 - `vendor/bin/cordon verify|modules|docs` runs the same commands as artisan without booting the application, so CI needs no `.env`, database or `APP_KEY`. The GitHub Action uses it by default; set `artisan: true` to keep `php artisan cordon:verify`.
 - Case studies in the documentation: Cordon run on Bagisto (namespaces), Advising App (InterNACHI/modular) and LaravelEcomm (nwidart/laravel-modules), with the configuration used for each and what remained after declaring their public API.

@@ -77,6 +77,7 @@ Existing codebases usually start with many violations. Record them in a baseline
 ```bash
 php artisan cordon:verify --generate-baseline   # writes cordon-baseline.json
 php artisan cordon:verify                       # passes; new violations fail
+php artisan cordon:verify --prune-baseline      # drops entries you fixed; never adds
 php artisan cordon:verify --no-baseline         # shows everything again
 ```
 
