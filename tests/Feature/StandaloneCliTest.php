@@ -10,7 +10,9 @@ use Symfony\Component\Process\Process;
  */
 function run_cordon(array $arguments, string $cwd): array
 {
-    $process = new Process([PHP_BINARY, dirname(__DIR__, 2).'/bin/cordon', ...$arguments], $cwd, ['XDEBUG_MODE' => 'off']);
+    // NO_COLOR keeps the output plain wherever the suite runs: Symfony colours
+    // piped output under Git Bash on Windows (MSYSTEM) or with FORCE_COLOR set.
+    $process = new Process([PHP_BINARY, dirname(__DIR__, 2).'/bin/cordon', ...$arguments], $cwd, ['XDEBUG_MODE' => 'off', 'NO_COLOR' => '1']);
     $process->run();
 
     return ['code' => (int) $process->getExitCode(), 'out' => $process->getOutput(), 'err' => $process->getErrorOutput()];
