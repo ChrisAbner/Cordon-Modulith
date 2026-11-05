@@ -33,17 +33,18 @@ final readonly class PublicApiPolicy
         }
 
         $relative = $module->relativeName($fqcn);
+        $lowerRelative = strtolower($relative);
 
         foreach ($this->publicNamespaces as $entry) {
-            if ($this->matchesAnywhere($relative, trim($entry, '\\'))) {
+            if ($this->matchesAnywhere($lowerRelative, strtolower(trim($entry, '\\')))) {
                 return true;
             }
         }
 
         foreach ($module->publicApi as $prefix) {
-            $prefix = trim($prefix, '\\');
+            $prefix = strtolower(trim($prefix, '\\'));
 
-            if ($prefix !== '' && ($relative === $prefix || str_starts_with($relative, $prefix.'\\'))) {
+            if ($prefix !== '' && ($lowerRelative === $prefix || str_starts_with($lowerRelative, $prefix.'\\'))) {
                 return true;
             }
         }
