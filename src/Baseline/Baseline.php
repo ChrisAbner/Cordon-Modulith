@@ -137,6 +137,63 @@ final readonly class Baseline
     }
 
     /**
+     * Entries that record more occurrences than $violations contain, usually
+     * because those violations were fixed.
+     *
+     * @param  list<Violation>  $violations
+     */
+    public function staleEntries(array $violations, ?string $basePath = null): int
+    {
+        $found = $this->occurrences($violations, $basePath);
+
+        return count(array_filter(
+            $this->entries,
+            static fn (array $entry, string $key): bool => ($found[$key] ?? 0) < $entry['count'],
+            ARRAY_FILTER_USE_BOTH,
+        ));
+    }
+
+    /**
+     * The baseline without the occurrences $violations no longer contain.
+     * It only removes entries and lowers counts: a violation that is not
+     * recorded yet is never added.
+     *
+     * @param  list<Violation>  $violations
+     */
+    public function prune(array $violations, ?string $basePath = null): self
+    {
+        $found = $this->occurrences($violations, $basePath);
+        $entries = [];
+
+        foreach ($this->entries as $key => $entry) {
+            $count = min($entry['count'], $found[$key] ?? 0);
+
+            if ($count > 0) {
+                $entry['count'] = $count;
+                $entries[$key] = $entry;
+            }
+        }
+
+        return new self($entries);
+    }
+
+    /**
+     * @param  list<Violation>  $violations
+     * @return array<string, int>
+     */
+    private function occurrences(array $violations, ?string $basePath): array
+    {
+        $found = [];
+
+        foreach ($violations as $violation) {
+            $key = $violation->baselineKey($basePath);
+            $found[$key] = ($found[$key] ?? 0) + 1;
+        }
+
+        return $found;
+    }
+
+    /**
      * @param  list<Violation>  $violations
      * @return array{0: list<Violation>, 1: int} Remaining violations and the number suppressed.
      */
