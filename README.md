@@ -8,7 +8,7 @@
 
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
-> **Status: 0.2 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
+> **Status: 0.3 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
 
 Modular monoliths in Laravel usually rely on nwidart/laravel-modules, InterNACHI/modular or a hand-made `app/Modules` folder. All of them organise code, but none of them stops the `Billing` module from reaching into `Catalog`'s models. Six months later the "modules" are just folders.
 
@@ -175,7 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ChrisAbner/Cordon-Modulith@v0.2.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.3.0
 ```
 
 The action runs `vendor/bin/cordon verify`, which does not boot your application, so the job needs no `.env`, database or `APP_KEY`. Or add `vendor/bin/cordon verify --format=github` (or `php artisan cordon:verify --format=github`) to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
