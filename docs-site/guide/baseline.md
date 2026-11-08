@@ -52,6 +52,10 @@ To keep the baseline from going stale, pass `--fail-on-stale` in CI. A stale ent
 
 When a file does not parse, its references are missing and its entries would look stale, so `--fail-on-stale` skips the check and says so. `--fail-on-stale` cannot be combined with `--no-baseline`.
 
+## Strict modules
+
+A module with `'strict' => true` in `config/cordon.php` never gets new debt: the baseline does not suppress its violations (the ones it causes, and the cycles it takes part in), and `--generate-baseline` does not record them and says how many it left out. Turn it on for a module once it is clean.
+
 ## Debt or decision: `@cordon-ignore`
 
 The baseline records debt: violations you mean to fix, which `--prune-baseline` removes once they are gone. A violation you accept on purpose is a decision, and it belongs next to the code, with the reason:

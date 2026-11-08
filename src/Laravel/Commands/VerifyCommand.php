@@ -6,6 +6,7 @@ namespace Cordon\Laravel\Commands;
 
 use Cordon\Analysis\ModuleFilter;
 use Cordon\Analysis\Result;
+use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\Reporter;
 use Cordon\Laravel\Verifier;
@@ -167,13 +168,19 @@ final class VerifyCommand extends Command
 
         if ($this->option('generate-baseline')) {
             $baselineFile = $verifier->baselineFile();
-            Baseline::fromViolations($result->violations, $basePath)->save($baselineFile);
+            $strict = array_filter($result->violations, static fn (Violation $violation): bool => Baseline::isStrict($violation, $result->modules));
+            $recorded = array_values(array_filter($result->violations, static fn (Violation $violation): bool => ! Baseline::isStrict($violation, $result->modules)));
+            Baseline::fromViolations($recorded, $basePath)->save($baselineFile);
 
             $this->info(sprintf(
                 'Baseline written to %s with %d violation(s).',
                 Paths::relative($basePath, $baselineFile),
-                count($result->violations),
+                count($recorded),
             ));
+
+            if ($strict !== []) {
+                $this->output->getErrorStyle()->writeln(sprintf('<comment>%d violation(s) of strict modules were not recorded: fix them, or set strict to false.</comment>', count($strict)));
+            }
 
             return self::SUCCESS;
         }

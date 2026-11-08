@@ -100,7 +100,7 @@ final class InternalAccessRule implements Rule
         }
 
         $kept = $this->context->withoutIgnored($file, array_values($violations));
-        [$kept] = $this->context->baseline()->filter($kept, $this->context->basePath());
+        [$kept] = $this->context->baseline()->filter($kept, $this->context->basePath(), $this->context->modules());
 
         foreach ($kept as $violation) {
             $errors[] = RuleErrorBuilder::message(sprintf(

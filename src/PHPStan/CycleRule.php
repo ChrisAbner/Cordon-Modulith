@@ -104,7 +104,7 @@ final class CycleRule implements Rule
             $sorted[(string) $from] = $neighbours;
         }
 
-        [$kept] = $this->context->baseline()->filter(CycleFinder::violations($sorted), $this->context->basePath());
+        [$kept] = $this->context->baseline()->filter(CycleFinder::violations($sorted), $this->context->basePath(), $this->context->modules());
 
         return array_map(function (Violation $violation) use ($first): IdentifierRuleError {
             [$file, $line] = $first[(string) $violation->sourceModule][(string) $violation->targetModule];

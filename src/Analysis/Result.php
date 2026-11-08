@@ -43,7 +43,7 @@ final readonly class Result
 
     public function withBaseline(Baseline $baseline): self
     {
-        [$remaining, $suppressed] = $baseline->filter($this->violations, $this->basePath);
+        [$remaining, $suppressed] = $baseline->filter($this->violations, $this->basePath, $this->modules);
 
         return new self(
             $this->modules,

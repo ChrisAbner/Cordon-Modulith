@@ -2,6 +2,8 @@
 
 use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
+use Cordon\Module\Module;
+use Cordon\Module\ModuleMap;
 
 function violation(string $file, int $line = 10, string $target = 'B\\Internal'): Violation
 {
@@ -98,4 +100,23 @@ it('prunes the cycle entries of a version 1 baseline', function () {
 
     expect($saved['version'])->toBe(2)
         ->and(array_column($saved['violations'], 'rule'))->toBe(['internal_access']);
+});
+
+it('never suppresses the violations of a strict module', function () {
+    $modules = new ModuleMap([
+        Module::make('A', 'A', '/app/Modules/A')->withConfig(['strict' => true]),
+        Module::make('B', 'B', '/app/Modules/B'),
+        Module::make('C', 'C', '/app/Modules/C'),
+    ]);
+    $strict = violation('/app/Modules/A/X.php');
+    $other = new Violation('internal_access', 'message', '/app/Modules/C/X.php', 1, 'C', 'B', 'B\\Internal');
+    $cycleIntoStrict = new Violation('cycles', 'message', null, null, 'B', 'A', 'B -> A');
+    $cycleElsewhere = new Violation('cycles', 'message', null, null, 'B', 'C', 'B -> C');
+    $baseline = Baseline::fromViolations([$strict, $other, $cycleIntoStrict, $cycleElsewhere], '/app');
+
+    [$remaining, $suppressed] = $baseline->filter([$strict, $other, $cycleIntoStrict, $cycleElsewhere], '/app', $modules);
+
+    expect($remaining)->toBe([$strict, $cycleIntoStrict])
+        ->and($suppressed)->toBe(2)
+        ->and($baseline->filter([$strict], '/app')[0])->toBe([]);
 });

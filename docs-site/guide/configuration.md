@@ -62,7 +62,8 @@ Per-module settings, keyed by module name as shown by `cordon:modules`:
 | `depends_on` | Modules this module may depend on. Any other dependency is an `undeclared_dependency`. Omit it to leave dependencies open; `[]` means "no dependencies". |
 | `public` | Extra public namespaces or classes, relative to the module namespace. |
 | `open` | Every class of the module is public. |
-| `metadata` | Free-form information about the module, such as its owner. Cordon does not read it yet. |
+| `strict` | `true` keeps the module's violations out of the baseline: they always fail, and `--generate-baseline` does not record them. For a module that is clean and must stay clean. |
+| `metadata` | Free-form information about the module: `cordon:docs` shows its `description` and `owner`. |
 
 In `depends_on`, `Module::Interface` is reserved for named interfaces in a later version.
 
@@ -106,7 +107,7 @@ How a listener's reference to another module's event counts. See [what counts as
 `cordon:verify` checks the whole file before it analyses anything. Unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rules stop it with exit code `2`, and name the closest valid key:
 
 ```text
-Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, metadata.
+Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, metadata.
 ```
 
 `cordon:modules` shows the same messages as warnings, and the PHPStan rule reports them once as `cordon.configuration`.

@@ -88,7 +88,7 @@ final class InternalAccessRuleTest extends RuleTestCase
             $this->app.'/app/Modules/Billing/Services/CheckoutService.php',
             $this->app.'/app/Modules/Billing/Services/InvoiceRenderer.php',
         ], [
-            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, metadata.', 1, self::CONFIG_TIP],
+            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, metadata.', 1, self::CONFIG_TIP],
             ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
             ['Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog].', 10, self::TIP],
         ]);
@@ -130,6 +130,24 @@ final class InternalAccessRuleTest extends RuleTestCase
             $this->app.'/app/Modules/Billing/Services/InvoiceRenderer.php',
         ], [
             ['Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog].', 10, self::TIP],
+        ]);
+    }
+
+    public function test_it_does_not_apply_the_baseline_to_a_strict_module(): void
+    {
+        $this->app = $this->copyOfTheApp([
+            'version' => 2,
+            'violations' => [[
+                'rule' => 'internal_access',
+                'file' => 'app/Modules/Billing/Services/CheckoutService.php',
+                'target' => 'App\\Modules\\Catalog\\Models\\Product',
+                'count' => 1,
+            ]],
+        ]);
+        file_put_contents($this->app.'/config/cordon.php', "<?php return ['modules' => ['Shared' => ['open' => true], 'Billing' => ['strict' => true]]];");
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], [
+            ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
         ]);
     }
 

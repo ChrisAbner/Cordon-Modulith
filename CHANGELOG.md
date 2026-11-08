@@ -29,6 +29,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - `cordon:graph`: the module graph as Mermaid, DOT (Graphviz) or JSON, with the dependencies that have violations marked; `--module` keeps one module and its neighbours.
 - `--format=gitlab`, `junit` and `checkstyle` reports, for GitLab Code Quality and the CI tools that read JUnit or Checkstyle.
 - `unused_dependency` (a warning by default): a `depends_on` entry the module never uses. It says nothing about a module with a file that does not parse.
+- `strict` per module: the baseline never suppresses a strict module's violations (nor the cycles it takes part in), and `--generate-baseline` leaves them out. The PHPStan rules follow it.
 - `layers`: layers of modules from the top down, as a shorthand for `depends_on`; a module that depends on a layer above its own is a violation (`layers` rule). It checks nothing until `layers` is configured.
 - `// @cordon-ignore <rule>[, <rule>] (<reason>)` accepts a violation where it is, as a decision rather than baseline debt. The reason is required; a comment without one, or with an unknown rule, exits with code `2`; a comment that no longer matches is a warning. The JSON summary counts them in `ignored`, and the PHPStan rules honour them.
 - `AnalysisContext` has the files that could not be parsed (`parseErrors`), for custom rules.

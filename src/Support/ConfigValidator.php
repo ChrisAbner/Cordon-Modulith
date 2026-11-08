@@ -21,7 +21,7 @@ final class ConfigValidator
 
     private const HOST_KEYS = ['paths'];
 
-    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'metadata'];
+    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'metadata'];
 
     private const LISTENER_KEYS = ['cycles', 'depends_on'];
 
@@ -168,6 +168,10 @@ final class ConfigValidator
 
         if (array_key_exists('open', $settings) && ! is_bool($settings['open'])) {
             $errors[] = sprintf('Module [%s]: open must be true or false.', $name);
+        }
+
+        if (array_key_exists('strict', $settings) && ! is_bool($settings['strict'])) {
+            $errors[] = sprintf('Module [%s]: strict must be true or false.', $name);
         }
 
         if (array_key_exists('metadata', $settings) && ! is_array($settings['metadata'])) {

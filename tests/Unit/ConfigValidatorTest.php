@@ -45,7 +45,7 @@ it('leaves the suggestion out when no key is close', function () {
 
 it('rejects an unknown module key', function () {
     expect(config_errors(['modules' => ['Billing' => ['depend_on' => ['Catalog']]]]))->toBe([
-        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, metadata.',
+        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, metadata.',
     ]);
 });
 
@@ -120,4 +120,9 @@ it('validates the layers', function (mixed $layers, string $error) {
 
 it('accepts layers that cover some of the modules', function () {
     expect(config_errors(['layers' => [['Billing'], ['Shared']]]))->toBe([]);
+});
+
+it('requires strict to be true or false', function () {
+    expect(config_errors(['modules' => ['Billing' => ['strict' => 'yes']]]))->toBe(['Module [Billing]: strict must be true or false.'])
+        ->and(config_errors(['modules' => ['Billing' => ['strict' => true]]]))->toBe([]);
 });

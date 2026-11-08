@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cordon\Baseline;
 
 use Cordon\Analysis\Violation;
+use Cordon\Module\ModuleMap;
 use Cordon\Rules\CycleRule;
 use Cordon\Support\Paths;
 use RuntimeException;
@@ -217,9 +218,10 @@ final readonly class Baseline
 
     /**
      * @param  list<Violation>  $violations
+     * @param  ?ModuleMap  $modules  When given, the violations of strict modules are never suppressed.
      * @return array{0: list<Violation>, 1: int} Remaining violations and the number suppressed.
      */
-    public function filter(array $violations, ?string $basePath = null): array
+    public function filter(array $violations, ?string $basePath = null, ?ModuleMap $modules = null): array
     {
         $remaining = array_map(static fn (array $entry): int => $entry['count'], $this->entries);
         $kept = [];
@@ -227,6 +229,12 @@ final readonly class Baseline
 
         foreach ($violations as $violation) {
             $key = $violation->baselineKey($basePath);
+
+            if ($modules !== null && self::isStrict($violation, $modules)) {
+                $kept[] = $violation;
+
+                continue;
+            }
 
             if (($remaining[$key] ?? 0) > 0) {
                 $remaining[$key]--;
@@ -239,5 +247,22 @@ final readonly class Baseline
         }
 
         return [$kept, $suppressed];
+    }
+
+    /**
+     * Whether a violation belongs to a strict module: its source, or either
+     * end of a dependency of a cycle (so a cycle through it stays reported).
+     */
+    public static function isStrict(Violation $violation, ModuleMap $modules): bool
+    {
+        $ends = $violation->rule === CycleRule::ID ? [$violation->sourceModule, $violation->targetModule] : [$violation->sourceModule];
+
+        foreach ($ends as $name) {
+            if ($name !== null && $modules->get($name)?->strict === true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -435,3 +435,26 @@ it('checks the layers from the config', function () {
         ->and($layers[0]['message'])->toBe('Module [Billing] (layer 2) depends on [Shared] (layer 1); a layer may only depend on the layers below it.')
         ->and($layers[0]['docs_url'])->toEndWith('/guide/rules#layers');
 });
+
+it('keeps the violations of a strict module out of the baseline', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Billing' => ['strict' => true]]);
+
+    // Recorded before Billing became strict: still failing.
+    $this->artisan('cordon:verify')->expectsOutputToContain('Module [Billing] uses')->assertExitCode(1);
+
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])
+        ->expectsOutputToContain('2 violation(s) of strict modules were not recorded: fix them, or set strict to false.')
+        ->assertExitCode(0);
+
+    $recorded = array_column(json_decode((string) file_get_contents((string) config('cordon.baseline')), true)['violations'], 'file');
+
+    expect(array_filter($recorded, fn (?string $file) => str_contains((string) $file, 'Modules/Billing/')))->toBe([]);
+});
+
+it('leaves a module that is not strict as it was', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Billing' => ['strict' => false]]);
+
+    $this->artisan('cordon:verify')->assertExitCode(0);
+});
