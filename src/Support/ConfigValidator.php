@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Cordon\Support;
 
 use Cordon\Module\ModuleMap;
+use Cordon\Rules\RuleSet;
 
 /**
  * Checks config/cordon.php before anything is analysed, so a typo fails
  * instead of silently changing what is checked: a misspelled depends_on
  * would leave the module's dependencies open and CI green.
- *
- * The values of `rules` are checked where the rules are built (Severity).
  */
 final class ConfigValidator
 {
@@ -41,6 +40,10 @@ final class ConfigValidator
             }
         }
 
+        if (is_array($config['rules'] ?? null)) {
+            array_push($errors, ...RuleSet::errors($config['rules']));
+        }
+
         if (is_array($config['listeners'] ?? null)) {
             foreach ($config['listeners'] as $key => $value) {
                 if (! in_array($key, self::LISTENER_KEYS, true)) {
@@ -66,7 +69,7 @@ final class ConfigValidator
     private static function moduleErrors(string $name, mixed $settings, ModuleMap $modules): array
     {
         if (! $modules->has($name)) {
-            return [sprintf('config/cordon.php configures unknown module [%s].', $name).self::suggestion($name, $modules->names())];
+            return [sprintf('config/cordon.php configures unknown module [%s].', $name).self::didYouMean($name, $modules->names())];
         }
 
         if (! is_array($settings)) {
@@ -93,7 +96,7 @@ final class ConfigValidator
             if (str_contains($dependency, '::')) {
                 $errors[] = sprintf('Module [%s] depends on [%s]: the Module::Interface syntax is reserved for named interfaces in a later version.', $name, $dependency);
             } elseif (! $modules->has($dependency)) {
-                $errors[] = sprintf('Module [%s] declares a dependency on unknown module [%s].', $name, $dependency).self::suggestion($dependency, $modules->names());
+                $errors[] = sprintf('Module [%s] declares a dependency on unknown module [%s].', $name, $dependency).self::didYouMean($dependency, $modules->names());
             }
         }
 
@@ -117,7 +120,7 @@ final class ConfigValidator
      */
     private static function unknownKey(string $key, string $where, array $valid): string
     {
-        return sprintf('Unknown key [%s] %s.%s Valid keys: %s.', $key, $where, self::suggestion($key, $valid), implode(', ', $valid));
+        return sprintf('Unknown key [%s] %s.%s Valid keys: %s.', $key, $where, self::didYouMean($key, $valid), implode(', ', $valid));
     }
 
     /**
@@ -125,7 +128,7 @@ final class ConfigValidator
      *
      * @param  list<string>  $candidates
      */
-    private static function suggestion(string $name, array $candidates): string
+    public static function didYouMean(string $name, array $candidates): string
     {
         $best = null;
         $distance = 3;

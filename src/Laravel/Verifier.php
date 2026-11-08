@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel;
 
+use Closure;
 use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\Result;
 use Cordon\Baseline\Baseline;
@@ -28,9 +29,14 @@ final class Verifier
 
     private bool $baselineLoaded = false;
 
+    private ?Analyzer $builtAnalyzer = null;
+
+    /**
+     * @param  Analyzer|Closure(): Analyzer  $analyzer  A closure builds it on first use.
+     */
     public function __construct(
         private readonly ModuleResolver $resolver,
-        private readonly Analyzer $analyzer,
+        private readonly Analyzer|Closure $analyzer,
         private readonly Repository $config,
         private readonly string $basePath,
     ) {}
@@ -63,7 +69,7 @@ final class Verifier
      */
     public function analyze(): Result
     {
-        return $this->analyzer->analyze($this->modules(), $this->basePath);
+        return $this->analyzer()->analyze($this->modules(), $this->basePath);
     }
 
     /**
@@ -127,6 +133,11 @@ final class Verifier
         $file = $this->config->get('cordon.baseline', 'cordon-baseline.json');
 
         return Paths::join($this->basePath, is_string($file) && $file !== '' ? $file : 'cordon-baseline.json');
+    }
+
+    private function analyzer(): Analyzer
+    {
+        return $this->builtAnalyzer ??= $this->analyzer instanceof Closure ? ($this->analyzer)() : $this->analyzer;
     }
 
     /**

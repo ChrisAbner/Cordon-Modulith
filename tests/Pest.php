@@ -21,7 +21,7 @@ function fixture_path(string $path = ''): string
  * Analyse tests/Fixtures/namespace-app (modules Billing, Catalog, Shared).
  *
  * @param  array<string, mixed>  $moduleConfig
- * @param  array<string, bool>  $rules
+ * @param  array<array-key, mixed>  $rules
  */
 function analyse_namespace_app(array $moduleConfig = ['Shared' => ['open' => true]], array $rules = []): Result
 {
@@ -29,11 +29,14 @@ function analyse_namespace_app(array $moduleConfig = ['Shared' => ['open' => tru
         ->resolve()
         ->configure($moduleConfig);
 
+    $built = RuleSet::fromConfig($rules);
+
     $analyzer = new Analyzer(
         new PhpParserExtractor,
         new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']),
         new PublicApiPolicy,
-        RuleSet::fromConfig($rules),
+        $built,
+        RuleSet::severities($rules, $built),
     );
 
     return $analyzer->analyze($modules, fixture_path('namespace-app'));

@@ -81,6 +81,14 @@ final class InternalAccessRuleTest extends RuleTestCase
         ]);
     }
 
+    public function test_it_reports_nothing_when_internal_access_is_a_warning(): void
+    {
+        $this->app = $this->copyOfTheApp(['version' => 2, 'violations' => []]);
+        file_put_contents($this->app.'/config/cordon.php', "<?php\n\nreturn ['modules' => ['Shared' => ['open' => true]], 'rules' => ['internal_access' => 'warn']];\n");
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], []);
+    }
+
     public function test_it_applies_the_cordon_baseline(): void
     {
         $this->app = $this->copyOfTheApp([

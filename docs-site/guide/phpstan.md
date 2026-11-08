@@ -69,4 +69,5 @@ With parallel workers the error may appear once per worker.
 ## Limits
 
 - Only `internal_access` is reported: `undeclared_dependency` and `cycles` need the whole graph, so they stay in `cordon:verify`.
+- PHPStan has no warnings, so the rule reports only while `internal_access` is set to `error` in `config/cordon.php`. With `warn` or `off` it reports nothing; `cordon:verify` still shows the warnings.
 - `cordon-baseline.json` is applied, so the editor shows the same `internal_access` findings as `cordon:verify`; there is no need to copy them into PHPStan's baseline. A baseline file that cannot be read is reported once (identifier `cordon.configuration`) and not applied. To silence other paths, ignore the identifier `cordon.internalAccess`.

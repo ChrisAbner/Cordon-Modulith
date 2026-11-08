@@ -61,18 +61,23 @@ final class CordonServiceProvider extends ServiceProvider
         $container->bind(Analyzer::class, function ($app): Analyzer {
             /** @var Repository $config */
             $config = $app->make(Repository::class);
+            $rulesConfig = (array) $config->get('cordon.rules', []);
+            $rules = RuleSet::fromConfig($rulesConfig, fn (string $class): Rule => $app->make($class));
 
             return new Analyzer(
                 $app->make(DependencyExtractor::class),
                 new FileCollector(self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']))),
                 new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))),
-                RuleSet::fromConfig((array) $config->get('cordon.rules', []), fn (string $class): Rule => $app->make($class)),
+                $rules,
+                RuleSet::severities($rulesConfig, $rules),
             );
         });
 
+        // The analyzer is built on first use, after cordon:verify has checked the
+        // config: building it from a broken rules config would throw first.
         $container->bind(Verifier::class, fn ($app): Verifier => new Verifier(
             $app->make(ModuleResolver::class),
-            $app->make(Analyzer::class),
+            fn (): Analyzer => $app->make(Analyzer::class),
             $app->make(Repository::class),
             $basePath,
         ));

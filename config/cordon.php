@@ -84,16 +84,21 @@ return [
     | Rules
     |--------------------------------------------------------------------------
     |
-    | Switch built-in rules on or off, and add your own: class names that
-    | implement Cordon\Contracts\Rule (see docs/custom-rules.md).
+    | The severity of each rule: "error" fails cordon:verify, "warn" reports
+    | without failing (handy while a rule is being adopted), "off" skips it.
+    | true and false still work as error and off.
+    |
+    | Add your own rules: class names that implement Cordon\Contracts\Rule
+    | (see docs/custom-rules.md), listed as values, or as keys with a severity.
     |
     */
 
     'rules' => [
-        'internal_access' => true,
-        'undeclared_dependency' => true,
-        'cycles' => true,
+        'internal_access' => 'error',
+        'undeclared_dependency' => 'error',
+        'cycles' => 'error',
         // App\Architecture\MyRule::class,
+        // App\Architecture\OtherRule::class => 'warn',
     ],
 
     /*

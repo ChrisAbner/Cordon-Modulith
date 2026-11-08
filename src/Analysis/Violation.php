@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+use Cordon\Rules\Severity;
 use Cordon\Support\Paths;
 
 final readonly class Violation
@@ -16,7 +17,16 @@ final readonly class Violation
         public ?string $sourceModule = null,
         public ?string $targetModule = null,
         public ?string $target = null,
+        public Severity $severity = Severity::Error,
     ) {}
+
+    /**
+     * The same violation with another severity; the rule's configured severity is applied after it runs.
+     */
+    public function withSeverity(Severity $severity): self
+    {
+        return new self($this->rule, $this->message, $this->file, $this->line, $this->sourceModule, $this->targetModule, $this->target, $severity);
+    }
 
     /**
      * Identity used by the baseline. Line numbers are left out on purpose so
@@ -28,12 +38,13 @@ final readonly class Violation
     }
 
     /**
-     * @return array{rule: string, message: string, file: string|null, line: int|null, source_module: string|null, target_module: string|null, target: string|null}
+     * @return array{rule: string, severity: string, message: string, file: string|null, line: int|null, source_module: string|null, target_module: string|null, target: string|null}
      */
     public function toArray(?string $basePath = null): array
     {
         return [
             'rule' => $this->rule,
+            'severity' => $this->severity->value,
             'message' => $this->message,
             'file' => Paths::relative($basePath, $this->file),
             'line' => $this->line,

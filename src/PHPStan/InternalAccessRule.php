@@ -17,8 +17,10 @@ use Cordon\Laravel\StandaloneConfig;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\InternalAccessRule as CordonInternalAccessRule;
+use Cordon\Rules\Severity;
 use Cordon\Support\ConfigValidator;
 use Cordon\Support\Paths;
+use InvalidArgumentException;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PHPStan\Analyser\DependencyTracker;
@@ -156,7 +158,13 @@ final class InternalAccessRule implements Rule
             array_push($this->pendingWarnings, ...ConfigValidator::errors((array) $config->get('cordon', []), $resolved));
             $this->policy = new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', [])));
             $this->exclude = self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']));
-            $this->enabled = $config->get('cordon.rules.'.CordonInternalAccessRule::ID, true) !== false;
+            // PHPStan has no warnings, so only error reports. An invalid value is
+            // already reported as a configuration error; the rule then stays on.
+            try {
+                $this->enabled = Severity::fromConfig(CordonInternalAccessRule::ID, $config->get('cordon.rules.'.CordonInternalAccessRule::ID, true)) === Severity::Error;
+            } catch (InvalidArgumentException) {
+                $this->enabled = true;
+            }
             $this->baseline = $this->loadBaseline($config->get('cordon.baseline', 'cordon-baseline.json'));
             $this->trackedFiles = [
                 $this->baselinePath($config->get('cordon.baseline', 'cordon-baseline.json')),

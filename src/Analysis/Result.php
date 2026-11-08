@@ -12,6 +12,7 @@ final readonly class Result
     /**
      * @param  list<Violation>  $violations
      * @param  array<string, string>  $parseErrors  file => message
+     * @param  list<Violation>  $warnings  Violations of rules set to warn: reported, never failing.
      */
     public function __construct(
         public ModuleMap $modules,
@@ -21,6 +22,7 @@ final readonly class Result
         public array $parseErrors = [],
         public int $suppressed = 0,
         public ?string $basePath = null,
+        public array $warnings = [],
     ) {}
 
     public function hasViolations(): bool
@@ -40,6 +42,7 @@ final readonly class Result
             $this->parseErrors,
             $this->suppressed + $suppressed,
             $this->basePath,
+            $this->warnings,
         );
     }
 }

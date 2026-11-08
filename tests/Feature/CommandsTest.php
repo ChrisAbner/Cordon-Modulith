@@ -67,6 +67,42 @@ it('lists the modules even when the config has errors, and shows the errors', fu
         ->assertExitCode(0);
 });
 
+it('passes with warnings only and shows them in every format', function () {
+    config()->set('cordon.rules', ['internal_access' => 'warn', 'undeclared_dependency' => 'warn', 'cycles' => 'warn']);
+
+    expect(Artisan::call('cordon:verify'))->toBe(0)
+        ->and(Artisan::output())->toContain('! [cycles]', '(warn)', 'No boundary violations. (4 warnings)');
+
+    expect(Artisan::call('cordon:verify', ['--format' => 'json']))->toBe(0);
+    $report = json_decode(Artisan::output(), true);
+
+    expect($report['violations'])->toBe([])
+        ->and($report['summary']['warnings'])->toBe(4)
+        ->and(array_unique(array_column($report['warnings'], 'severity')))->toBe(['warn']);
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain('::warning file=')
+        ->assertExitCode(0);
+});
+
+it('leaves warnings out of a generated baseline', function () {
+    config()->set('cordon.rules', ['cycles' => 'warn']);
+
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+
+    $rules = array_column(json_decode((string) file_get_contents((string) config('cordon.baseline')), true)['violations'], 'rule');
+
+    expect($rules)->not->toBe([])->not->toContain('cycles');
+});
+
+it('reports an invalid rule value as a config error', function () {
+    config()->set('cordon.rules', ['cycles' => 'warning']);
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('Rule [cycles] has an invalid value [warning].')
+        ->assertExitCode(2);
+});
+
 it('lists the detected modules', function () {
     $this->artisan('cordon:modules')
         ->expectsOutputToContain('Billing')

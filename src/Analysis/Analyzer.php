@@ -7,6 +7,7 @@ namespace Cordon\Analysis;
 use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\Rule;
 use Cordon\Module\ModuleMap;
+use Cordon\Rules\Severity;
 
 /**
  * Pipeline: collect files -> extract declarations/references -> build cross-module edges -> run rules.
@@ -15,12 +16,14 @@ final readonly class Analyzer
 {
     /**
      * @param  list<Rule>  $rules
+     * @param  array<string, Severity>  $severities  By rule id; a rule missing here reports errors.
      */
     public function __construct(
         private DependencyExtractor $extractor,
         private FileCollector $files,
         private PublicApiPolicy $policy,
         private array $rules,
+        private array $severities = [],
     ) {}
 
     public function analyze(ModuleMap $modules, ?string $basePath = null): Result
@@ -34,10 +37,17 @@ final readonly class Analyzer
     public function check(Snapshot $snapshot, ?string $basePath = null): Result
     {
         $violations = [];
+        $warnings = [];
 
         foreach ($this->rules as $rule) {
+            $severity = $this->severities[$rule->id()] ?? Severity::Error;
+
             foreach ($rule->check($snapshot->context) as $violation) {
-                $violations[] = $violation;
+                if ($severity === Severity::Warn) {
+                    $warnings[] = $violation->withSeverity(Severity::Warn);
+                } else {
+                    $violations[] = $violation;
+                }
             }
         }
 
@@ -49,6 +59,7 @@ final readonly class Analyzer
             $snapshot->parseErrors,
             0,
             $basePath,
+            $warnings,
         );
     }
 
