@@ -103,6 +103,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Event listeners
+    |--------------------------------------------------------------------------
+    |
+    | A listener's reference to another module's event (handle(OrderPlaced $e)
+    | with the event under an Events namespace, or Event::listen) counts as a
+    | dependency for depends_on, but does not close a dependency cycle: the
+    | module that publishes an event does not depend on who listens to it.
+    |
+    */
+
+    'listeners' => [
+        'cycles' => false,
+        'depends_on' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Excluded directories and baseline
     |--------------------------------------------------------------------------
     |

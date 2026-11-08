@@ -15,6 +15,11 @@ final class CycleRule implements Rule
 {
     public const ID = 'cycles';
 
+    /**
+     * @param  bool  $countListeners  Whether listening to another module's event can close a cycle.
+     */
+    public function __construct(private readonly bool $countListeners = false) {}
+
     public function id(): string
     {
         return self::ID;
@@ -89,6 +94,12 @@ final class CycleRule implements Rule
         }
 
         foreach ($context->edges as $edge) {
+            // Two modules that talk through events are decoupled: the listener
+            // depends on the publisher, but the publisher does not know it.
+            if ($edge->isListener() && ! $this->countListeners) {
+                continue;
+            }
+
             $targets[$edge->from->name][$edge->to->name] = true;
         }
 

@@ -22,14 +22,15 @@ final class RuleSet
      *
      * @param  array<array-key, mixed>  $config  e.g. ['cycles' => 'warn', MyRule::class]
      * @param  (Closure(class-string<Rule>): Rule)|null  $make  Builds custom rules (the Laravel container in the service provider).
+     * @param  array<array-key, mixed>  $listeners  The `listeners` config: whether listener edges count for cycles and depends_on.
      * @return list<Rule>
      */
-    public static function fromConfig(array $config = [], ?Closure $make = null): array
+    public static function fromConfig(array $config = [], ?Closure $make = null, array $listeners = []): array
     {
         $available = [
             InternalAccessRule::ID => static fn (): Rule => new InternalAccessRule,
-            UndeclaredDependencyRule::ID => static fn (): Rule => new UndeclaredDependencyRule,
-            CycleRule::ID => static fn (): Rule => new CycleRule,
+            UndeclaredDependencyRule::ID => static fn (): Rule => new UndeclaredDependencyRule(($listeners['depends_on'] ?? true) === true),
+            CycleRule::ID => static fn (): Rule => new CycleRule(($listeners['cycles'] ?? false) === true),
         ];
 
         $rules = [];

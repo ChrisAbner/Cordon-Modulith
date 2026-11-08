@@ -36,7 +36,11 @@ Directories named `tests` or `Tests` are skipped by default (tests often reach i
 
 ## Does listening to another module's event count as a dependency?
 
-Yes: your listener references the event class. Events are public API, so it is not an `internal_access`, but it counts for `depends_on` and cycles.
+For `depends_on`, yes: your listener references the event class, so the module depends on the one that publishes it. Events are public API, so it is not an `internal_access`.
+
+For cycles, no (since 0.4): a module that publishes an event does not know who listens, so listening never closes a dependency cycle. Two modules that call each other through a contract and an event are not reported. Set `listeners.cycles` to `true` in `config/cordon.php` to count listeners for cycles too, or `listeners.depends_on` to `false` to leave them out of `depends_on`.
+
+A reference is a listener's when it is the type of the first parameter of `handle()` or `__invoke()` and the class sits under an `Events` namespace, or when it is the event of `Event::listen(Event::class, ...)`. A job's `handle(SomeService $service)` is dependency injection, not a listener, and still counts everywhere.
 
 ## Can I use it without Laravel?
 

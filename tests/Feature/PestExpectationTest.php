@@ -19,10 +19,12 @@ it('passes for a module without violations', function () {
 
 it('fails with every violation of the module', function () {
     expect(fn () => expect('Billing')->toRespectBoundaries())
-        ->toThrow(AssertionFailedError::class, 'Module [Billing] does not respect its boundaries (4 violations)');
+        ->toThrow(AssertionFailedError::class, 'Module [Billing] does not respect its boundaries (2 violations)');
 });
 
 it('includes the dependency cycles the module takes part in', function () {
+    config()->set('cordon.listeners', ['cycles' => true]);
+
     expect(fn () => expect('Catalog')->toRespectBoundaries())
         ->toThrow(AssertionFailedError::class, '[cycles]');
 });

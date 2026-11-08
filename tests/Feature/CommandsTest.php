@@ -14,8 +14,9 @@ it('fails when there are boundary violations', function () {
 });
 
 it('prints a machine readable report', function () {
+    // Billing <-> Catalog closes only through Catalog's listener of InvoicePaid, which is not a cycle by default.
     $this->artisan('cordon:verify', ['--format' => 'json'])
-        ->expectsOutputToContain('"violations": 4')
+        ->expectsOutputToContain('"violations": 2')
         ->assertExitCode(1);
 });
 
@@ -71,13 +72,13 @@ it('passes with warnings only and shows them in every format', function () {
     config()->set('cordon.rules', ['internal_access' => 'warn', 'undeclared_dependency' => 'warn', 'cycles' => 'warn']);
 
     expect(Artisan::call('cordon:verify'))->toBe(0)
-        ->and(Artisan::output())->toContain('! [cycles]', '(warn)', 'No boundary violations. (4 warnings)');
+        ->and(Artisan::output())->toContain('! [internal_access]', '(warn)', 'No boundary violations. (2 warnings)');
 
     expect(Artisan::call('cordon:verify', ['--format' => 'json']))->toBe(0);
     $report = json_decode(Artisan::output(), true);
 
     expect($report['violations'])->toBe([])
-        ->and($report['summary']['warnings'])->toBe(4)
+        ->and($report['summary']['warnings'])->toBe(2)
         ->and(array_unique(array_column($report['warnings'], 'severity')))->toBe(['warn']);
 
     $this->artisan('cordon:verify', ['--format' => 'github'])
@@ -115,11 +116,13 @@ it('limits the report to one module with --module', function () {
         ->assertExitCode(0);
 
     $this->artisan('cordon:verify', ['--module' => ['Billing'], '--format' => 'json'])
-        ->expectsOutputToContain('"violations": 4')
+        ->expectsOutputToContain('"violations": 2')
         ->assertExitCode(1);
 });
 
 it('keeps the dependency cycles a module takes part in', function () {
+    config()->set('cordon.listeners', ['cycles' => true]);
+
     $exitCode = Artisan::call('cordon:verify', ['--module' => ['Catalog'], '--format' => 'json']);
     $report = json_decode(Artisan::output(), true);
 

@@ -20,6 +20,8 @@ final class ReferenceCollector extends NodeVisitorAbstract
 {
     private const SKIP = 'cordon.skip';
 
+    private const KIND = 'cordon.kind';
+
     /** @var list<ClassDeclaration> */
     private array $declarations = [];
 
@@ -47,6 +49,30 @@ final class ReferenceCollector extends NodeVisitorAbstract
             return null;
         }
 
+        // A listener's event is marked before its name is visited: such an edge
+        // does not close a dependency cycle (see Reference::LISTENER).
+        if ($node instanceof Node\Stmt\ClassMethod && $this->currentClass() !== null) {
+            foreach (ListenerSignature::eventTypes($node) as $name) {
+                // handle() also receives injected services (jobs, commands): only
+                // a class under an Events namespace counts as the handled event.
+                if (in_array('Events', array_slice(explode('\\', $name->toString()), 0, -1), true)) {
+                    $name->setAttribute(self::KIND, Reference::LISTENER);
+                }
+            }
+        }
+
+        if ($node instanceof Node\Expr\StaticCall) {
+            foreach (ListenerSignature::listenedClassFetches($node) as $fetch) {
+                $fetch->setAttribute(self::KIND, Reference::LISTENER);
+            }
+        }
+
+        // The NameResolver replaces the class of X::class on entering it, so the
+        // mark moves from the expression to its (now resolved) name here.
+        if ($node instanceof Node\Expr\ClassConstFetch && $node->getAttribute(self::KIND) === Reference::LISTENER) {
+            $node->class->setAttribute(self::KIND, Reference::LISTENER);
+        }
+
         // Function and constant names are not class dependencies.
         if (($node instanceof Node\Expr\FuncCall || $node instanceof Node\Expr\ConstFetch) && $node->name instanceof Node\Name) {
             $node->name->setAttribute(self::SKIP, true);
@@ -55,7 +81,8 @@ final class ReferenceCollector extends NodeVisitorAbstract
         }
 
         if ($node instanceof Node\Name\FullyQualified && $node->getAttribute(self::SKIP) !== true) {
-            $this->references[] = new Reference($this->file, $this->currentClass(), $node->toString(), $node->getStartLine());
+            $kind = $node->getAttribute(self::KIND) === Reference::LISTENER ? Reference::LISTENER : Reference::USE;
+            $this->references[] = new Reference($this->file, $this->currentClass(), $node->toString(), $node->getStartLine(), $kind);
         }
 
         return null;

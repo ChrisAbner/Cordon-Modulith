@@ -76,7 +76,9 @@ x [cycles]
 
 Reporting per dependency keeps the [baseline](./baseline) honest: a module that joins a recorded cycle, or a new dependency inside it, is reported as new, and removing one dependency does not bring back the others.
 
-Every cross-module reference is an edge, including references to public classes such as events. Two modules that listen to each other's events still form a cycle. Break it by moving one direction: publish from one side only, or introduce a shared or orchestrating module that both depend on.
+Every cross-module reference is an edge, including references to public classes such as events, with one exception: listening to another module's event does not close a cycle, because the module that publishes the event does not depend on its listeners. Two modules where one calls the other through a contract and the other listens to its events are not a cycle. Set `listeners.cycles` to `true` to count listeners too (see the [FAQ](../faq#does-listening-to-another-module-s-event-count-as-a-dependency)). Listening still counts for `depends_on` unless `listeners.depends_on` is `false`.
+
+A cycle made of real calls is broken by moving one direction: publish an event from one side, or introduce a shared or orchestrating module that both depend on.
 
 ## What counts as a dependency
 

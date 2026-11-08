@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Documentation;
 
+use Cordon\Analysis\ListenerSignature;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Expr;
@@ -73,10 +74,8 @@ final class EventCollector extends NodeVisitorAbstract
             return;
         }
 
-        $type = $node->params[0]->type ?? null;
-
-        foreach ($this->classNames($type) as $name) {
-            $this->add(EventUsage::LISTEN, $name, $node->getStartLine(), false);
+        foreach (ListenerSignature::eventTypes($node) as $name) {
+            $this->add(EventUsage::LISTEN, $name->toString(), $node->getStartLine(), false);
         }
     }
 
@@ -108,8 +107,10 @@ final class EventCollector extends NodeVisitorAbstract
                 $this->dispatchedInstance($node->args[0] ?? null, $node->getStartLine());
             }
 
-            if ($method === 'listen') {
-                $this->listenedClasses($node->args[0] ?? null, $node->getStartLine());
+            foreach (ListenerSignature::listenedClassFetches($node) as $fetch) {
+                if ($fetch->class instanceof Name\FullyQualified) {
+                    $this->add(EventUsage::LISTEN, $fetch->class->toString(), $node->getStartLine(), true);
+                }
             }
 
             return;
@@ -125,42 +126,6 @@ final class EventCollector extends NodeVisitorAbstract
         if ($argument instanceof Arg && $argument->value instanceof Expr\New_ && $argument->value->class instanceof Name\FullyQualified) {
             $this->add(EventUsage::DISPATCH, $argument->value->class->toString(), $line, true);
         }
-    }
-
-    private function listenedClasses(?Node $argument, int $line): void
-    {
-        if (! $argument instanceof Arg) {
-            return;
-        }
-
-        $values = $argument->value instanceof Expr\Array_
-            ? array_map(static fn (Node\ArrayItem $item): Expr => $item->value, $argument->value->items)
-            : [$argument->value];
-
-        foreach ($values as $value) {
-            if ($value instanceof Expr\ClassConstFetch
-                && $value->class instanceof Name\FullyQualified
-                && $value->name instanceof Node\Identifier
-                && $value->name->toLowerString() === 'class') {
-                $this->add(EventUsage::LISTEN, $value->class->toString(), $line, true);
-            }
-        }
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function classNames(?Node $type): array
-    {
-        return match (true) {
-            $type instanceof Name\FullyQualified => [$type->toString()],
-            $type instanceof Node\NullableType => $this->classNames($type->type),
-            $type instanceof Node\UnionType, $type instanceof Node\IntersectionType => array_merge(...array_map(
-                fn (Node $inner): array => $this->classNames($inner),
-                $type->types,
-            )),
-            default => [],
-        };
     }
 
     /**

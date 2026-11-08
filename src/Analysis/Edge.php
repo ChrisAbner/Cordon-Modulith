@@ -16,4 +16,12 @@ final readonly class Edge
         public Module $to,
         public Reference $reference,
     ) {}
+
+    /**
+     * The source module listens to an event of the target module, rather than using it.
+     */
+    public function isListener(): bool
+    {
+        return $this->reference->kind === Reference::LISTENER;
+    }
 }

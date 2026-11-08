@@ -37,3 +37,48 @@ it('returns a parse error instead of throwing', function () {
     expect($analysis->error)->not->toBeNull()
         ->and($analysis->references)->toBeEmpty();
 });
+
+/**
+ * Kind of each reference from $file in tests/Fixtures/listeners-app to a module class, by target.
+ *
+ * @return array<string, string>
+ */
+function listener_app_kinds(string $file): array
+{
+    $analysis = (new PhpParserExtractor)->extract(fixture_path('listeners-app/app/Modules/'.$file));
+    $kinds = [];
+
+    foreach ($analysis->references as $reference) {
+        if (str_starts_with($reference->target, 'App\\Modules\\')) {
+            $kinds[$reference->target] = $reference->kind;
+        }
+    }
+
+    return $kinds;
+}
+
+it('marks the event type of a listener as a listener reference', function () {
+    expect(listener_app_kinds('Billing/Listeners/ChargeOrder.php'))->toBe([
+        'App\\Modules\\Orders\\Events\\OrderPlaced' => Reference::LISTENER,
+    ]);
+});
+
+it('marks the events registered with Event::listen as listener references', function () {
+    expect(listener_app_kinds('Billing/Providers/BillingServiceProvider.php'))->toBe([
+        'App\\Modules\\Orders\\Events\\OrderPlaced' => Reference::LISTENER,
+        'App\\Modules\\Billing\\Listeners\\ChargeOrder' => Reference::USE,
+    ]);
+});
+
+it('does not mistake a service injected into handle() for an event', function () {
+    expect(listener_app_kinds('Billing/Jobs/SyncLedger.php'))->toBe([
+        'App\\Modules\\Orders\\Services\\Ledger' => Reference::USE,
+    ]);
+});
+
+it('marks every other reference as a use', function () {
+    expect(listener_app_kinds('Orders/Actions/PlaceOrder.php'))->toBe([
+        'App\\Modules\\Billing\\Contracts\\Invoices' => Reference::USE,
+        'App\\Modules\\Orders\\Events\\OrderPlaced' => Reference::USE,
+    ]);
+});

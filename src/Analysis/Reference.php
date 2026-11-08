@@ -9,10 +9,20 @@ namespace Cordon\Analysis;
  */
 final readonly class Reference
 {
+    /** Any reference that is not a listener's event. */
+    public const USE = 'use';
+
+    /** The event a listener handles: handle(Event $e) or Event::listen(Event::class, ...). */
+    public const LISTENER = 'listener';
+
+    /**
+     * @param  self::USE|self::LISTENER  $kind
+     */
     public function __construct(
         public string $sourceFile,
         public ?string $sourceClass,
         public string $target,
         public int $line,
+        public string $kind = self::USE,
     ) {}
 }

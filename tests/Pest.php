@@ -22,14 +22,15 @@ function fixture_path(string $path = ''): string
  *
  * @param  array<string, mixed>  $moduleConfig
  * @param  array<array-key, mixed>  $rules
+ * @param  array<string, bool>  $listeners
  */
-function analyse_namespace_app(array $moduleConfig = ['Shared' => ['open' => true]], array $rules = []): Result
+function analyse_namespace_app(array $moduleConfig = ['Shared' => ['open' => true]], array $rules = [], array $listeners = []): Result
 {
     $modules = (new NamespaceResolver(fixture_path('namespace-app/app/Modules'), 'App\\Modules'))
         ->resolve()
         ->configure($moduleConfig);
 
-    $built = RuleSet::fromConfig($rules);
+    $built = RuleSet::fromConfig($rules, null, $listeners);
 
     $analyzer = new Analyzer(
         new PhpParserExtractor,

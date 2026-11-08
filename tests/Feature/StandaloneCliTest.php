@@ -48,7 +48,7 @@ it('verifies a project without artisan, .env or APP_KEY', function () {
     $run = run_cordon(['verify', '--format=json'], $project);
 
     expect($run['code'])->toBe(1)
-        ->and(json_decode($run['out'], true)['summary']['violations'] ?? null)->toBe(4);
+        ->and(json_decode($run['out'], true)['summary']['violations'] ?? null)->toBe(2);
 });
 
 it('reads the project config, like cordon:verify', function () {
@@ -58,7 +58,7 @@ it('reads the project config, like cordon:verify', function () {
 
     $run = run_cordon(['verify', '--format=json'], $project);
 
-    expect(json_decode($run['out'], true)['summary']['violations'] ?? 0)->toBeGreaterThan(4);
+    expect(json_decode($run['out'], true)['summary']['violations'] ?? 0)->toBeGreaterThan(2);
 });
 
 it('prints GitHub annotations', function () {

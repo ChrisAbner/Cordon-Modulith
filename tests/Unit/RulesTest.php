@@ -12,6 +12,8 @@ use Cordon\Baseline\Baseline;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\CycleRule;
+use Cordon\Rules\RuleSet;
+use Cordon\Rules\UndeclaredDependencyRule;
 
 /**
  * @param  list<array{0: string, 1: string}>  $dependencies
@@ -89,4 +91,52 @@ it('applies the public API precedence rules', function () {
         ->and($policy->isPublic('App\\Billing\\Services\\Checkout', $custom))->toBeTrue()
         ->and($policy->isPublic('App\\Billing\\Services\\Checkout\\Step', $custom))->toBeTrue()
         ->and($policy->isPublic('App\\Billing\\Services\\Refunds', $custom))->toBeFalse();
+});
+
+/**
+ * @param  list<array{0: string, 1: string, 2: string}>  $dependencies  [from, to, kind]
+ * @param  array<string, array<string, mixed>>  $config  Per-module settings.
+ */
+function typed_context(array $dependencies, array $config = []): AnalysisContext
+{
+    $modules = [];
+
+    foreach (['A', 'B'] as $name) {
+        $modules[$name] = Module::make($name, $name, '/p/'.$name)->withConfig($config[$name] ?? []);
+    }
+
+    $edges = array_map(
+        fn (array $dependency) => new Edge($modules[$dependency[0]], $modules[$dependency[1]], new Reference('/p/'.$dependency[0].'/X.php', null, $dependency[1].'\\Events\\Y', 1, $dependency[2])),
+        $dependencies,
+    );
+
+    return new AnalysisContext(new ModuleMap(array_values($modules)), SymbolTable::fromAnalyses([]), new PublicApiPolicy, $edges);
+}
+
+it('does not close a cycle through a listener unless configured to', function () {
+    $context = typed_context([['A', 'B', Reference::USE], ['B', 'A', Reference::LISTENER]]);
+
+    expect(iterator_to_array((new CycleRule)->check($context), false))->toBe([])
+        ->and(iterator_to_array((new CycleRule(countListeners: true))->check($context), false))->toHaveCount(2);
+});
+
+it('still reports a cycle closed by a use, such as a job that injects a service', function () {
+    $context = typed_context([['A', 'B', Reference::USE], ['B', 'A', Reference::LISTENER], ['B', 'A', Reference::USE]]);
+
+    expect(iterator_to_array((new CycleRule)->check($context), false))->toHaveCount(2);
+});
+
+it('counts a listener as a dependency for depends_on unless configured not to', function () {
+    $context = typed_context([['B', 'A', Reference::LISTENER]], ['B' => ['depends_on' => []]]);
+
+    expect(iterator_to_array((new UndeclaredDependencyRule)->check($context), false))->toHaveCount(1)
+        ->and(iterator_to_array((new UndeclaredDependencyRule(countListeners: false))->check($context), false))->toBe([]);
+});
+
+it('reads the listeners config when building the rules', function () {
+    $rules = RuleSet::fromConfig([], null, ['cycles' => true, 'depends_on' => false]);
+    $context = typed_context([['A', 'B', Reference::USE], ['B', 'A', Reference::LISTENER]], ['B' => ['depends_on' => []]]);
+    $violations = array_merge(...array_map(fn ($rule) => iterator_to_array($rule->check($context), false), $rules));
+
+    expect(array_map(fn (Violation $violation) => $violation->rule, $violations))->toBe(['cycles', 'cycles']);
 });
