@@ -1,6 +1,14 @@
 # PHPStan
 
-Cordon Modulith ships a PHPStan rule that reports `internal_access`, so you see violations in your editor while you type.
+Cordon Modulith ships PHPStan rules for its three rules, so `vendor/bin/phpstan` and your editor report what `cordon:verify` reports:
+
+| Rule | PHPStan identifier | Where it runs |
+|---|---|---|
+| `internal_access` | `cordon.internalAccess` | Every analysed file, including in the editor |
+| `undeclared_dependency` | `cordon.undeclaredDependency` | Every analysed file, including in the editor |
+| `cycles` | `cordon.cycle` | A full analysis only (it needs every module) |
+
+Each error ends with a link to the rule's documentation.
 
 A fresh Laravel app doesn't ship PHPStan, so install it first (Larastan already brings it):
 
@@ -66,8 +74,21 @@ parameters:
 
 With parallel workers the error may appear once per worker.
 
+## Cycles
+
+A cycle is a property of the whole graph, so a collector gathers the modules each analysed file uses and one rule looks at all of them at the end, with the same algorithm as `cordon:verify`. Each dependency of a cycle is reported at its first reference (the lowest file and line), so its location stays put while the code around it changes.
+
+- When PHPStan analyses only some files (an editor, `phpstan analyse src/Billing`, a pre-commit hook), there is no whole graph and cycles are not reported.
+- When some modules are outside PHPStan's `paths`, Cordon says so once (`cordon.incompleteGraph`) instead of guessing. Add their directories to `paths`.
+- If PHPStan stops on an internal error in any file, it skips rules on collected data, cycles included, for that run.
+- If you also run `cordon:verify` in CI, the cycles appear in both. That is expected.
+
+## In the editor
+
+Editors run PHPStan on the buffer you are editing as a temporary file standing in for the real one (`--tmp-file` with `--instead-of`, since PHPStan 2.1.17). Cordon finds the module from the class the file declares, checks excluded directories against its namespace, and applies the baseline with the real path, so the editor shows the same `internal_access` and `undeclared_dependency` findings as the command line.
+
 ## Limits
 
-- Only `internal_access` is reported: `undeclared_dependency` and `cycles` need the whole graph, so they stay in `cordon:verify`.
-- PHPStan has no warnings, so the rule reports only while `internal_access` is set to `error` in `config/cordon.php`. With `warn` or `off` it reports nothing; `cordon:verify` still shows the warnings.
-- `cordon-baseline.json` is applied, so the editor shows the same `internal_access` findings as `cordon:verify`; there is no need to copy them into PHPStan's baseline. A baseline file that cannot be read is reported once (identifier `cordon.configuration`) and not applied. To silence other paths, ignore the identifier `cordon.internalAccess`.
+- PHPStan has no warnings, so each rule reports only while it is set to `error` in `config/cordon.php`. With `warn` or `off` it reports nothing; `cordon:verify` still shows the warnings.
+- `cordon-baseline.json` is applied, so PHPStan shows the same findings as `cordon:verify`; there is no need to copy them into PHPStan's baseline. A baseline file that cannot be read is reported once (identifier `cordon.configuration`) and not applied. To silence other paths, ignore the rule's identifier.
+- `listeners` in `config/cordon.php` applies too: listeners count for `undeclared_dependency` and not for cycles, by default.

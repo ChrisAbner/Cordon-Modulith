@@ -77,6 +77,10 @@ Teams that own modules can check only theirs:
 
 `--module` reports the violations a module causes and the dependency cycles it takes part in. The analysis still covers the whole application.
 
+## Checking some paths only
+
+`cordon:verify` takes files and directories: `vendor/bin/cordon verify app/Modules/Billing`. The whole project is still analysed, so cycles and the baseline work as usual, but only the violations of those paths are reported, plus the cycles their modules take part in. Relative paths are read from the project root. See [check boundaries before each commit](../recipes/pre-commit).
+
 ## Keeping the baseline small
 
 `--fail-on-stale` makes a baseline entry that no longer matches the code fail the build, so fixed violations are removed from the baseline in the same pull request (`--prune-baseline`). See [shrinking the baseline](./baseline#shrinking-the-baseline).

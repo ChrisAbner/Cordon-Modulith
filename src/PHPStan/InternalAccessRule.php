@@ -99,7 +99,7 @@ final class InternalAccessRule implements Rule
             ))
                 ->identifier('cordon.internalAccess')
                 ->line((int) $violation->line)
-                ->tip('Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi].')
+                ->tip('Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi]. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#internal-access')
                 ->build();
         }
 

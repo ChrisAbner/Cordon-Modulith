@@ -22,7 +22,7 @@ final class InternalAccessRuleTest extends RuleTestCase
 {
     private const APP = __DIR__.'/../Fixtures/namespace-app';
 
-    private const TIP = 'Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi].';
+    private const TIP = 'Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi]. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#internal-access';
 
     private string $app = self::APP;
 

@@ -20,6 +20,10 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - A per-module `metadata` key (free-form, not read yet) and the reserved `Module::Interface` syntax in `depends_on`, for named interfaces later.
 - Every class in `src/` is marked `@api` or `@internal`; see [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility).
 
+- PHPStan reports all three rules: `undeclared_dependency` (`cordon.undeclaredDependency`) per file, and `cycles` (`cordon.cycle`) with collectors on a full analysis, at the first reference of each dependency. `cordon.incompleteGraph` says when some modules were not analysed. Each error links to the rule's documentation.
+- `cordon:verify <paths>`: report only the violations of some files or directories, plus the cycles their modules take part in, for pre-commit hooks (see the new recipe).
+- A `parser-floor` CI job checks that the lowest `nikic/php-parser` allowed analyses modern PHP.
+
 ### Changed
 - `nikic/php-parser` 5.3 or later is required. Older 5.x versions skipped files with PHP 8.4 property hooks as parse errors (5.0, 5.1) or lost the types of hook parameters (5.2).
 - The PHPStan rule reports only while `internal_access` is set to `error`.
@@ -27,6 +31,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 
 ### Fixed
 - `cordon:verify` resolved the modules twice and read the baseline once per use (#20).
+- The PHPStan rule reported nothing for the file being edited in editor mode (`--tmp-file`): its temporary path matched no module.
 
 ## [0.3.1] - 2026-11-05
 
