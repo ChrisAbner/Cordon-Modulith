@@ -117,6 +117,50 @@ it('reports an invalid rule value as a config error', function () {
         ->assertExitCode(2);
 });
 
+it('limits the report to the given paths, for pre-commit hooks', function () {
+    $file = fixture_path('namespace-app/app/Modules/Billing/Services/CheckoutService.php');
+
+    expect(Artisan::call('cordon:verify', ['paths' => [$file], '--format' => 'json']))->toBe(1);
+    $report = json_decode(Artisan::output(), true);
+
+    expect(array_column($report['violations'], 'target'))->toBe(['App\\Modules\\Catalog\\Models\\Product']);
+
+    expect(Artisan::call('cordon:verify', ['paths' => [fixture_path('namespace-app/app/Modules/Shared')]]))->toBe(0);
+});
+
+it('keeps the cycles of a module that has one of the given paths', function () {
+    config()->set('cordon.listeners', ['cycles' => true]);
+
+    expect(Artisan::call('cordon:verify', ['paths' => [fixture_path('namespace-app/app/Modules/Catalog/Listeners')], '--format' => 'json']))->toBe(1)
+        ->and(array_column(json_decode(Artisan::output(), true)['violations'], 'target'))->toBe(['Billing -> Catalog', 'Catalog -> Billing']);
+
+    expect(Artisan::call('cordon:verify', ['paths' => [fixture_path('namespace-app/app/Modules/Shared')]]))->toBe(0);
+});
+
+it('combines paths with --module', function () {
+    $file = fixture_path('namespace-app/app/Modules/Billing/Services/CheckoutService.php');
+
+    expect(Artisan::call('cordon:verify', ['paths' => [$file], '--module' => ['Shared']]))->toBe(0);
+});
+
+it('rejects a path that does not exist', function () {
+    $this->artisan('cordon:verify', ['paths' => ['app/Modules/Nowhere.php']])
+        ->expectsOutputToContain('Path [app/Modules/Nowhere.php] does not exist.')
+        ->assertExitCode(2);
+});
+
+it('does not write the baseline for some paths only', function () {
+    $this->artisan('cordon:verify', ['paths' => [fixture_path('namespace-app/app/Modules/Shared')], '--generate-baseline' => true])
+        ->expectsOutputToContain('Paths cannot be combined with --generate-baseline or --prune-baseline')
+        ->assertExitCode(2);
+});
+
+it('checks the whole baseline for stale entries when given paths', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+
+    expect(Artisan::call('cordon:verify', ['paths' => [fixture_path('namespace-app/app/Modules/Shared')], '--fail-on-stale' => true]))->toBe(0);
+});
+
 it('lists the detected modules', function () {
     $this->artisan('cordon:modules')
         ->expectsOutputToContain('Billing')

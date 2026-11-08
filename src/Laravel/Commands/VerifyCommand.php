@@ -24,6 +24,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class VerifyCommand extends Command
 {
     protected $signature = 'cordon:verify
+        {paths?* : Only report the violations of these files or directories; the whole project is still analysed}
         {--format=text : Output format: text, json or github}
         {--module=* : Only report the violations of this module (repeatable)}
         {--fail-on-parse-error : Fail when a file cannot be parsed, since its references are not checked}
@@ -100,6 +101,26 @@ final class VerifyCommand extends Command
 
         if ($only !== [] && $this->option('generate-baseline')) {
             $this->error('The --module option cannot be combined with --generate-baseline: the baseline must cover every module.');
+
+            return self::INVALID;
+        }
+
+        $paths = [];
+
+        foreach (array_map('strval', (array) $this->argument('paths')) as $path) {
+            $absolute = realpath(Paths::join($verifier->basePath(), $path));
+
+            if ($absolute === false) {
+                $this->error(sprintf('Path [%s] does not exist.', $path));
+
+                return self::INVALID;
+            }
+
+            $paths[] = $absolute;
+        }
+
+        if ($paths !== [] && ($this->option('generate-baseline') || $this->option('prune-baseline'))) {
+            $this->error('Paths cannot be combined with --generate-baseline or --prune-baseline: the baseline must cover every module.');
 
             return self::INVALID;
         }
@@ -185,6 +206,10 @@ final class VerifyCommand extends Command
 
         if ($only !== []) {
             $result = ModuleFilter::apply($result, $only);
+        }
+
+        if ($paths !== []) {
+            $result = ModuleFilter::applyPaths($result, $paths);
         }
 
         $this->output->write(

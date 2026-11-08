@@ -54,6 +54,7 @@ export default defineConfig({
                     { text: 'Expose a service to other modules', link: '/recipes/expose-a-service' },
                     { text: 'Break a cycle with an event', link: '/recipes/break-a-cycle' },
                     { text: 'Replace a cross-module Eloquent relation', link: '/recipes/cross-module-relations' },
+                    { text: 'Check boundaries before each commit', link: '/recipes/pre-commit' },
                 ],
             },
             {

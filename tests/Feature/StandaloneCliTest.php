@@ -94,6 +94,13 @@ it('fails on stale baseline entries with --fail-on-stale', function () {
         ->and($run['out'].$run['err'])->toContain('Run vendor/bin/cordon verify --prune-baseline', '[internal_access] app/Modules/Billing/Gone.php');
 });
 
+it('limits the report to the given paths, relative to the project root', function () {
+    $run = run_cordon(['verify', 'app/Modules/Billing/Services/CheckoutService.php', '--format=json'], temp_project('namespace-app'));
+
+    expect($run['code'])->toBe(1)
+        ->and(array_column(json_decode($run['out'], true)['violations'], 'target'))->toBe(['App\\Modules\\Catalog\\Models\\Product']);
+});
+
 it('lists the detected modules', function () {
     $run = run_cordon(['modules'], fixture_path('namespace-app'));
 
