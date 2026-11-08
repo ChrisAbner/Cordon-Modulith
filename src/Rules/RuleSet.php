@@ -14,7 +14,8 @@ use InvalidArgumentException;
  */
 final class RuleSet
 {
-    private const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID];
+    /** The ids of the built-in rules, in the order they run. */
+    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID];
 
     /**
      * Built-in rules that start below error: checks added after 0.3 arrive as

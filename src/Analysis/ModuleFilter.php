@@ -31,6 +31,9 @@ final class ModuleFilter
             $result->basePath,
             array_values(array_filter($result->warnings, $involved)),
             array_values(array_intersect($result->checkedModules ?? $modules, $modules)),
+            $result->ignored,
+            $result->ignoreErrors,
+            $result->ignoreWarnings,
         );
     }
 
@@ -84,6 +87,9 @@ final class ModuleFilter
             $result->basePath,
             array_values(array_filter($result->warnings, $kept)),
             array_values(array_intersect($result->checkedModules ?? $touched, $touched)),
+            $result->ignored,
+            $result->ignoreErrors,
+            $result->ignoreWarnings,
         );
     }
 

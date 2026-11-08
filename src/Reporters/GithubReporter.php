@@ -69,6 +69,10 @@ final class GithubReporter implements Reporter
             $summary .= sprintf(', %d warning(s)', count($result->warnings));
         }
 
+        if ($result->ignored > 0) {
+            $summary .= sprintf(', %d ignored in place', $result->ignored);
+        }
+
         if ($result->parseErrors !== []) {
             $summary .= sprintf(', %d file(s) skipped because they do not parse', count($result->parseErrors));
         }

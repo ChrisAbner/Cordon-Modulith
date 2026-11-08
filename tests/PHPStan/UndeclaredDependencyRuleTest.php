@@ -37,6 +37,16 @@ final class UndeclaredDependencyRuleTest extends RuleTestCase
         $this->analyse([$this->app.self::LISTENER], [[self::MESSAGE, 9, self::TIP]]);
     }
 
+    public function test_it_honours_cordon_ignore_comments(): void
+    {
+        $this->app = $this->copyOfTheApp(['Catalog' => ['depends_on' => []]]);
+        $lines = file($this->app.self::LISTENER, FILE_IGNORE_NEW_LINES) ?: [];
+        $lines[8] .= ' // @cordon-ignore undeclared_dependency (stock follows paid invoices)';
+        file_put_contents($this->app.self::LISTENER, implode("\n", $lines)."\n");
+
+        $this->analyse([$this->app.self::LISTENER], []);
+    }
+
     public function test_it_checks_only_modules_that_declare_depends_on(): void
     {
         $this->app = $this->copyOfTheApp([]);

@@ -20,6 +20,7 @@
                 "violations": { "type": "integer", "minimum": 0, "description": "Violations of rules set to error, after the baseline. Any makes cordon:verify fail." },
                 "warnings": { "type": "integer", "minimum": 0, "description": "Violations of rules set to warn. They never fail." },
                 "suppressed": { "type": "integer", "minimum": 0, "description": "Violations hidden by the baseline." },
+                "ignored": { "type": "integer", "minimum": 0, "description": "Violations accepted in place by a @cordon-ignore comment. Optional: added in 0.4." },
                 "parse_errors": { "type": "integer", "minimum": 0 }
             }
         },

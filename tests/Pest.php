@@ -50,3 +50,32 @@ function violations_for(Result $result, string $rule): array
 {
     return array_values(array_filter($result->violations, fn (Violation $violation) => $violation->rule === $rule));
 }
+
+/**
+ * A copy of a fixture project in a temporary directory, so commands can write to it.
+ */
+function temp_project(?string $fixture = null): string
+{
+    $directory = sys_get_temp_dir().'/cordon-cli-'.getmypid().'-'.bin2hex(random_bytes(4));
+    mkdir($directory);
+
+    if ($fixture !== null) {
+        $source = fixture_path($fixture);
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+
+        foreach ($files as $file) {
+            $target = $directory.substr($file->getPathname(), strlen($source));
+            $file->isDir() ? mkdir($target) : copy($file->getPathname(), $target);
+        }
+    }
+
+    return $directory;
+}
+
+/**
+ * A file of module Billing with a @cordon-ignore that has no reason.
+ */
+function add_unexplained_ignore(string $project): void
+{
+    file_put_contents($project.'/app/Modules/Billing/Unexplained.php', "<?php\n\nnamespace App\\Modules\\Billing;\n\n// @cordon-ignore internal_access\nnew \\App\\Modules\\Catalog\\Models\\Stock;\n");
+}

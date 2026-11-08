@@ -52,6 +52,27 @@ To keep the baseline from going stale, pass `--fail-on-stale` in CI. A stale ent
 
 When a file does not parse, its references are missing and its entries would look stale, so `--fail-on-stale` skips the check and says so. `--fail-on-stale` cannot be combined with `--no-baseline`.
 
+## Debt or decision: `@cordon-ignore`
+
+The baseline records debt: violations you mean to fix, which `--prune-baseline` removes once they are gone. A violation you accept on purpose is a decision, and it belongs next to the code, with the reason:
+
+```php
+public function product(): Product // @cordon-ignore internal_access (the invoice PDF shows the product name)
+{
+    // ...
+}
+
+// @cordon-ignore internal_access, undeclared_dependency (prices are copied into the invoice when it is issued)
+public function price(Price $price): void {}
+```
+
+A comment (`//`, `#` or `/* */`, not a docblock) that starts with `@cordon-ignore` accepts the violations of the rules it names on its own line and on the next line with code: put it on the line Cordon reports. Then:
+
+- The reason in parentheses is required. Without it, or with a rule that does not exist, `cordon:verify` stops with exit code `2`, like a config error, and names the file and line.
+- `cycles` and `unused_dependency` report no line, so they cannot be ignored in place: record them in the baseline.
+- A comment that no longer matches a violation is a warning (`... no longer matches a violation; remove it.`), so stale decisions do not pile up.
+- Accepted violations are counted in the summary (`2 ignored in place`, `summary.ignored` in JSON) and never reach the baseline. The PHPStan rules honour the same comments.
+
 ## Upgrading from a version 1 baseline
 
 Cordon 0.1 recorded one `cycles` entry per group of modules, so a module joining that group stayed hidden. Version 2 records one entry per dependency inside a cycle. A version 1 baseline still works for the other rules, but its `cycles` entries no longer match: `cordon:verify` reports those cycles again and warns about it. Regenerate the baseline once after upgrading (`--prune-baseline` only removes the old entries; it does not record the new ones):

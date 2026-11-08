@@ -18,27 +18,6 @@ function run_cordon(array $arguments, string $cwd): array
     return ['code' => (int) $process->getExitCode(), 'out' => $process->getOutput(), 'err' => $process->getErrorOutput()];
 }
 
-/**
- * A copy of a fixture project in a temporary directory, so commands can write to it.
- */
-function temp_project(?string $fixture = null): string
-{
-    $directory = sys_get_temp_dir().'/cordon-cli-'.getmypid().'-'.bin2hex(random_bytes(4));
-    mkdir($directory);
-
-    if ($fixture !== null) {
-        $source = fixture_path($fixture);
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
-
-        foreach ($files as $file) {
-            $target = $directory.substr($file->getPathname(), strlen($source));
-            $file->isDir() ? mkdir($target) : copy($file->getPathname(), $target);
-        }
-    }
-
-    return $directory;
-}
-
 it('verifies a project without artisan, .env or APP_KEY', function () {
     $project = fixture_path('namespace-app');
 
@@ -171,4 +150,25 @@ it('warns about the code outside the modules, unless host.paths is empty', funct
 
     expect(json_decode(run_cordon(['verify', '--format=json'], $project)['out'], true)['warnings'])->toBe([])
         ->and(run_cordon(['modules'], $project)['out'])->not->toContain('Code outside the modules');
+});
+
+it('reports what @cordon-ignore accepted, and the comments that no longer match', function () {
+    $project = temp_project('ignore-app');
+    $json = run_cordon(['verify', '--format=json'], $project);
+    $text = run_cordon(['verify'], $project);
+
+    expect($json['code'])->toBe(1)
+        ->and(json_decode($json['out'], true)['summary']['ignored'])->toBe(2)
+        ->and($json['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Catalogue.php:9 (internal_access) no longer matches a violation; remove it.')
+        ->and($text['out'])->toContain('2 ignored in place');
+});
+
+it('fails with exit code 2 on a @cordon-ignore without a reason', function () {
+    $project = temp_project('ignore-app');
+    add_unexplained_ignore($project);
+    $run = run_cordon(['verify', '--format=json'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toBe('')
+        ->and($run['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Unexplained.php:5 needs a reason in parentheses');
 });

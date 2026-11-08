@@ -7,7 +7,10 @@ namespace Cordon\PHPStan;
 use Cordon\Analysis\ClassDeclaration;
 use Cordon\Analysis\DeclaredVisibility;
 use Cordon\Analysis\FileCollector;
+use Cordon\Analysis\IgnoreDirective;
+use Cordon\Analysis\IgnoreDirectives;
 use Cordon\Analysis\PublicApiPolicy;
+use Cordon\Analysis\Violation;
 use Cordon\Attributes\Internal;
 use Cordon\Attributes\PublicApi;
 use Cordon\Baseline\Baseline;
@@ -208,6 +211,27 @@ final class CordonContext
                 $scope->trackFileDependency($tracked);
             }
         }
+    }
+
+    /**
+     * Drops the violations a @cordon-ignore comment of $file accepts. $file
+     * is the file PHPStan analyses (in editor mode, the unsaved contents).
+     *
+     * @param  list<Violation>  $violations
+     * @return list<Violation>
+     */
+    public function withoutIgnored(string $file, array $violations): array
+    {
+        $code = @file_get_contents($file);
+        $directives = $code === false ? [] : array_values(array_filter(
+            IgnoreDirectives::parse($code),
+            static fn (IgnoreDirective $directive): bool => $directive->reason !== null,
+        ));
+
+        return array_values(array_filter(
+            $violations,
+            static fn (Violation $violation): bool => IgnoreDirectives::covering($directives, $violation->rule, $violation->line) === null,
+        ));
     }
 
     public function declaration(string $class): ?ClassDeclaration

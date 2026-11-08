@@ -99,7 +99,8 @@ final class InternalAccessRule implements Rule
             $violations[$target] = new Violation(CordonInternalAccessRule::ID, '', $path, $reference->line, $from->name, $to->name, $target);
         }
 
-        [$kept] = $this->context->baseline()->filter(array_values($violations), $this->context->basePath());
+        $kept = $this->context->withoutIgnored($file, array_values($violations));
+        [$kept] = $this->context->baseline()->filter($kept, $this->context->basePath());
 
         foreach ($kept as $violation) {
             $errors[] = RuleErrorBuilder::message(sprintf(

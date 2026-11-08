@@ -70,6 +70,10 @@ final class TextReporter implements Reporter
             $summary .= sprintf(' <comment>(%d suppressed by the baseline)</comment>', $result->suppressed);
         }
 
+        if ($result->ignored > 0) {
+            $summary .= sprintf(' <comment>(%d ignored in place)</comment>', $result->ignored);
+        }
+
         $lines[] = $summary;
 
         return implode(PHP_EOL, $lines).PHP_EOL;

@@ -40,6 +40,15 @@ final class InternalAccessRuleTest extends RuleTestCase
         ]);
     }
 
+    public function test_it_honours_cordon_ignore_comments(): void
+    {
+        $this->app = __DIR__.'/../Fixtures/ignore-app';
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Invoice.php'], [
+            ['Module [Billing] uses App\Modules\Catalog\Models\Stock, which is internal to module [Catalog].', 19, self::TIP],
+        ]);
+    }
+
     public function test_it_honours_the_internal_attribute_through_static_reflection(): void
     {
         $this->analyse([self::APP.'/app/Modules/Billing/Services/InvoiceRenderer.php'], [

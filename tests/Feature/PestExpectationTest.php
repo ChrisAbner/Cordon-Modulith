@@ -51,3 +51,14 @@ it('respects the baseline', function () {
 
     expect('Billing')->toRespectBoundaries();
 });
+
+it('fails on a @cordon-ignore without a reason, as cordon:verify does', function () {
+    $project = temp_project('ignore-app');
+    add_unexplained_ignore($project);
+    config()->set('cordon.resolvers.namespace.path', $project.'/app/Modules');
+    config()->set('cordon.modules', []);
+    Cordon::flush();
+
+    expect(fn () => expect('Catalog')->toRespectBoundaries())
+        ->toThrow(AssertionFailedError::class, 'Unexplained.php:5 needs a reason in parentheses');
+});

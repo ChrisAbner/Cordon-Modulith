@@ -42,6 +42,7 @@ final class JsonReporter implements Reporter
                 'violations' => count($result->violations),
                 'warnings' => count($result->warnings),
                 'suppressed' => $result->suppressed,
+                'ignored' => $result->ignored,
                 'parse_errors' => count($parseErrors),
             ],
             'violations' => array_map(

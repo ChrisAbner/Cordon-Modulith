@@ -143,6 +143,28 @@ final class VerifyCommand extends Command
         $result = $verifier->analyze();
         $basePath = $verifier->basePath();
 
+        // A @cordon-ignore without a reason, or naming a rule that does not
+        // exist, is a broken decision: it fails like a config error.
+        if ($result->ignoreErrors !== []) {
+            foreach ($result->ignoreErrors as $error) {
+                if ($format === 'github') {
+                    $this->output->writeln('::error title=Cordon::'.$error, OutputInterface::OUTPUT_RAW);
+                } else {
+                    $this->output->getErrorStyle()->writeln('<error>'.$error.'</error>');
+                }
+            }
+
+            return self::INVALID;
+        }
+
+        foreach ($result->ignoreWarnings as $warning) {
+            if ($format === 'github') {
+                $this->output->writeln('::warning title=Cordon::'.$warning, OutputInterface::OUTPUT_RAW);
+            } else {
+                $this->output->getErrorStyle()->writeln('<comment>'.$warning.'</comment>');
+            }
+        }
+
         if ($this->option('generate-baseline')) {
             $baselineFile = $verifier->baselineFile();
             Baseline::fromViolations($result->violations, $basePath)->save($baselineFile);

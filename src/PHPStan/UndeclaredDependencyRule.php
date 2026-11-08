@@ -89,7 +89,8 @@ final class UndeclaredDependencyRule implements Rule
             );
         }
 
-        [$kept] = $this->context->baseline()->filter(array_values($violations), $this->context->basePath());
+        $kept = $this->context->withoutIgnored($file, array_values($violations));
+        [$kept] = $this->context->baseline()->filter($kept, $this->context->basePath());
 
         return array_map(static fn (Violation $violation): IdentifierRuleError => RuleErrorBuilder::message($violation->message)
             ->identifier('cordon.undeclaredDependency')

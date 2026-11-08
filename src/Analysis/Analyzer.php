@@ -8,6 +8,7 @@ use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\Rule;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
+use Cordon\Rules\RuleSet;
 use Cordon\Rules\Severity;
 
 /**
@@ -57,6 +58,10 @@ final readonly class Analyzer
             }
         }
 
+        $ignores = new IgnoreChecker($snapshot->analyses, $this->ruleIds(), $basePath);
+        $violations = $ignores->filter($violations);
+        $warnings = $ignores->filter($warnings);
+
         return new Result(
             $snapshot->context->modules,
             $violations,
@@ -66,7 +71,22 @@ final readonly class Analyzer
             0,
             $basePath,
             $warnings,
+            null,
+            $ignores->ignored(),
+            $ignores->errors(),
+            $ignores->unused(),
         );
+    }
+
+    /**
+     * The ids @cordon-ignore may name: every built-in rule (one that is off
+     * included) and the custom rules that run.
+     *
+     * @return list<string>
+     */
+    private function ruleIds(): array
+    {
+        return array_values(array_unique([...RuleSet::BUILT_IN, ...array_map(static fn (Rule $rule): string => $rule->id(), $this->rules)]));
     }
 
     /**
