@@ -2,11 +2,13 @@
 
 ## Supported versions
 
-Cordon Modulith is in its 0.x series. Security fixes are released for the latest minor version only.
+Cordon Modulith is in its 0.x series. Security fixes are released for the latest minor version, and for the previous one until the next minor version is out.
 
 | Version | Supported |
 |---|---|
-| 0.1.x | Yes |
+| 0.4.x | Yes |
+| 0.3.x | Security fixes only, until 0.5.0 |
+| < 0.3 | No |
 
 ## Reporting a vulnerability
 

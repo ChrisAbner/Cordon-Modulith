@@ -46,7 +46,15 @@ Use artisan when the configuration needs the booted application, or when custom 
 
 ## Other CI systems
 
-`cordon:verify` (and `vendor/bin/cordon verify`) exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. Use `--format=json` for a machine readable report:
+`cordon:verify` (and `vendor/bin/cordon verify`) exits with:
+
+| Code | When |
+|---|---|
+| `0` | No violations. Warnings (rules set to `warn`) and stale baseline entries do not fail on their own. |
+| `1` | Violations of rules set to `error`; no modules found (`--allow-empty` passes while a project has none yet); a stale baseline entry with `--fail-on-stale`; a file that does not parse with `--fail-on-parse-error`. |
+| `2` | Invalid options or an invalid `config/cordon.php`. Nothing is analysed. |
+
+Use `--format=json` for a machine readable report. It starts with `"version": 1` and follows the schema in `resources/schemas/report-v1.schema.json`:
 
 ```bash
 php artisan cordon:verify --format=json > cordon-report.json

@@ -9,7 +9,7 @@
 
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
-> **Status: 0.3 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
+> **Status: 0.4 (alpha).** The public API may change before 1.0; see [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility). [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
 
 Modular monoliths in Laravel usually rely on nwidart/laravel-modules, InterNACHI/modular or a hand-made `app/Modules` folder. All of them organise code, but none of them stops the `Billing` module from reaching into `Catalog`'s models. Six months later the "modules" are just folders.
 
@@ -130,9 +130,9 @@ return [
     ],
 
     'rules' => [
-        'internal_access' => true,
-        'undeclared_dependency' => true,
-        'cycles' => true,
+        'internal_access' => 'error',          // error, warn or off
+        'undeclared_dependency' => 'error',
+        'cycles' => 'error',
     ],
 
     'exclude' => ['vendor', 'node_modules', 'tests', 'Tests'],
@@ -252,7 +252,7 @@ Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources 
 
 Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md), and [docs/adr](docs/adr) for the design decisions behind it.
 
-**Known limitations in 0.1:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
+**Known limitations:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
 ## Roadmap
 

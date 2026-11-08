@@ -49,14 +49,15 @@ final class OnlySharedIsEverywhere implements Rule
 
 ## 2. Register it
 
-List the class in `config/cordon.php`. Built-in rules keep their `true`/`false` switches:
+List the class in `config/cordon.php`, as a value, or as a key with a severity (`error`, `warn` or `off`):
 
 ```php
 'rules' => [
-    'internal_access' => true,
-    'undeclared_dependency' => true,
-    'cycles' => true,
+    'internal_access' => 'error',
+    'undeclared_dependency' => 'error',
+    'cycles' => 'error',
     App\Architecture\OnlySharedIsEverywhere::class,
+    // App\Architecture\OnlySharedIsEverywhere::class => 'warn',
 ],
 ```
 

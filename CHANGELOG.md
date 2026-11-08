@@ -4,6 +4,30 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 
 ## [Unreleased]
 
+## [0.4.0] - Unreleased
+
+This release settles the model that 1.0 will freeze: rule severities, listener edges, a strict config and a versioned JSON report. See [UPGRADE.md](UPGRADE.md).
+
+### May report different violations
+- A listener's reference to another module's event no longer closes a dependency cycle. Two modules that call each other through a contract one way and an event the other are not reported as a cycle any more, and their `cycles` entries in the baseline become stale. Set `listeners.cycles` to `true` to count listeners again.
+- `config/cordon.php` is validated before anything is analysed: unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rule ids now stop `cordon:verify` with exit code `2`, with a suggestion for the closest valid name. They used to be ignored or only warned about, so a typo such as `depend_on` could leave a module open with CI green.
+
+### Added
+- Severities per rule: `error`, `warn` or `off` (`true` and `false` keep working). Violations of a rule in `warn` are reported, never fail, and are not written to the baseline. The JSON report lists them under `warnings`, the GitHub format as `::warning`. Custom rules take a severity when their class is the key.
+- `listeners` config (`cycles: false`, `depends_on: true` by default), and listener references in the analysis: the type of the first parameter of `handle()` or `__invoke()` under an `Events` namespace, and the event of `Event::listen()`.
+- `--fail-on-stale`: a baseline entry that no longer matches the code fails `cordon:verify`, and each one is listed with the occurrences it records and the ones found. The check is skipped when a file does not parse.
+- The JSON report starts with `"version": 1` and is described by `resources/schemas/report-v1.schema.json`. Each violation has a `severity`.
+- A per-module `metadata` key (free-form, not read yet) and the reserved `Module::Interface` syntax in `depends_on`, for named interfaces later.
+- Every class in `src/` is marked `@api` or `@internal`; see [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility).
+
+### Changed
+- `nikic/php-parser` 5.3 or later is required. Older 5.x versions skipped files with PHP 8.4 property hooks as parse errors (5.0, 5.1) or lost the types of hook parameters (5.2).
+- The PHPStan rule reports only while `internal_access` is set to `error`.
+- The generated docs and the outdated baseline warning no longer say `php artisan` (#23).
+
+### Fixed
+- `cordon:verify` resolved the modules twice and read the baseline once per use (#20).
+
 ## [0.3.1] - 2026-11-05
 
 A patch release: class names are matched regardless of case, and `cordon:modules` tells you when an app is split by layer rather than by feature.

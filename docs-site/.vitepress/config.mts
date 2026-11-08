@@ -45,6 +45,7 @@ export default defineConfig({
                 items: [
                     { text: 'Living documentation', link: '/guide/living-documentation' },
                     { text: 'Custom rules', link: '/guide/custom-rules' },
+                    { text: 'Compatibility', link: '/guide/compatibility' },
                 ],
             },
             {
