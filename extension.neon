@@ -9,8 +9,10 @@ parametersSchema:
 
 services:
     -
-        class: Cordon\PHPStan\InternalAccessRule
+        class: Cordon\PHPStan\CordonContext
         arguments:
             basePath: %cordon.basePath%
+    -
+        class: Cordon\PHPStan\InternalAccessRule
         tags:
             - phpstan.rules.rule

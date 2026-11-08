@@ -5,6 +5,7 @@ namespace Cordon\Tests\PHPStan;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\Reference;
 use Cordon\Analysis\ReferenceCollector;
+use Cordon\PHPStan\CordonContext;
 use Cordon\PHPStan\InternalAccessRule;
 use FilesystemIterator;
 use PhpParser\NodeTraverser;
@@ -27,7 +28,7 @@ final class InternalAccessRuleTest extends RuleTestCase
 
     protected function getRule(): Rule
     {
-        return new InternalAccessRule($this->createReflectionProvider(), (string) realpath($this->app));
+        return new InternalAccessRule(new CordonContext($this->createReflectionProvider(), (string) realpath($this->app)));
     }
 
     public function test_it_reports_internal_classes_of_other_modules(): void
@@ -142,7 +143,7 @@ final class InternalAccessRuleTest extends RuleTestCase
             $collector = new ReferenceCollector($path);
             (new NodeTraverser($collector))->traverse($parser->parseFile($path));
 
-            $line = static fn (Reference $r): string => $r->target.'@'.$r->line;
+            $line = static fn (Reference $r): string => $r->target.'@'.$r->line.':'.$r->kind;
             self::assertSame(array_map($line, $expected->references), array_map($line, $collector->references()), $path);
             $compared++;
         }
