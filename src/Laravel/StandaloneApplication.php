@@ -7,6 +7,7 @@ namespace Cordon\Laravel;
 use Composer\InstalledVersions;
 use Cordon\Laravel\Commands\DocsCommand;
 use Cordon\Laravel\Commands\ExplainCommand;
+use Cordon\Laravel\Commands\GraphCommand;
 use Cordon\Laravel\Commands\ImpactCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
@@ -40,6 +41,7 @@ final class StandaloneApplication
         'explain' => ExplainCommand::class,
         'why' => WhyCommand::class,
         'impact' => ImpactCommand::class,
+        'graph' => GraphCommand::class,
     ];
 
     public static function run(string $basePath, ?InputInterface $input = null, ?OutputInterface $output = null): int

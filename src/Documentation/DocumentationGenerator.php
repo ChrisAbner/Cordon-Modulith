@@ -213,43 +213,7 @@ final class DocumentationGenerator
      */
     private function diagram(array $nodes, array $dependencies, array $internal, ?string $highlight = null): array
     {
-        $ids = array_flip($nodes);
-        $lines = ['```mermaid', 'flowchart LR'];
-
-        foreach ($nodes as $index => $node) {
-            $lines[] = sprintf('    m%d["%s"]', $index, str_replace('"', '#quot;', $node));
-        }
-
-        $red = [];
-        $link = 0;
-
-        foreach ($dependencies as $from => $targets) {
-            foreach ($targets as $to => $classes) {
-                if (! isset($ids[$from], $ids[$to])) {
-                    continue;
-                }
-
-                $lines[] = sprintf('    m%d -->|%d| m%d', $ids[$from], count($classes), $ids[$to]);
-
-                if (isset($internal[$from.'|'.$to])) {
-                    $red[] = $link;
-                }
-
-                $link++;
-            }
-        }
-
-        if ($red !== []) {
-            $lines[] = '    linkStyle '.implode(',', $red).' stroke:#d33,stroke-width:2px';
-        }
-
-        if ($highlight !== null && isset($ids[$highlight])) {
-            $lines[] = sprintf('    style m%d stroke-width:3px', $ids[$highlight]);
-        }
-
-        $lines[] = '```';
-
-        return $lines;
+        return ['```mermaid', ...GraphExporter::mermaid($nodes, $dependencies, $internal, $highlight), '```'];
     }
 
     /**
@@ -331,23 +295,7 @@ final class DocumentationGenerator
      */
     private function dependencies(array $edges): array
     {
-        $dependencies = [];
-
-        foreach ($edges as $edge) {
-            $dependencies[$edge->from->name][$edge->to->name][$edge->reference->target] = true;
-        }
-
-        ksort($dependencies);
-
-        foreach ($dependencies as &$targets) {
-            ksort($targets);
-
-            foreach ($targets as &$classes) {
-                ksort($classes);
-            }
-        }
-
-        return $dependencies;
+        return GraphExporter::dependencies($edges);
     }
 
     /**

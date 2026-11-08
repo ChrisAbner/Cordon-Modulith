@@ -46,3 +46,14 @@ Modules that depend on Shared:
 ```
 
 The modules that depend on it, directly or through others, nearest first: the ones to retest when it changes.
+
+## The whole graph
+
+```bash
+php artisan cordon:graph                  # Mermaid, to paste in a pull request or a wiki
+php artisan cordon:graph --format=dot | dot -Tsvg > modules.svg   # Graphviz
+php artisan cordon:graph --format=json    # for your own tools
+php artisan cordon:graph --module=Billing # Billing and its neighbours only
+```
+
+Each arrow is a dependency with its number of references. Dependencies with violations are red; in DOT, a dependency made only of listeners is dashed. The JSON lists `modules`, and per dependency `from`, `to`, `references`, `kinds` (`use`, `listener`) and `violations`. `cordon:docs` draws the same diagrams in the generated documentation.

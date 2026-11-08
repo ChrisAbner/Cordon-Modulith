@@ -77,6 +77,14 @@ final class Verifier
     }
 
     /**
+     * The violations of a snapshot, with the baseline applied.
+     */
+    public function check(Snapshot $snapshot): Result
+    {
+        return $this->applyBaseline($this->analyzer()->check($snapshot, $this->basePath));
+    }
+
+    /**
      * Every violation, ignoring the baseline.
      */
     public function analyze(): Result
