@@ -33,7 +33,7 @@ function parity_project(string $fixture, array $modules): string
 
     is_dir($project.'/config') || mkdir($project.'/config');
     file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => $modules, 'listeners' => ['cycles' => true]], true).';');
-    file_put_contents($project.'/phpstan.neon', "includes:\n    - ".dirname(__DIR__, 2)."/extension.neon\nparameters:\n    level: 0\n    paths:\n        - app\n    tmpDir: {$project}/.phpstan\n");
+    file_put_contents($project.'/phpstan.neon', "includes:\n    - ".dirname(__DIR__, 2)."/extension.neon\nparameters:\n    level: 0\n    paths:\n        - app\n    tmpDir: {$project}/.phpstan\n    parallel:\n        maximumNumberOfProcesses: 1\n");
 
     return $project;
 }
@@ -46,6 +46,7 @@ function parity_project(string $fixture, array $modules): string
 function phpstan_findings(string $project): array
 {
     $process = new Process([PHP_BINARY, dirname(__DIR__, 2).'/vendor/bin/phpstan', 'analyse', '-c', 'phpstan.neon', '--error-format=json', '--no-progress'], $project);
+    $process->setTimeout(180);
     $process->run();
     $report = json_decode($process->getOutput(), true);
     $findings = [];
@@ -53,7 +54,7 @@ function phpstan_findings(string $project): array
     foreach ($report['files'] ?? [] as $file => $data) {
         foreach ($data['messages'] as $message) {
             if (isset(PHPSTAN_IDENTIFIERS[$message['identifier'] ?? ''])) {
-                $findings[] = PHPSTAN_IDENTIFIERS[$message['identifier']].' '.str_replace($project.'/', '', $file).':'.$message['line'];
+                $findings[] = PHPSTAN_IDENTIFIERS[$message['identifier']].' '.str_replace($project.'/', '', $file).':'.$message['line'].' '.parity_target($message['message']);
             }
         }
     }
@@ -93,12 +94,26 @@ function verify_findings(string $project, array $modules): array
             ? [str_replace($project.'/', '', $violation->file), $violation->line]
             : $first[(string) $violation->target];
 
-        return $violation->rule.' '.$file.':'.$line;
+        return $violation->rule.' '.$file.':'.$line.' '.parity_target($violation->message);
     }, $analyzer->check($snapshot)->violations);
 
     sort($findings);
 
     return $findings;
+}
+
+/**
+ * The target of a finding, as its baseline key has it, read from the message
+ * (the class used, the module depended on, or the dependency of a cycle).
+ */
+function parity_target(string $message): string
+{
+    return match (true) {
+        (bool) preg_match('/^Module \[\w+\] uses (\S+), which/', $message, $m) => $m[1],
+        (bool) preg_match('/^Module \[\w+\] depends on module \[(\w+)\]/', $message, $m) => $m[1],
+        (bool) preg_match('/^Module (\w+) depends on (\w+), which closes/', $message, $m) => $m[1].' -> '.$m[2],
+        default => $message,
+    };
 }
 
 it('reports in PHPStan what cordon:verify reports', function (string $fixture, array $modules) {

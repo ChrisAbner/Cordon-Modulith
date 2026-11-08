@@ -50,13 +50,13 @@ final class UndeclaredDependencyRule implements Rule
         $collector = new ReferenceCollector($file);
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
-        $from = $this->context->moduleOf($file, $collector->declarations());
+        $from = $this->context->moduleOf($file);
 
         if ($from === null || $from->dependsOn === null) {
             return [];
         }
 
-        $path = $this->context->projectPath($file, $collector->declarations());
+        $path = $this->context->realPath($file);
         $countListeners = $this->context->countsListeners('depends_on');
         $violations = [];
 

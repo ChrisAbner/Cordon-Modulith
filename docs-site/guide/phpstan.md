@@ -6,7 +6,7 @@ Cordon Modulith ships PHPStan rules for its three rules, so `vendor/bin/phpstan`
 |---|---|---|
 | `internal_access` | `cordon.internalAccess` | Every analysed file, including in the editor |
 | `undeclared_dependency` | `cordon.undeclaredDependency` | Every analysed file, including in the editor |
-| `cycles` | `cordon.cycle` | A full analysis only (it needs every module) |
+| `cycles` | `cordon.cycle` | When PHPStan analyses the whole project, which includes editor mode |
 
 Each error ends with a link to the rule's documentation.
 
@@ -44,7 +44,7 @@ Point `paths` at the folders that contain your modules: `app` for `app/Modules`,
  ------ ------------------------------------------------------------------------------------------
   13     Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].
          🪪  cordon.internalAccess
-         💡 Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi].
+         💡 Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi]. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#internal-access
  ------ ------------------------------------------------------------------------------------------
 ```
 
@@ -78,14 +78,21 @@ With parallel workers the error may appear once per worker.
 
 A cycle is a property of the whole graph, so a collector gathers the modules each analysed file uses and one rule looks at all of them at the end, with the same algorithm as `cordon:verify`. Each dependency of a cycle is reported at its first reference (the lowest file and line), so its location stays put while the code around it changes.
 
-- When PHPStan analyses only some files (an editor, `phpstan analyse src/Billing`, a pre-commit hook), there is no whole graph and cycles are not reported.
-- When some modules are outside PHPStan's `paths`, Cordon says so once (`cordon.incompleteGraph`) instead of guessing. Add their directories to `paths`.
+- Editor mode analyses the whole project, so cycles are reported there too, and they follow the buffer you are editing.
+- When some modules are left out (outside PHPStan's `paths`, or `phpstan analyse app/Modules/Billing`), Cordon says so once (`cordon.incompleteGraph`) instead of guessing. Add their directories to `paths`, or ignore the identifier if you analyse parts of the project on purpose:
+
+  ```yaml
+  parameters:
+      ignoreErrors:
+          - identifier: cordon.incompleteGraph
+  ```
+- When PHPStan analyses single files (`phpstan analyse a.php b.php`, as some pre-commit hooks do), there is no whole graph, so cycles are not checked and nothing is said. Use `cordon:verify <paths>` for cycles in a pre-commit hook.
 - If PHPStan stops on an internal error in any file, it skips rules on collected data, cycles included, for that run.
 - If you also run `cordon:verify` in CI, the cycles appear in both. That is expected.
 
 ## In the editor
 
-Editors run PHPStan on the buffer you are editing as a temporary file standing in for the real one (`--tmp-file` with `--instead-of`, since PHPStan 2.1.17). Cordon finds the module from the class the file declares, checks excluded directories against its namespace, and applies the baseline with the real path, so the editor shows the same `internal_access` and `undeclared_dependency` findings as the command line.
+Editors run PHPStan on the buffer you are editing as a temporary file standing in for the real one (`--tmp-file` with `--instead-of`, since PHPStan 2.1.17), over the whole project. Cordon reads the real path PHPStan was given, so the edited file gets the same module, excluded directories and baseline as on the command line, and the editor shows the same findings for the three rules, files without a class (routes, migrations) included.
 
 ## Limits
 

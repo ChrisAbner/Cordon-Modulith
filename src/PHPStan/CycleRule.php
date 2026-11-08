@@ -82,7 +82,7 @@ final class CycleRule implements Rule
         $missing = [];
 
         foreach ($this->context->modules() as $module) {
-            if (! isset($analysed[$module->name]) && $this->context->hasFiles($module)) {
+            if (! isset($analysed[$module->name]) && $this->context->hasFiles($module, $scope)) {
                 $missing[] = $module->name;
             }
         }
@@ -93,7 +93,7 @@ final class CycleRule implements Rule
                 implode(', ', $missing),
                 count($missing) === 1 ? 'was' : 'were',
                 count($missing) === 1 ? 'its path' : 'their paths',
-            ))->identifier('cordon.incompleteGraph')->file($files[0])->line(1)->build()];
+            ))->identifier('cordon.incompleteGraph')->file($files[0])->line(1)->tip('Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/phpstan#cycles')->build()];
         }
 
         $sorted = [];

@@ -40,7 +40,7 @@ final class ModuleEdgeCollector implements Collector
         $collector = new ReferenceCollector($scope->getFile());
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
-        $from = $this->context->moduleOf($scope->getFile(), $collector->declarations());
+        $from = $this->context->moduleOf($scope->getFile());
 
         if ($from === null) {
             return null;

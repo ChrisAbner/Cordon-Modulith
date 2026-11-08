@@ -209,7 +209,7 @@ The analysis runs once per test process and honours the baseline, like `cordon:v
 
 ## PHPStan
 
-Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. A fresh Laravel app doesn't ship PHPStan, so install it first with `composer require --dev phpstan/phpstan` (Larastan already brings it). With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically: `composer config allow-plugins.phpstan/extension-installer true && composer require --dev phpstan/extension-installer`. Otherwise include the extension by hand in a minimal `phpstan.neon`:
+Cordon Modulith ships PHPStan rules for `internal_access`, `undeclared_dependency` and `cycles`, so PHPStan and your editor report what `cordon:verify` reports. A fresh Laravel app doesn't ship PHPStan, so install it first with `composer require --dev phpstan/phpstan` (Larastan already brings it). With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically: `composer config allow-plugins.phpstan/extension-installer true && composer require --dev phpstan/extension-installer`. Otherwise include the extension by hand in a minimal `phpstan.neon`:
 
 ```neon
 # phpstan.neon
@@ -224,7 +224,7 @@ parameters:
 
 List the folders your modules live in: `app` for `app/Modules`, `Modules` for nwidart/laravel-modules, `app-modules` for InterNACHI/modular. PHPStan stops if a listed path doesn't exist.
 
-The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
+The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Cycles need every module in `paths`; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
 ## Living documentation
 

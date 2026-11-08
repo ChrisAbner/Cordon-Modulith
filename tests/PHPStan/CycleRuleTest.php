@@ -63,7 +63,7 @@ final class CycleRuleTest extends RuleTestCase
         $billing = array_values(array_filter($this->moduleFiles(), fn (string $file) => str_contains($file, '/Billing/')));
 
         $this->analyse($billing, [
-            ['Cordon can only check cycles when PHPStan analyses every module; [Catalog, Shared] were not analysed. Add their paths to paths in your PHPStan config.', 1],
+            ['Cordon can only check cycles when PHPStan analyses every module; [Catalog, Shared] were not analysed. Add their paths to paths in your PHPStan config.', 1, 'Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/phpstan#cycles'],
         ]);
     }
 

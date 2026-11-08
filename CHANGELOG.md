@@ -25,6 +25,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - A `parser-floor` CI job checks that the lowest `nikic/php-parser` allowed analyses modern PHP.
 
 ### Changed
+- If you use the PHPStan extension, PHPStan now also reports `cordon.undeclaredDependency` and `cordon.cycle`, and `cordon.incompleteGraph` when its `paths` leave a module out. Add the module directories to `paths`, or ignore `cordon.incompleteGraph` if you analyse parts of the project on purpose (see the PHPStan guide).
 - `nikic/php-parser` 5.3 or later is required. Older 5.x versions skipped files with PHP 8.4 property hooks as parse errors (5.0, 5.1) or lost the types of hook parameters (5.2).
 - The PHPStan rule reports only while `internal_access` is set to `error`.
 - The generated docs and the outdated baseline warning no longer say `php artisan` (#23).

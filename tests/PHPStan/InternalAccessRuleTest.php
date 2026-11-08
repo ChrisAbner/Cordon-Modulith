@@ -24,6 +24,8 @@ final class InternalAccessRuleTest extends RuleTestCase
 
     private const TIP = 'Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi]. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#internal-access';
 
+    private const CONFIG_TIP = 'Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/phpstan#configuration-errors';
+
     private string $app = self::APP;
 
     protected function getRule(): Rule
@@ -63,6 +65,7 @@ final class InternalAccessRuleTest extends RuleTestCase
             [
                 'Cordon could not evaluate config/modules.php (Class "Nwidart\Modules\Commands\CommandsList" not found), so its settings were ignored and the defaults are used. Set the matching paths in config/cordon.php (for example resolvers.nwidart.path) so it does not depend on that file.',
                 1,
+                self::CONFIG_TIP,
             ],
         ]);
     }
@@ -76,7 +79,7 @@ final class InternalAccessRuleTest extends RuleTestCase
             $this->app.'/app/Modules/Billing/Services/CheckoutService.php',
             $this->app.'/app/Modules/Billing/Services/InvoiceRenderer.php',
         ], [
-            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, metadata.', 1],
+            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, metadata.', 1, self::CONFIG_TIP],
             ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
             ['Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog].', 10, self::TIP],
         ]);
@@ -115,7 +118,7 @@ final class InternalAccessRuleTest extends RuleTestCase
         $this->app = $this->copyOfTheApp('{ not json');
 
         $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], [
-            ['Cordon could not read the baseline cordon-baseline.json (Syntax error), so it is not applied. Fix the file or regenerate it with cordon:verify --generate-baseline.', 1],
+            ['Cordon could not read the baseline cordon-baseline.json (Syntax error), so it is not applied. Fix the file or regenerate it with cordon:verify --generate-baseline.', 1, self::CONFIG_TIP],
             ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
         ]);
     }

@@ -25,3 +25,13 @@ it('links every Cordon error in PHPStan to its rule in the documentation', funct
     'undeclared dependency' => ['UndeclaredDependencyRule', 'undeclared-dependency'],
     'cycles' => ['CycleRule', 'cycles'],
 ]);
+
+it('links the errors about the setup to the PHPStan guide', function (string $class, string $anchor) {
+    $source = (string) file_get_contents(dirname(__DIR__, 2).'/src/PHPStan/'.$class.'.php');
+
+    expect($source)->toContain('Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/phpstan#'.$anchor)
+        ->and(heading_anchors(dirname(__DIR__, 2).'/docs-site/guide/phpstan.md'))->toContain($anchor);
+})->with([
+    'incomplete graph' => ['CycleRule', 'cycles'],
+    'configuration' => ['InternalAccessRule', 'configuration-errors'],
+]);

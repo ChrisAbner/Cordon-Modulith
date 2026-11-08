@@ -18,13 +18,11 @@ use Cordon\Module\ModuleMap;
 use Cordon\Rules\Severity;
 use Cordon\Support\ConfigValidator;
 use Cordon\Support\Paths;
-use FilesystemIterator;
 use InvalidArgumentException;
 use PHPStan\Analyser\DependencyTracker;
 use PHPStan\Analyser\Scope;
+use PHPStan\DependencyInjection\Container;
 use PHPStan\Reflection\ReflectionProvider;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 use Throwable;
 
 /**
@@ -56,10 +54,40 @@ final class CordonContext
     /** @var list<string> */
     private array $pendingErrors = [];
 
+    /** In editor mode: the temporary file holding the buffer, and the project file it stands in for. */
+    private ?string $bufferFile = null;
+
+    private ?string $editedFile = null;
+
     public function __construct(
         private readonly ReflectionProvider $reflectionProvider,
         private readonly string $basePath,
-    ) {}
+        ?Container $container = null,
+    ) {
+        // PHPStan sets these for --tmp-file and --instead-of (editor mode, PHPStan 2.1.17+).
+        if ($container !== null && $container->hasParameter('singleReflectionFile') && $container->hasParameter('singleReflectionInsteadOfFile')) {
+            $buffer = $container->getParameter('singleReflectionFile');
+            $edited = $container->getParameter('singleReflectionInsteadOfFile');
+
+            if (is_string($buffer) && is_string($edited)) {
+                $this->bufferFile = realpath($buffer) ?: $buffer;
+                $this->editedFile = $edited;
+            }
+        }
+    }
+
+    /**
+     * The project file a file of the analysis stands for: itself, except the
+     * temporary buffer of editor mode, which stands for the file being edited.
+     */
+    public function realPath(string $file): string
+    {
+        if ($this->bufferFile !== null && $this->editedFile !== null && (realpath($file) ?: $file) === $this->bufferFile) {
+            return $this->editedFile;
+        }
+
+        return $file;
+    }
 
     public function basePath(): string
     {
@@ -114,72 +142,30 @@ final class CordonContext
     }
 
     /**
-     * The module a file belongs to, or null when it belongs to none or sits in
-     * an excluded directory.
-     *
-     * In editor mode PHPStan analyses the buffer as a temporary file outside
-     * the project (--tmp-file), so the path matches no module: the module then
-     * comes from the first class the file declares, and excluded directories
-     * are checked against its namespace (App\Modules\Billing\Tests\...).
-     *
-     * @param  list<ClassDeclaration>  $declarations
+     * The module a file of the analysis belongs to (see realPath()), or null
+     * when it belongs to none or sits in an excluded directory.
      */
-    public function moduleOf(string $file, array $declarations): ?Module
+    public function moduleOf(string $file): ?Module
     {
         $this->boot();
-        $module = $this->modules->forPath($file);
+        $path = $this->realPath($file);
+        $module = $this->modules->forPath($path);
 
-        if ($module !== null) {
-            return $this->isExcluded($module, $file) ? null : $module;
-        }
-
-        $class = $declarations[0]->fqcn ?? null;
-        $module = $class !== null ? $this->modules->forClass($class) : null;
-
-        if ($module === null) {
-            return null;
-        }
-
-        $segments = array_slice(explode('\\', substr($class, strlen($module->namespace) + 1)), 0, -1);
-
-        return array_intersect($segments, $this->exclude) === [] ? $module : null;
-    }
-
-    /**
-     * The project path of a file, for baseline keys. In editor mode the buffer
-     * is a temporary file, so its real path is looked up in its module: the one
-     * file named after the class it declares. When there is not exactly one,
-     * the path stays as given.
-     *
-     * @param  list<ClassDeclaration>  $declarations
-     */
-    public function projectPath(string $file, array $declarations): string
-    {
-        $this->boot();
-        $class = $declarations[0]->fqcn ?? null;
-
-        if ($this->modules->forPath($file) !== null || $class === null || ($module = $this->modules->forClass($class)) === null || ! is_dir($module->path)) {
-            return $file;
-        }
-
-        $name = substr($class, (int) strrpos($class, '\\') + 1).'.php';
-        $matches = [];
-
-        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($module->path, FilesystemIterator::SKIP_DOTS)) as $candidate) {
-            if ($candidate->getFilename() === $name) {
-                $matches[] = $candidate->getPathname();
-            }
-        }
-
-        return count($matches) === 1 ? $matches[0] : $file;
+        return $module !== null && ! $this->isExcluded($module, $path) ? $module : null;
     }
 
     /**
      * Whether the module has PHP files Cordon analyses, so PHPStan should have collected data for it.
+     * The answer depends on the disk, so it is tracked: with bleedingEdge, PHPStan would otherwise
+     * reuse the result of the cycles rule after a file appears in a module it did not analyse.
      */
-    public function hasFiles(Module $module): bool
+    public function hasFiles(Module $module, ?Scope $scope = null): bool
     {
         $this->boot();
+
+        if ($scope instanceof DependencyTracker && is_dir($module->path)) {
+            $scope->trackDirectoryDependency($module->path, '*.php');
+        }
 
         return is_dir($module->path) && (new FileCollector($this->exclude))->collect($module->path) !== [];
     }

@@ -48,7 +48,11 @@ final class InternalAccessRule implements Rule
 
         // Reported once, on the first analysed file, so a broken config is not silent.
         foreach ($this->context->pullConfigurationErrors() as $error) {
-            $errors[] = RuleErrorBuilder::message($error)->identifier('cordon.configuration')->line(1)->build();
+            $errors[] = RuleErrorBuilder::message($error)
+                ->identifier('cordon.configuration')
+                ->line(1)
+                ->tip('Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/phpstan#configuration-errors')
+                ->build();
         }
 
         // PHPStan has no warnings, so the rule reports only in error.
@@ -62,14 +66,14 @@ final class InternalAccessRule implements Rule
         $collector = new ReferenceCollector($file);
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
-        $from = $this->context->moduleOf($file, $collector->declarations());
+        $from = $this->context->moduleOf($file);
 
         if ($from === null) {
             return $errors;
         }
 
         // The baseline keys use the project path, which editor mode hides behind a temporary file.
-        $path = $this->context->projectPath($file, $collector->declarations());
+        $path = $this->context->realPath($file);
         $violations = [];
 
         foreach ($collector->references() as $reference) {
