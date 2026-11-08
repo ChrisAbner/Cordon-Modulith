@@ -80,6 +80,17 @@ Every cross-module reference is an edge, including references to public classes 
 
 A cycle made of real calls is broken by moving one direction: publish an event from one side, or introduce a shared or orchestrating module that both depend on.
 
+## unused_dependency
+
+A module lists a module in `depends_on` but none of its classes uses it. It usually means a dependency was removed and the config was not, so `depends_on` no longer shows what the module really needs.
+
+```text
+! [unused_dependency] (warn)
+  Module [Catalog] lists [Shared] in depends_on, but does not use it. Remove it so depends_on shows the real dependencies.
+```
+
+It is a warning by default (it arrived in 0.4); set `'unused_dependency' => 'error'` to make it fail. Listening to an event of the module counts as using it, unless `listeners.depends_on` is `false`.
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.

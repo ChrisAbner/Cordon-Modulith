@@ -22,6 +22,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 
 - PHPStan reports all three rules: `undeclared_dependency` (`cordon.undeclaredDependency`) per file, and `cycles` (`cordon.cycle`) with collectors on a full analysis, at the first reference of each dependency. `cordon.incompleteGraph` says when some modules were not analysed. Each error links to the rule's documentation.
 - `cordon:verify <paths>`: report only the violations of some files or directories, plus the cycles their modules take part in, for pre-commit hooks (see the new recipe).
+- `unused_dependency` (a warning by default): a `depends_on` entry the module never uses.
 - A `parser-floor` CI job checks that the lowest `nikic/php-parser` allowed analyses modern PHP.
 
 ### Changed

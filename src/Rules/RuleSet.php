@@ -14,7 +14,14 @@ use InvalidArgumentException;
  */
 final class RuleSet
 {
-    private const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID];
+    private const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID];
+
+    /**
+     * Built-in rules that start below error: checks added after 0.3 arrive as
+     * warnings, so an upgrade does not fail a build that passed (see the
+     * compatibility page).
+     */
+    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn'];
 
     /**
      * Built-in rules, enabled unless set to off (or false), followed by custom rules.
@@ -34,12 +41,13 @@ final class RuleSet
             InternalAccessRule::ID => static fn (): Rule => new InternalAccessRule,
             UndeclaredDependencyRule::ID => static fn (): Rule => new UndeclaredDependencyRule(($listeners['depends_on'] ?? true) === true),
             CycleRule::ID => static fn (): Rule => new CycleRule(($listeners['cycles'] ?? false) === true),
+            UnusedDependencyRule::ID => static fn (): Rule => new UnusedDependencyRule(($listeners['depends_on'] ?? true) === true),
         ];
 
         $rules = [];
 
         foreach ($available as $id => $factory) {
-            if (Severity::fromConfig($id, $config[$id] ?? true) !== Severity::Off) {
+            if (Severity::fromConfig($id, $config[$id] ?? self::DEFAULTS[$id] ?? true) !== Severity::Off) {
                 $rules[] = $factory();
             }
         }
@@ -102,7 +110,7 @@ final class RuleSet
 
         foreach ($rules as $rule) {
             $severities[$rule->id()] = in_array($rule->id(), self::BUILT_IN, true)
-                ? Severity::fromConfig($rule->id(), $config[$rule->id()] ?? true)
+                ? Severity::fromConfig($rule->id(), $config[$rule->id()] ?? self::DEFAULTS[$rule->id()] ?? true)
                 : Severity::fromConfig($rule::class, $custom[$rule::class] ?? true);
         }
 

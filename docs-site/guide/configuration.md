@@ -27,6 +27,7 @@ return [
         'internal_access' => 'error',                     // error, warn or off
         'undeclared_dependency' => 'error',
         'cycles' => 'error',
+        'unused_dependency' => 'warn',                    // new in 0.4: warns by default
         // App\Architecture\MyRule::class,               // custom rules
         // App\Architecture\OtherRule::class => 'warn',
     ],

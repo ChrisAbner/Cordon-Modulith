@@ -97,6 +97,7 @@ return [
         'internal_access' => 'error',
         'undeclared_dependency' => 'error',
         'cycles' => 'error',
+        'unused_dependency' => 'warn',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
     ],

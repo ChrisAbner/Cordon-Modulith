@@ -14,6 +14,7 @@ use Cordon\Module\ModuleMap;
 use Cordon\Rules\CycleRule;
 use Cordon\Rules\RuleSet;
 use Cordon\Rules\UndeclaredDependencyRule;
+use Cordon\Rules\UnusedDependencyRule;
 
 /**
  * @param  list<array{0: string, 1: string}>  $dependencies
@@ -139,4 +140,25 @@ it('reads the listeners config when building the rules', function () {
     $violations = array_merge(...array_map(fn ($rule) => iterator_to_array($rule->check($context), false), $rules));
 
     expect(array_map(fn (Violation $violation) => $violation->rule, $violations))->toBe(['cycles', 'cycles']);
+});
+
+it('warns about a depends_on entry the module never uses', function () {
+    $unused = typed_context([], ['A' => ['depends_on' => ['B']]]);
+    $used = typed_context([['A', 'B', Reference::USE]], ['A' => ['depends_on' => ['B']]]);
+    $open = typed_context([], []);
+
+    $violations = iterator_to_array((new UnusedDependencyRule)->check($unused), false);
+
+    expect(array_map(fn (Violation $violation) => $violation->target, $violations))->toBe(['A -> B'])
+        ->and($violations[0]->message)->toBe('Module [A] lists [B] in depends_on, but does not use it. Remove it so depends_on shows the real dependencies.')
+        ->and($violations[0]->file)->toBeNull()
+        ->and(iterator_to_array((new UnusedDependencyRule)->check($used), false))->toBe([])
+        ->and(iterator_to_array((new UnusedDependencyRule)->check($open), false))->toBe([]);
+});
+
+it('counts a dependency used only by a listener as used, unless listeners are left out of depends_on', function () {
+    $context = typed_context([['A', 'B', Reference::LISTENER]], ['A' => ['depends_on' => ['B']]]);
+
+    expect(iterator_to_array((new UnusedDependencyRule)->check($context), false))->toBe([])
+        ->and(iterator_to_array((new UnusedDependencyRule(countListeners: false))->check($context), false))->toHaveCount(1);
 });

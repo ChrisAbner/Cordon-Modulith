@@ -99,6 +99,18 @@ it('keeps the warnings of the selected module with --module', function () {
         ->and(json_decode(Artisan::output(), true)['warnings'])->toBe([]);
 });
 
+it('warns about unused depends_on entries without failing, unless set to error', function () {
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Catalog' => ['depends_on' => ['Billing', 'Shared']]]);
+    config()->set('cordon.rules', ['internal_access' => 'off', 'cycles' => 'off']);
+
+    expect(Artisan::call('cordon:verify', ['--format' => 'json']))->toBe(0)
+        ->and(array_column(json_decode(Artisan::output(), true)['warnings'], 'target'))->toBe(['Catalog -> Shared']);
+
+    config()->set('cordon.rules', ['internal_access' => 'off', 'cycles' => 'off', 'unused_dependency' => 'error']);
+
+    expect(Artisan::call('cordon:verify'))->toBe(1);
+});
+
 it('leaves warnings out of a generated baseline', function () {
     config()->set('cordon.rules', ['cycles' => 'warn']);
 
