@@ -45,6 +45,17 @@ function phpstan_on_namespace_app(array $arguments, ?Closure $prepare = null): a
     return array_map(fn (string $line) => str_replace($project.'/', '', $line), $errors);
 }
 
+// Editor mode (--tmp-file / --instead-of) arrived in PHPStan 2.1.17; the lowest
+// dependencies install an older one.
+beforeEach(function () {
+    $help = new Process([PHP_BINARY, dirname(__DIR__, 2).'/vendor/bin/phpstan', 'analyse', '--help']);
+    $help->run();
+
+    if (! str_contains($help->getOutput(), '--tmp-file')) {
+        $this->markTestSkipped('This PHPStan version has no editor mode (--tmp-file).');
+    }
+});
+
 it('reports the file being edited in editor mode, under its real path', function () {
     $edited = sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php';
     copy(fixture_path('namespace-app/app/Modules/Billing/Services/CheckoutService.php'), $edited);
