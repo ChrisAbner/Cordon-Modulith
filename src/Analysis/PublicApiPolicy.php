@@ -26,12 +26,32 @@ final readonly class PublicApiPolicy
 
     public function isPublic(string $fqcn, Module $module, ?ClassDeclaration $declaration = null): bool
     {
+        return $this->decide($fqcn, $module, $declaration)[0];
+    }
+
+    /**
+     * Why the class is public or internal, in words (for cordon:explain).
+     */
+    public function reason(string $fqcn, Module $module, ?ClassDeclaration $declaration = null): string
+    {
+        return $this->decide($fqcn, $module, $declaration)[1];
+    }
+
+    /**
+     * @return array{0: bool, 1: string}
+     */
+    private function decide(string $fqcn, Module $module, ?ClassDeclaration $declaration): array
+    {
         if ($declaration?->visibility === DeclaredVisibility::Internal) {
-            return false;
+            return [false, 'it is marked #[Internal]'];
         }
 
-        if ($declaration?->visibility === DeclaredVisibility::PublicApi || $module->open) {
-            return true;
+        if ($declaration?->visibility === DeclaredVisibility::PublicApi) {
+            return [true, 'it is marked #[PublicApi]'];
+        }
+
+        if ($module->open) {
+            return [true, sprintf('its module [%s] is open', $module->name)];
         }
 
         $relative = $module->relativeName($fqcn);
@@ -39,19 +59,19 @@ final readonly class PublicApiPolicy
 
         foreach ($this->publicNamespaces as $entry) {
             if ($this->matchesAnywhere($lowerRelative, strtolower(trim($entry, '\\')))) {
-                return true;
+                return [true, sprintf('it is under the public namespace [%s]', trim($entry, '\\'))];
             }
         }
 
         foreach ($module->publicApi as $prefix) {
-            $prefix = strtolower(trim($prefix, '\\'));
+            $lower = strtolower(trim($prefix, '\\'));
 
-            if ($prefix !== '' && ($lowerRelative === $prefix || str_starts_with($lowerRelative, $prefix.'\\'))) {
-                return true;
+            if ($lower !== '' && ($lowerRelative === $lower || str_starts_with($lowerRelative, $lower.'\\'))) {
+                return [true, sprintf('config/cordon.php lists [%s] in the public of module [%s]', trim($prefix, '\\'), $module->name)];
             }
         }
 
-        return false;
+        return [false, 'it is not in a public namespace, not marked #[PublicApi], and its module is not open'];
     }
 
     /**

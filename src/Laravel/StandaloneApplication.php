@@ -6,8 +6,11 @@ namespace Cordon\Laravel;
 
 use Composer\InstalledVersions;
 use Cordon\Laravel\Commands\DocsCommand;
+use Cordon\Laravel\Commands\ExplainCommand;
+use Cordon\Laravel\Commands\ImpactCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
+use Cordon\Laravel\Commands\WhyCommand;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Config\Repository;
 use Symfony\Component\Console\Application;
@@ -34,6 +37,9 @@ final class StandaloneApplication
         'verify' => VerifyCommand::class,
         'modules' => ModulesCommand::class,
         'docs' => DocsCommand::class,
+        'explain' => ExplainCommand::class,
+        'why' => WhyCommand::class,
+        'impact' => ImpactCommand::class,
     ];
 
     public static function run(string $basePath, ?InputInterface $input = null, ?OutputInterface $output = null): int

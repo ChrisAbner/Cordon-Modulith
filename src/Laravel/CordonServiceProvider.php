@@ -12,8 +12,11 @@ use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Contracts\Rule;
 use Cordon\Laravel\Commands\DocsCommand;
+use Cordon\Laravel\Commands\ExplainCommand;
+use Cordon\Laravel\Commands\ImpactCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
+use Cordon\Laravel\Commands\WhyCommand;
 use Cordon\Rules\RuleSet;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
@@ -45,6 +48,9 @@ final class CordonServiceProvider extends ServiceProvider
             VerifyCommand::class,
             ModulesCommand::class,
             DocsCommand::class,
+            ExplainCommand::class,
+            WhyCommand::class,
+            ImpactCommand::class,
         ]);
     }
 

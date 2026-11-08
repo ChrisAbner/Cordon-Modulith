@@ -7,6 +7,7 @@ namespace Cordon\Laravel;
 use Closure;
 use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\Result;
+use Cordon\Analysis\Snapshot;
 use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
@@ -65,6 +66,14 @@ final class Verifier
     public function configurationErrors(): array
     {
         return ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
+    }
+
+    /**
+     * The modules' declarations and cross-module references, without running the rules.
+     */
+    public function snapshot(): Snapshot
+    {
+        return $this->analyzer()->snapshot($this->modules());
     }
 
     /**

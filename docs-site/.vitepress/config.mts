@@ -43,6 +43,7 @@ export default defineConfig({
             {
                 text: 'Going further',
                 items: [
+                    { text: 'Exploring the modules', link: '/guide/explore' },
                     { text: 'Living documentation', link: '/guide/living-documentation' },
                     { text: 'Custom rules', link: '/guide/custom-rules' },
                     { text: 'Compatibility', link: '/guide/compatibility' },
