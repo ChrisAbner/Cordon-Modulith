@@ -51,19 +51,25 @@ final class InternalAccessRule implements Rule
             $errors[] = RuleErrorBuilder::message($error)->identifier('cordon.configuration')->line(1)->build();
         }
 
-        $file = $scope->getFile();
-        $from = $this->context->modules()->forPath($file);
-
         // PHPStan has no warnings, so the rule reports only in error.
-        if ($this->context->severity(CordonInternalAccessRule::ID) !== Severity::Error || $from === null || $this->context->isExcluded($from, $file)) {
+        if ($this->context->severity(CordonInternalAccessRule::ID) !== Severity::Error) {
             return $errors;
         }
 
         // PHPStan already parsed the file and resolved its names: collect the
         // references from its AST instead of parsing the file again.
+        $file = $scope->getFile();
         $collector = new ReferenceCollector($file);
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
+        $from = $this->context->moduleOf($file, $collector->declarations());
+
+        if ($from === null) {
+            return $errors;
+        }
+
+        // The baseline keys use the project path, which editor mode hides behind a temporary file.
+        $path = $this->context->projectPath($file, $collector->declarations());
         $violations = [];
 
         foreach ($collector->references() as $reference) {
@@ -79,7 +85,7 @@ final class InternalAccessRule implements Rule
                 continue;
             }
 
-            $violations[$target] = new Violation(CordonInternalAccessRule::ID, '', $file, $reference->line, $from->name, $to->name, $target);
+            $violations[$target] = new Violation(CordonInternalAccessRule::ID, '', $path, $reference->line, $from->name, $to->name, $target);
         }
 
         [$kept] = $this->context->baseline()->filter(array_values($violations), $this->context->basePath());
