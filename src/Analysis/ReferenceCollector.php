@@ -55,7 +55,20 @@ final class ReferenceCollector extends NodeVisitorAbstract
             $fqcn = isset($node->namespacedName) ? $node->namespacedName->toString() : null;
 
             if ($fqcn !== null) {
-                $this->declarations[] = new ClassDeclaration($fqcn, $this->file, $node->getStartLine(), $this->visibilityOf($node));
+                $interfaces = match (true) {
+                    $node instanceof Node\Stmt\Class_, $node instanceof Node\Stmt\Enum_ => $node->implements,
+                    $node instanceof Node\Stmt\Interface_ => $node->extends,
+                    default => [],
+                };
+
+                $this->declarations[] = new ClassDeclaration(
+                    $fqcn,
+                    $this->file,
+                    $node->getStartLine(),
+                    $this->visibilityOf($node),
+                    $node instanceof Node\Stmt\Class_ ? $node->extends?->toString() : null,
+                    array_values(array_map(static fn (Node\Name $name): string => $name->toString(), $interfaces)),
+                );
             }
 
             // Anonymous classes are attributed to the enclosing class.

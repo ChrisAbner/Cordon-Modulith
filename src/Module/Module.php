@@ -12,6 +12,7 @@ final readonly class Module
     /**
      * @param  list<string>|null  $dependsOn  Declared dependencies; null means "not declared" (not enforced).
      * @param  list<string>  $publicApi  Extra namespaces or classes, relative to the module namespace, exposed as public API.
+     * @param  array<array-key, mixed>  $metadata  Free-form information from config/cordon.php (description, owner...).
      */
     public function __construct(
         public string $name,
@@ -20,6 +21,7 @@ final readonly class Module
         public ?array $dependsOn = null,
         public array $publicApi = [],
         public bool $open = false,
+        public array $metadata = [],
     ) {}
 
     public static function make(string $name, string $namespace, string $path): self
@@ -72,6 +74,7 @@ final readonly class Module
             $dependsOn,
             $publicApi,
             (bool) ($config['open'] ?? $this->open),
+            is_array($config['metadata'] ?? null) ? $config['metadata'] : $this->metadata,
         );
     }
 }

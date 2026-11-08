@@ -12,7 +12,7 @@ The output folder (`docs/architecture` by default, relative to the project root)
 | File | Content |
 |---|---|
 | `README.md` | Every module with its namespace, dependencies, users and violation count, and a Mermaid diagram of the dependencies. Edge labels count the classes used; edges with internal access are red. |
-| `modules/<Module>.md` | A canvas per module: namespace, path, `depends_on`, a diagram of the module and its neighbours, its public API, the classes it uses from other modules and the ones other modules use from it (internal ones flagged), its events and its violations. |
+| `modules/<Module>.md` | A canvas per module: its description and owner (from `metadata`), namespace, path, `depends_on`, a diagram of the module and its neighbours, its components grouped by Laravel role, its public API, the classes it uses from other modules and the ones other modules use from it (internal ones flagged), its events and its violations. |
 | `events.md` | Every module event with the classes that publish and listen to it. |
 
 GitHub and GitLab render the Mermaid diagrams. The output is deterministic (sorted, no timestamps), so you can commit it and see architecture changes in pull request diffs.
@@ -27,6 +27,18 @@ flowchart LR
     m2 -->|1| m0
     m2 -->|2| m1
     linkStyle 3 stroke:#d33,stroke-width:2px
+```
+
+## Components and metadata
+
+Each canvas groups the module's classes by role: Models, Controllers, Commands, Jobs, Listeners, Events, Policies, Notifications, Mail and Other. A known Laravel parent class decides first (a class that extends `Illuminate\Database\Eloquent\Model` is a model wherever it lives), then a namespace segment (`Listeners`, `Jobs`...), then `ShouldQueue` for jobs.
+
+Describe a module and name its owner in `config/cordon.php`; the canvas shows them at the top:
+
+```php
+'modules' => [
+    'Billing' => ['metadata' => ['description' => 'Invoices and payments.', 'owner' => 'payments-team']],
+],
 ```
 
 ## Events
