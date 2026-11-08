@@ -79,3 +79,23 @@ jobs:
 
       - name: 1,000 files in less than 10 seconds
         run: composer bench
+
+  # The suite cannot test the lowest nikic/php-parser composer.json allows: its dev
+  # dependencies require a newer one. This installs Cordon alone, at its minimums.
+  parser-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install the lowest dependencies, without require-dev
+        run: |
+          php -r '$j = json_decode(file_get_contents("composer.json"), true); unset($j["require-dev"], $j["autoload-dev"]); file_put_contents("composer.json", json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
+          composer update --prefer-dist --prefer-lowest --no-interaction
+
+      - name: The lowest php-parser analyses modern PHP
+        run: php tests/parser-floor.php
