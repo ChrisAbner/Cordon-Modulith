@@ -111,6 +111,16 @@ final class Verifier
     }
 
     /**
+     * The stale baseline entries, with the occurrences each records and the ones $result contains.
+     *
+     * @return list<array{rule: string, file: string|null, target: string|null, expected: int, found: int}>
+     */
+    public function staleBaselineDetails(Result $result): array
+    {
+        return $this->baseline()?->staleDetails($result->violations, $this->basePath) ?? [];
+    }
+
+    /**
      * Rewrites the baseline file without the occurrences $result no longer
      * contains. New violations are never added.
      *

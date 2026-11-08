@@ -43,6 +43,15 @@ When you fix a violation that was in the baseline, its entry stops matching and 
 
 `--prune-baseline` removes those entries and lowers counts. It never adds an entry, so a violation that slipped in while CI was off stays reported. Don't shrink the baseline with `--generate-baseline`: it records every current violation, including new ones. `--prune-baseline` cannot be combined with `--module`, because it needs the whole analysis.
 
+To keep the baseline from going stale, pass `--fail-on-stale` in CI. A stale entry then fails the check, and each one is listed with the occurrences it records and the ones the code still has:
+
+```text
+1 baseline entry no longer matches the code. Run php artisan cordon:verify --prune-baseline to remove it.
+  - [internal_access] app/Modules/Billing/Services/CheckoutService.php -> App\Modules\Catalog\Models\Product: expected 3, found 1
+```
+
+When a file does not parse, its references are missing and its entries would look stale, so `--fail-on-stale` skips the check and says so. `--fail-on-stale` cannot be combined with `--no-baseline`.
+
 ## Upgrading from a version 1 baseline
 
 Cordon 0.1 recorded one `cycles` entry per group of modules, so a module joining that group stayed hidden. Version 2 records one entry per dependency inside a cycle. A version 1 baseline still works for the other rules, but its `cycles` entries no longer match: `cordon:verify` reports those cycles again and warns about it. Regenerate the baseline once after upgrading (`--prune-baseline` only removes the old entries; it does not record the new ones):

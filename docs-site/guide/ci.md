@@ -69,6 +69,10 @@ Teams that own modules can check only theirs:
 
 `--module` reports the violations a module causes and the dependency cycles it takes part in. The analysis still covers the whole application.
 
+## Keeping the baseline small
+
+`--fail-on-stale` makes a baseline entry that no longer matches the code fail the build, so fixed violations are removed from the baseline in the same pull request (`--prune-baseline`). See [shrinking the baseline](./baseline#shrinking-the-baseline).
+
 ## Files that do not parse
 
 A file that does not parse is skipped, so its references are not checked. Every format reports it: `text` as a comment, `json` under `parse_errors` and `github` as a warning annotation on the file. The job still passes. Add `--fail-on-parse-error` to fail it instead, for example with the action's `args` input.

@@ -15,6 +15,7 @@ use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\TextReporter;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Output\OutputInterface;
 
 final class VerifyCommand extends Command
@@ -26,6 +27,7 @@ final class VerifyCommand extends Command
         {--generate-baseline : Record every current violation in the baseline file and exit}
         {--prune-baseline : Remove baseline entries that no longer match the code, without adding new violations, and exit}
         {--no-baseline : Ignore the baseline file}
+        {--fail-on-stale : Fail when baseline entries no longer match the code}
         {--allow-empty : Pass when no modules are found, for projects that have none yet}';
 
     protected $description = 'Verify that modules only depend on each other through their public API';
@@ -99,6 +101,12 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
+        if ($this->option('fail-on-stale') && $this->option('no-baseline')) {
+            $this->error('The --fail-on-stale option needs the baseline: drop --no-baseline.');
+
+            return self::INVALID;
+        }
+
         if ($this->option('prune-baseline') && ($message = $this->pruneConflict($verifier, $only)) !== null) {
             $this->error($message);
 
@@ -125,6 +133,8 @@ final class VerifyCommand extends Command
             return $this->prune($verifier, $result);
         }
 
+        $staleFailure = false;
+
         if (! $this->option('no-baseline')) {
             foreach ($verifier->baselineWarnings() as $warning) {
                 if ($format === 'github') {
@@ -135,6 +145,18 @@ final class VerifyCommand extends Command
             }
 
             // Counted on the whole analysis, before --module narrows the report.
+            // A file that does not parse hides its occurrences, so its entries
+            // would look stale: then --fail-on-stale does not fail, as PHPStan does.
+            $failOnStale = (bool) $this->option('fail-on-stale');
+
+            if ($failOnStale && $result->parseErrors !== []) {
+                $failOnStale = false;
+                $this->output->getErrorStyle()->writeln(sprintf(
+                    '<comment>Skipped the stale baseline check: %d file(s) could not be parsed.</comment>',
+                    count($result->parseErrors),
+                ));
+            }
+
             if (($stale = $verifier->staleBaselineEntries($result)) > 0) {
                 $message = sprintf(
                     '%d baseline %s no longer %s the code. Run %s --prune-baseline to remove %s.',
@@ -145,7 +167,10 @@ final class VerifyCommand extends Command
                     $stale === 1 ? 'it' : 'them',
                 );
 
-                if ($format === 'github') {
+                if ($failOnStale) {
+                    $staleFailure = true;
+                    $this->reportStale($message, $verifier->staleBaselineDetails($result), $format);
+                } elseif ($format === 'github') {
                     $this->output->writeln('::notice title=Cordon::'.$message, OutputInterface::OUTPUT_RAW);
                 } else {
                     $this->output->getErrorStyle()->writeln('<comment>'.$message.'</comment>');
@@ -165,7 +190,7 @@ final class VerifyCommand extends Command
             $reporter->formatted() ? OutputInterface::OUTPUT_NORMAL : OutputInterface::OUTPUT_RAW,
         );
 
-        if ($result->hasViolations()) {
+        if ($result->hasViolations() || $staleFailure) {
             return self::FAILURE;
         }
 
@@ -179,6 +204,33 @@ final class VerifyCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The stale entries as an error, one line per entry, for --fail-on-stale.
+     *
+     * @param  list<array{rule: string, file: string|null, target: string|null, expected: int, found: int}>  $details
+     */
+    private function reportStale(string $message, array $details, string $format): void
+    {
+        $lines = array_map(static fn (array $entry): string => sprintf(
+            '  - [%s] %s%s: expected %d, found %d',
+            $entry['rule'],
+            $entry['file'] !== null ? $entry['file'].' -> ' : '',
+            $entry['target'] ?? '',
+            $entry['expected'],
+            $entry['found'],
+        ), $details);
+
+        if ($format === 'github') {
+            $this->output->writeln('::error title=Cordon::'.$message, OutputInterface::OUTPUT_RAW);
+            $this->output->writeln($lines, OutputInterface::OUTPUT_RAW);
+
+            return;
+        }
+
+        $this->output->getErrorStyle()->writeln('<error>'.$message.'</error>');
+        $this->output->getErrorStyle()->writeln(array_map(OutputFormatter::escape(...), $lines));
     }
 
     /**

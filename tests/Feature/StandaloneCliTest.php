@@ -80,6 +80,20 @@ it('generates and applies a baseline', function () {
         ->and($run['out'])->toContain('suppressed by the baseline');
 });
 
+it('fails on stale baseline entries with --fail-on-stale', function () {
+    $project = temp_project('namespace-app');
+    expect(run_cordon(['verify', '--generate-baseline'], $project)['code'])->toBe(0);
+
+    $baseline = json_decode((string) file_get_contents($project.'/cordon-baseline.json'), true);
+    $baseline['violations'][] = ['rule' => 'internal_access', 'file' => 'app/Modules/Billing/Gone.php', 'target' => 'App\\Modules\\Catalog\\Models\\Product', 'count' => 1];
+    file_put_contents($project.'/cordon-baseline.json', json_encode($baseline));
+
+    $run = run_cordon(['verify', '--fail-on-stale'], $project);
+
+    expect($run['code'])->toBe(1)
+        ->and($run['out'].$run['err'])->toContain('Run vendor/bin/cordon verify --prune-baseline', '[internal_access] app/Modules/Billing/Gone.php');
+});
+
 it('lists the detected modules', function () {
     $run = run_cordon(['modules'], fixture_path('namespace-app'));
 

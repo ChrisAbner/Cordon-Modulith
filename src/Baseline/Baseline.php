@@ -144,13 +144,33 @@ final readonly class Baseline
      */
     public function staleEntries(array $violations, ?string $basePath = null): int
     {
-        $found = $this->occurrences($violations, $basePath);
+        return count($this->staleDetails($violations, $basePath));
+    }
 
-        return count(array_filter(
-            $this->entries,
-            static fn (array $entry, string $key): bool => ($found[$key] ?? 0) < $entry['count'],
-            ARRAY_FILTER_USE_BOTH,
-        ));
+    /**
+     * The entries that record more occurrences than $violations contain, with both counts.
+     *
+     * @param  list<Violation>  $violations
+     * @return list<array{rule: string, file: string|null, target: string|null, expected: int, found: int}>
+     */
+    public function staleDetails(array $violations, ?string $basePath = null): array
+    {
+        $found = $this->occurrences($violations, $basePath);
+        $stale = [];
+
+        foreach ($this->entries as $key => $entry) {
+            if (($found[$key] ?? 0) < $entry['count']) {
+                $stale[] = [
+                    'rule' => $entry['rule'],
+                    'file' => $entry['file'],
+                    'target' => $entry['target'],
+                    'expected' => $entry['count'],
+                    'found' => $found[$key] ?? 0,
+                ];
+            }
+        }
+
+        return $stale;
     }
 
     /**

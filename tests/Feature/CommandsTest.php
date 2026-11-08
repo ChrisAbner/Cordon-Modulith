@@ -224,6 +224,47 @@ function stale_entry(): array
     return ['rule' => 'internal_access', 'file' => 'app/Modules/Billing/Gone.php', 'target' => 'App\\Modules\\Catalog\\Models\\Product', 'count' => 1];
 }
 
+it('fails on stale baseline entries with --fail-on-stale, listing each one', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    edit_baseline(fn (array $entries) => [...$entries, stale_entry()]);
+
+    expect(Artisan::call('cordon:verify'))->toBe(0);
+
+    expect(Artisan::call('cordon:verify', ['--fail-on-stale' => true]))->toBe(1)
+        ->and(Artisan::output())->toContain(
+            '1 baseline entry no longer matches the code. Run php artisan cordon:verify --prune-baseline to remove it.',
+            '  - [internal_access] app/Modules/Billing/Gone.php -> App\\Modules\\Catalog\\Models\\Product: expected 1, found 0',
+        );
+
+    expect(Artisan::call('cordon:verify', ['--fail-on-stale' => true, '--format' => 'github']))->toBe(1)
+        ->and(Artisan::output())->toContain('::error title=Cordon::1 baseline entry no longer matches the code.');
+});
+
+it('counts an entry that records more occurrences than the code has as stale', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    edit_baseline(fn (array $entries) => array_map(
+        fn (array $entry) => str_ends_with((string) $entry['file'], 'Billing/Services/CheckoutService.php') ? [...$entry, 'count' => 3] : $entry,
+        $entries,
+    ));
+
+    expect(Artisan::call('cordon:verify', ['--fail-on-stale' => true]))->toBe(1)
+        ->and(Artisan::output())->toContain('Billing/Services/CheckoutService.php -> App\\Modules\\Catalog\\Models\\Product: expected 3, found 1');
+});
+
+it('skips the stale check when a file could not be parsed', function () {
+    app_with_a_file_that_does_not_parse();
+    file_put_contents((string) config('cordon.baseline'), json_encode(['version' => 2, 'violations' => [stale_entry()]]));
+
+    expect(Artisan::call('cordon:verify', ['--fail-on-stale' => true]))->toBe(0)
+        ->and(Artisan::output())->toContain('Skipped the stale baseline check: 1 file(s) could not be parsed.');
+});
+
+it('rejects --fail-on-stale without the baseline', function () {
+    $this->artisan('cordon:verify', ['--fail-on-stale' => true, '--no-baseline' => true])
+        ->expectsOutputToContain('The --fail-on-stale option needs the baseline: drop --no-baseline.')
+        ->assertExitCode(2);
+});
+
 it('reports baseline entries that no longer match', function () {
     $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
     edit_baseline(fn (array $entries) => [...$entries, stale_entry()]);
