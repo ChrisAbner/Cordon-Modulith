@@ -6,6 +6,7 @@ namespace Cordon\PHPStan;
 
 use Cordon\Analysis\ClassDeclaration;
 use Cordon\Analysis\DeclaredVisibility;
+use Cordon\Analysis\FileCollector;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Attributes\Internal;
 use Cordon\Attributes\PublicApi;
@@ -171,6 +172,16 @@ final class CordonContext
         }
 
         return count($matches) === 1 ? $matches[0] : $file;
+    }
+
+    /**
+     * Whether the module has PHP files Cordon analyses, so PHPStan should have collected data for it.
+     */
+    public function hasFiles(Module $module): bool
+    {
+        $this->boot();
+
+        return is_dir($module->path) && (new FileCollector($this->exclude))->collect($module->path) !== [];
     }
 
     public function isExcluded(Module $module, string $file): bool
