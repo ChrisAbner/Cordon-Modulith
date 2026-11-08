@@ -19,6 +19,7 @@ final readonly class Reference
 
     /**
      * @param  self::USE|self::LISTENER  $kind
+     * @param  bool  $relation  The model of an Eloquent relation: $this->belongsTo(Target::class) and its siblings.
      */
     public function __construct(
         public string $sourceFile,
@@ -26,5 +27,6 @@ final readonly class Reference
         public string $target,
         public int $line,
         public string $kind = self::USE,
+        public bool $relation = false,
     ) {}
 }

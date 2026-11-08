@@ -23,6 +23,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - PHPStan reports all three rules: `undeclared_dependency` (`cordon.undeclaredDependency`) per file, and `cycles` (`cordon.cycle`) with collectors on a full analysis, at the first reference of each dependency. `cordon.incompleteGraph` says when some modules were not analysed. Each error links to the rule's documentation.
 - `cordon:verify <paths>`: report only the violations of some files or directories, plus the cycles their modules take part in, for pre-commit hooks (see the new recipe).
 - `cordon:explain <class>` (its module, whether it is public and why, who uses it), `cordon:why <from> <to>` (the references behind a dependency, and whether `depends_on` allows it) and `cordon:impact <module>` (the modules that depend on it, directly or not). Also `explain`, `why` and `impact` in `vendor/bin/cordon`.
+- An `internal_access` on the model of an Eloquent relation (`$this->belongsTo(Model::class)` and its siblings) links to the recipe for cross-module relations. `Reference` has a new `relation` flag.
 - `cordon:graph`: the module graph as Mermaid, DOT (Graphviz) or JSON, with the dependencies that have violations marked; `--module` keeps one module and its neighbours.
 - `--format=gitlab`, `junit` and `checkstyle` reports, for GitLab Code Quality and the CI tools that read JUnit or Checkstyle.
 - `unused_dependency` (a warning by default): a `depends_on` entry the module never uses.

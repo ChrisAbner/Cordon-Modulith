@@ -24,6 +24,11 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
     private const KIND = 'cordon.kind';
 
+    private const RELATION = 'cordon.relation';
+
+    /** Eloquent methods whose first argument is the related model. */
+    private const RELATIONS = ['belongsto', 'hasone', 'hasmany', 'belongstomany', 'hasonethrough', 'hasmanythrough', 'morphone', 'morphmany', 'morphtomany', 'morphedbymany'];
+
     /** @var list<ClassDeclaration> */
     private array $declarations = [];
 
@@ -97,10 +102,24 @@ final class ReferenceCollector extends NodeVisitorAbstract
             }
         }
 
+        // $this->belongsTo(Model::class): a relation ties the tables of two modules together.
+        if ($node instanceof Node\Expr\MethodCall
+            && $node->var instanceof Node\Expr\Variable && $node->var->name === 'this'
+            && $node->name instanceof Node\Identifier && in_array($node->name->toLowerString(), self::RELATIONS, true)
+            && ($node->args[0] ?? null) instanceof Node\Arg && $node->args[0]->value instanceof Node\Expr\ClassConstFetch) {
+            $node->args[0]->value->setAttribute(self::RELATION, true);
+        }
+
         // The NameResolver replaces the class of X::class on entering it, so the
-        // mark moves from the expression to its (now resolved) name here.
-        if ($node instanceof Node\Expr\ClassConstFetch && $node->getAttribute(self::KIND) === Reference::LISTENER) {
-            $node->class->setAttribute(self::KIND, Reference::LISTENER);
+        // marks move from the expression to its (now resolved) name here.
+        if ($node instanceof Node\Expr\ClassConstFetch) {
+            if ($node->getAttribute(self::KIND) === Reference::LISTENER) {
+                $node->class->setAttribute(self::KIND, Reference::LISTENER);
+            }
+
+            if ($node->getAttribute(self::RELATION) === true) {
+                $node->class->setAttribute(self::RELATION, true);
+            }
         }
 
         // Function and constant names are not class dependencies.
@@ -112,7 +131,7 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
         if ($node instanceof Node\Name\FullyQualified && $node->getAttribute(self::SKIP) !== true) {
             $kind = $node->getAttribute(self::KIND) === Reference::LISTENER ? Reference::LISTENER : Reference::USE;
-            $this->references[] = new Reference($this->file, $this->currentClass(), $node->toString(), $node->getStartLine(), $kind);
+            $this->references[] = new Reference($this->file, $this->currentClass(), $node->toString(), $node->getStartLine(), $kind, $node->getAttribute(self::RELATION) === true);
         }
 
         return null;
@@ -147,7 +166,7 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
         foreach ($this->references as $i => $reference) {
             $references[] = $i >= $start && isset($events[$reference->target]) && $reference->kind === Reference::USE
-                ? new Reference($reference->sourceFile, $reference->sourceClass, $reference->target, $reference->line, Reference::LISTENER)
+                ? new Reference($reference->sourceFile, $reference->sourceClass, $reference->target, $reference->line, Reference::LISTENER, $reference->relation)
                 : $reference;
         }
 

@@ -80,3 +80,31 @@ it('declares enums and traits', function () {
         'Edge\\Source\\References',
     ]);
 });
+
+it('marks the models of Eloquent relations', function () {
+    $analysis = (new PhpParserExtractor)->extract(fixture_path('edge-cases/EloquentRelations.php'));
+    $relations = [];
+
+    foreach ($analysis->references as $reference) {
+        if (str_starts_with($reference->target, 'Edge\\Target\\')) {
+            $relations[substr($reference->target, strlen('Edge\\Target\\'))] = $reference->relation;
+        }
+    }
+
+    ksort($relations);
+
+    expect($relations)->toBe([
+        'BelongsToManyTarget' => true,
+        'BelongsToTarget' => true,
+        'HasManyTarget' => true,
+        'HasManyThroughTarget' => true,
+        'HasOneTarget' => true,
+        'HasOneThroughTarget' => true,
+        'MorphManyTarget' => true,
+        'MorphOneTarget' => true,
+        'MorphToManyTarget' => true,
+        'MorphedByManyTarget' => true,
+        'QueryTarget' => false,
+        'TypeTarget' => false,
+    ]);
+});

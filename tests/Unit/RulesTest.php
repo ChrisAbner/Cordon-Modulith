@@ -12,6 +12,7 @@ use Cordon\Baseline\Baseline;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\CycleRule;
+use Cordon\Rules\InternalAccessRule;
 use Cordon\Rules\RuleSet;
 use Cordon\Rules\UndeclaredDependencyRule;
 use Cordon\Rules\UnusedDependencyRule;
@@ -161,4 +162,18 @@ it('counts a dependency used only by a listener as used, unless listeners are le
 
     expect(iterator_to_array((new UnusedDependencyRule)->check($context), false))->toBe([])
         ->and(iterator_to_array((new UnusedDependencyRule(countListeners: false))->check($context), false))->toHaveCount(1);
+});
+
+it('points a cross-module Eloquent relation to the recipe', function () {
+    $a = Module::make('A', 'A', '/p/A');
+    $b = Module::make('B', 'B', '/p/B');
+    $edges = [
+        new Edge($a, $b, new Reference('/p/A/Order.php', 'A\\Order', 'B\\Models\\Customer', 5, Reference::USE, true)),
+        new Edge($a, $b, new Reference('/p/A/Order.php', 'A\\Order', 'B\\Models\\Invoice', 9)),
+    ];
+    $context = new AnalysisContext(new ModuleMap([$a, $b]), SymbolTable::fromAnalyses([]), new PublicApiPolicy, $edges);
+    $messages = array_map(fn (Violation $violation) => $violation->message, iterator_to_array((new InternalAccessRule)->check($context), false));
+
+    expect($messages[0])->toEndWith(' Relations between modules tie their tables together: see https://chrisabner.github.io/Cordon-Modulith/recipes/cross-module-relations')
+        ->and($messages[1])->not->toContain('Relations between modules');
 });

@@ -93,6 +93,17 @@ final class InternalAccessRuleTest extends RuleTestCase
         $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], []);
     }
 
+    public function test_it_points_a_cross_module_relation_to_the_recipe(): void
+    {
+        $this->app = $this->copyOfTheApp(['version' => 2, 'violations' => []]);
+        @mkdir($this->app.'/app/Modules/Billing/Models');
+        file_put_contents($this->app.'/app/Modules/Billing/Models/Invoice.php', "<?php\n\nnamespace App\\Modules\\Billing\\Models;\n\nuse App\\Modules\\Catalog\\Models\\Product;\n\nfinal class Invoice\n{\n    public function product()\n    {\n        return \$this->belongsTo(Product::class);\n    }\n}\n");
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Models/Invoice.php'], [
+            ['Module [Billing] uses App\\Modules\\Catalog\\Models\\Product, which is internal to module [Catalog]. Relations between modules tie their tables together: see https://chrisabner.github.io/Cordon-Modulith/recipes/cross-module-relations', 11, self::TIP],
+        ]);
+    }
+
     public function test_it_applies_the_cordon_baseline(): void
     {
         $this->app = $this->copyOfTheApp([

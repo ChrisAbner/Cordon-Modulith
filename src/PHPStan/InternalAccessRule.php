@@ -75,6 +75,13 @@ final class InternalAccessRule implements Rule
         // The baseline keys use the project path, which editor mode hides behind a temporary file.
         $path = $this->context->realPath($file);
         $violations = [];
+        $relations = [];
+
+        foreach ($collector->references() as $reference) {
+            if ($reference->relation) {
+                $relations[$reference->target] = true;
+            }
+        }
 
         foreach ($collector->references() as $reference) {
             $target = $reference->target;
@@ -96,10 +103,11 @@ final class InternalAccessRule implements Rule
 
         foreach ($kept as $violation) {
             $errors[] = RuleErrorBuilder::message(sprintf(
-                'Module [%s] uses %s, which is internal to module [%s].',
+                'Module [%s] uses %s, which is internal to module [%s].%s',
                 $violation->sourceModule,
                 $violation->target,
                 $violation->targetModule,
+                isset($relations[(string) $violation->target]) ? ' '.CordonInternalAccessRule::RELATION_HINT : '',
             ))
                 ->identifier('cordon.internalAccess')
                 ->line((int) $violation->line)

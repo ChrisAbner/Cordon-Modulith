@@ -25,6 +25,8 @@ x [internal_access] Modules/Orders/app/Models/Order.php:13
 
 Fix it by depending on a contract or data object of the target module. See [expose a service](../recipes/expose-a-service).
 
+When the internal class is the model of an Eloquent relation (`$this->belongsTo(Product::class)`, `hasMany`, `morphToMany`...), the message says so and links to [replace a cross-module Eloquent relation](../recipes/cross-module-relations): a relation ties the two modules' tables together, which a contract alone does not undo.
+
 ## undeclared_dependency
 
 `depends_on` is opt-in per module: modules without it are not checked.
