@@ -16,3 +16,7 @@ services:
         class: Cordon\PHPStan\InternalAccessRule
         tags:
             - phpstan.rules.rule
+    -
+        class: Cordon\PHPStan\UndeclaredDependencyRule
+        tags:
+            - phpstan.rules.rule
