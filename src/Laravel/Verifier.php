@@ -18,7 +18,14 @@ use Illuminate\Contracts\Config\Repository;
  */
 final class Verifier
 {
+    private ?ModuleMap $resolved = null;
+
     private ?ModuleMap $modules = null;
+
+    /** The loaded baseline: unset until first read, null when there is no file. */
+    private ?Baseline $baseline = null;
+
+    private bool $baselineLoaded = false;
 
     public function __construct(
         private readonly ModuleResolver $resolver,
@@ -37,7 +44,7 @@ final class Verifier
      */
     public function modules(): ModuleMap
     {
-        return $this->modules ??= $this->resolver->resolve()->configure($this->moduleConfig());
+        return $this->modules ??= $this->resolvedModules()->configure($this->moduleConfig());
     }
 
     /**
@@ -47,7 +54,7 @@ final class Verifier
      */
     public function configurationWarnings(): array
     {
-        return $this->resolver->resolve()->configurationWarnings($this->moduleConfig());
+        return $this->resolvedModules()->configurationWarnings($this->moduleConfig());
     }
 
     /**
@@ -107,6 +114,7 @@ final class Verifier
         $baseline = $this->baseline() ?? Baseline::empty();
         $pruned = $baseline->prune($result->violations, $this->basePath);
         $pruned->save($this->baselineFile());
+        $this->baseline = $pruned;
 
         [$new] = $pruned->filter($result->violations, $this->basePath);
 
@@ -120,11 +128,24 @@ final class Verifier
         return Paths::join($this->basePath, is_string($file) && $file !== '' ? $file : 'cordon-baseline.json');
     }
 
+    /**
+     * Modules as the resolver found them, before the per-module settings.
+     * Resolvers scan the disk, so this runs once per Verifier.
+     */
+    private function resolvedModules(): ModuleMap
+    {
+        return $this->resolved ??= $this->resolver->resolve();
+    }
+
     private function baseline(): ?Baseline
     {
-        $file = $this->baselineFile();
+        if (! $this->baselineLoaded) {
+            $file = $this->baselineFile();
+            $this->baseline = is_file($file) ? Baseline::load($file) : null;
+            $this->baselineLoaded = true;
+        }
 
-        return is_file($file) ? Baseline::load($file) : null;
+        return $this->baseline;
     }
 
     /**

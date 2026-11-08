@@ -98,7 +98,7 @@ final readonly class Baseline
 
         if ($outdatedCycles > 0) {
             $warnings[] = sprintf(
-                'The baseline has %d cycles %s from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so %s no longer %s. Regenerate the baseline with php artisan cordon:verify --generate-baseline.',
+                'The baseline has %d cycles %s from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so %s no longer %s. Regenerate the baseline with cordon:verify --generate-baseline (or vendor/bin/cordon verify --generate-baseline).',
                 $outdatedCycles,
                 $outdatedCycles === 1 ? 'entry' : 'entries',
                 $outdatedCycles === 1 ? 'that entry' : 'those entries',

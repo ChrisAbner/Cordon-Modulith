@@ -51,7 +51,7 @@ it('writes version 2 baselines', function () {
 
 it('warns that cycle entries of a version 1 baseline no longer match', function () {
     expect(Baseline::load(fixture_path('baselines/v1-cycles.json'))->warnings())->toBe([
-        'The baseline has 1 cycles entry from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so that entry no longer matches. Regenerate the baseline with php artisan cordon:verify --generate-baseline.',
+        'The baseline has 1 cycles entry from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so that entry no longer matches. Regenerate the baseline with cordon:verify --generate-baseline (or vendor/bin/cordon verify --generate-baseline).',
     ]);
 });
 

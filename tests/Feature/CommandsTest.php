@@ -70,7 +70,7 @@ it('warns when a version 1 baseline has cycle entries that no longer match', fun
     copy(fixture_path('baselines/v1-cycles.json'), (string) config('cordon.baseline'));
 
     $this->artisan('cordon:verify')
-        ->expectsOutputToContain('Regenerate the baseline with php artisan cordon:verify --generate-baseline')
+        ->expectsOutputToContain('Regenerate the baseline with cordon:verify --generate-baseline (or vendor/bin/cordon verify --generate-baseline).')
         ->assertExitCode(1);
 });
 
