@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel\Commands;
 
+use Cordon\Analysis\Result;
 use Cordon\Laravel\Commands\Concerns\ExploresModules;
 use Cordon\Laravel\Verifier;
+use Cordon\Rules\InternalAccessRule;
+use Cordon\Rules\Severity;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 
@@ -24,7 +27,7 @@ final class ExplainCommand extends Command
 
     public function handle(Verifier $verifier): int
     {
-        if ($this->configurationFailed($verifier)) {
+        if ($this->formatFailed() || $this->configurationFailed($verifier)) {
             return self::INVALID;
         }
 
@@ -32,7 +35,7 @@ final class ExplainCommand extends Command
         $module = $verifier->modules()->forClass($class);
 
         if ($module === null) {
-            $this->error(sprintf('[%s] does not belong to any module.', $class));
+            $this->stderr(sprintf('[%s] does not belong to any module.', $class));
 
             return self::INVALID;
         }
@@ -41,13 +44,14 @@ final class ExplainCommand extends Command
         $declaration = $snapshot->context->symbols->get($class);
 
         if ($declaration === null) {
-            $this->error(sprintf('[%s] is not declared in module [%s].', $class, $module->name));
+            $this->stderr(sprintf('[%s] is not declared in module [%s].', $class, $module->name));
 
             return self::INVALID;
         }
 
         $policy = $snapshot->context->policy;
         $public = $policy->isPublic($declaration->fqcn, $module, $declaration);
+        $reported = $this->reported($verifier->check($snapshot), $declaration->fqcn);
         $usedBy = [];
 
         foreach ($snapshot->context->edges as $edge) {
@@ -57,7 +61,8 @@ final class ExplainCommand extends Command
                     'file' => Paths::relative($verifier->basePath(), $edge->reference->sourceFile),
                     'line' => $edge->reference->line,
                     'kind' => $edge->reference->kind,
-                    'violation' => ! $public,
+                    'violation' => isset($reported[$edge->reference->sourceFile]),
+                    'severity' => $reported[$edge->reference->sourceFile] ?? null,
                 ];
             }
         }
@@ -82,9 +87,33 @@ final class ExplainCommand extends Command
         $this->line('  Used by:'.($usedBy === [] ? ' no other module' : ''));
 
         foreach ($usedBy as $use) {
-            $this->line(sprintf('    %s %s  %s:%d (%s)', $use['violation'] ? 'x' : '-', $use['module'], $use['file'], $use['line'], $use['kind']));
+            $mark = match ($use['severity']) {
+                Severity::Error->value => 'x',
+                Severity::Warn->value => '!',
+                default => '-',
+            };
+            $this->line(sprintf('    %s %s  %s:%d (%s)', $mark, $use['module'], $use['file'], $use['line'], $use['kind']));
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The files where cordon:verify reports an internal_access to $class,
+     * after the severity and the baseline: file => severity.
+     *
+     * @return array<string, string>
+     */
+    private function reported(Result $result, string $class): array
+    {
+        $files = [];
+
+        foreach ([...$result->violations, ...$result->warnings] as $violation) {
+            if ($violation->rule === InternalAccessRule::ID && $violation->file !== null && strcasecmp((string) $violation->target, $class) === 0) {
+                $files[$violation->file] ??= $violation->severity->value;
+            }
+        }
+
+        return $files;
     }
 }

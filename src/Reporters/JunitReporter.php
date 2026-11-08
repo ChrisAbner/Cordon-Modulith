@@ -11,8 +11,9 @@ use Cordon\Support\Paths;
 use DOMDocument;
 
 /**
- * JUnit report: one test case per module, failing with a failure per error.
- * Warnings never fail: they go to the suite's system-out.
+ * JUnit report: one test case per checked module, failing with a failure
+ * per error. Warnings and files that do not parse never fail: they go to the
+ * suite's system-out.
  *
  * @internal
  */
@@ -25,7 +26,10 @@ final class JunitReporter implements Reporter
 
     public function render(Result $result): string
     {
-        $byModule = array_fill_keys($result->modules->names(), []);
+        $checked = $result->checkedModules === null
+            ? $result->modules->names()
+            : array_values(array_intersect($result->modules->names(), $result->checkedModules));
+        $byModule = array_fill_keys($checked, []);
 
         foreach ($result->violations as $violation) {
             $byModule[$violation->sourceModule ?? '(project)'][] = $violation;
@@ -39,7 +43,7 @@ final class JunitReporter implements Reporter
         foreach ([$suites, $suite] as $element) {
             $element->setAttribute('name', 'Cordon Modulith');
             $element->setAttribute('tests', (string) count($byModule));
-            $element->setAttribute('failures', (string) count($result->violations));
+            $element->setAttribute('failures', (string) count(array_filter($byModule)));
         }
 
         foreach ($byModule as $module => $violations) {
@@ -55,8 +59,16 @@ final class JunitReporter implements Reporter
             }
         }
 
-        if ($result->warnings !== []) {
-            $lines = array_map(fn (Violation $warning): string => '[warn] '.$this->line($warning, $result), $result->warnings);
+        $lines = [
+            ...array_map(fn (Violation $warning): string => '[warn] '.$this->line($warning, $result), $result->warnings),
+            ...array_map(
+                static fn (string $file, string $error): string => sprintf('[parse error] %s: %s', Paths::relative($result->basePath, $file), $error),
+                array_keys($result->parseErrors),
+                $result->parseErrors,
+            ),
+        ];
+
+        if ($lines !== []) {
             $suite->appendChild($xml->createElement('system-out'))->appendChild($xml->createTextNode(implode(PHP_EOL, $lines)));
         }
 

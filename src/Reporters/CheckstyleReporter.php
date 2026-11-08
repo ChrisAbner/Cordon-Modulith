@@ -27,7 +27,7 @@ final class CheckstyleReporter implements Reporter
     {
         $byFile = [];
 
-        foreach ([...$result->violations, ...$result->warnings] as $violation) {
+        foreach ([...$result->violations, ...$result->warnings, ...ParseErrors::asWarnings($result)] as $violation) {
             $byFile[Paths::relative($result->basePath, $violation->file) ?? 'config/cordon.php'][] = $violation;
         }
 

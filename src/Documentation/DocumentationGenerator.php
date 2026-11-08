@@ -8,6 +8,7 @@ use Cordon\Analysis\ClassDeclaration;
 use Cordon\Analysis\Edge;
 use Cordon\Analysis\ModuleFilter;
 use Cordon\Analysis\Snapshot;
+use Cordon\Analysis\SymbolTable;
 use Cordon\Analysis\Violation;
 use Cordon\Module\Module;
 use Cordon\Rules\InternalAccessRule;
@@ -127,7 +128,7 @@ final class DocumentationGenerator
             ...($description !== '' ? [$description, ''] : []),
             '| | |',
             '|---|---|',
-            ...($owner !== '' ? ['| Owner | '.$owner.' |'] : []),
+            ...($owner !== '' ? ['| Owner | '.str_replace('|', '\\|', $owner).' |'] : []),
             '| Namespace | `'.$module->namespace.'` |',
             '| Path | `'.Paths::relative($basePath, $module->path).'` |',
             '| Declared dependencies (`depends_on`) | '.match (true) {
@@ -384,13 +385,14 @@ final class DocumentationGenerator
     }
 
     /**
-     * Laravel roles, in the order they are shown and checked: a known parent
-     * class first, then a namespace segment, then ShouldQueue for jobs (a
-     * queued listener is a listener, by its namespace).
+     * Laravel roles, in the order they are shown and checked: a known
+     * ancestor class first, then a namespace segment inside the module, then
+     * ShouldQueue for jobs (a queued listener is a listener, by its namespace).
      */
     private const ROLES = [
-        'Models' => [['Illuminate\\Database\\Eloquent\\Model', 'Illuminate\\Foundation\\Auth\\User'], ['Models']],
-        'Controllers' => [['Illuminate\\Routing\\Controller'], ['Controllers']],
+        'Models' => [['Illuminate\\Database\\Eloquent\\Model', 'Illuminate\\Database\\Eloquent\\Relations\\Pivot', 'Illuminate\\Database\\Eloquent\\Relations\\MorphPivot', 'Illuminate\\Foundation\\Auth\\User'], ['Models']],
+        // App\Http\Controllers\Controller has no parent since Laravel 11.
+        'Controllers' => [['Illuminate\\Routing\\Controller', 'App\\Http\\Controllers\\Controller'], ['Controllers']],
         'Commands' => [['Illuminate\\Console\\Command'], ['Commands']],
         'Jobs' => [[], ['Jobs']],
         'Listeners' => [[], ['Listeners']],
@@ -406,11 +408,12 @@ final class DocumentationGenerator
     private function components(Module $module, Snapshot $snapshot): array
     {
         $byRole = array_fill_keys([...array_keys(self::ROLES), 'Other'], []);
+        $symbols = SymbolTable::fromAnalyses($snapshot->analyses);
 
         foreach ($snapshot->analyses as $analysis) {
             foreach ($analysis->declarations as $declaration) {
                 if ($module->ownsClass($declaration->fqcn)) {
-                    $byRole[$this->role($declaration)][] = $module->relativeName($declaration->fqcn);
+                    $byRole[$this->role($module, $declaration, $symbols)][] = $module->relativeName($declaration->fqcn);
                 }
             }
         }
@@ -427,15 +430,17 @@ final class DocumentationGenerator
         return $rows === [] ? ['No classes.'] : ['| Role | Classes |', '|---|---|', ...$rows];
     }
 
-    private function role(ClassDeclaration $declaration): string
+    private function role(Module $module, ClassDeclaration $declaration, SymbolTable $symbols): string
     {
+        $ancestors = $this->ancestors($declaration, $symbols);
+
         foreach (self::ROLES as $role => [$parents]) {
-            if ($declaration->parent !== null && in_array($declaration->parent, $parents, true)) {
+            if (array_intersect(array_map('strtolower', $parents), $ancestors) !== []) {
                 return $role;
             }
         }
 
-        $segments = array_slice(explode('\\', $declaration->fqcn), 0, -1);
+        $segments = array_slice(explode('\\', $module->relativeName($declaration->fqcn)), 0, -1);
 
         foreach (self::ROLES as $role => [, $namespaces]) {
             if (array_intersect($namespaces, $segments) !== []) {
@@ -444,5 +449,24 @@ final class DocumentationGenerator
         }
 
         return in_array('Illuminate\\Contracts\\Queue\\ShouldQueue', $declaration->interfaces, true) ? 'Jobs' : 'Other';
+    }
+
+    /**
+     * The parent classes of a declaration, lowercased, following the parents
+     * declared in the analysed code (a model that extends a base model).
+     *
+     * @return list<string>
+     */
+    private function ancestors(ClassDeclaration $declaration, SymbolTable $symbols): array
+    {
+        $ancestors = [];
+        $parent = $declaration->parent;
+
+        while ($parent !== null && ! in_array(strtolower($parent), $ancestors, true)) {
+            $ancestors[] = strtolower($parent);
+            $parent = $symbols->get($parent)?->parent;
+        }
+
+        return $ancestors;
     }
 }

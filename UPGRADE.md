@@ -12,3 +12,4 @@
 4. **If you parse the JSON report**, it now starts with `"version": 1`, adds `summary.warnings`, a `warnings` list and a `severity` on every violation. Nothing was removed or renamed. The schema is `resources/schemas/report-v1.schema.json` in the package.
 5. **If you wrote custom rules**, the classes they use are marked `@api` and are covered by the [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility) page. Classes marked `@internal` (such as `Analyzer` or `RuleSet`) may change in any release.
 6. `nikic/php-parser` 5.3 or later is required. Composer upgrades it when you update Cordon.
+7. **If some modules live outside the project root** (a monorepo with `../packages`), their files are now written with `../` in reports and in the baseline, instead of an absolute path. Regenerate the baseline once with `cordon:verify --generate-baseline`.

@@ -164,6 +164,14 @@ it('counts a dependency used only by a listener as used, unless listeners are le
         ->and(iterator_to_array((new UnusedDependencyRule(countListeners: false))->check($context), false))->toHaveCount(1);
 });
 
+it('does not call a dependency unused when a file of the module does not parse', function () {
+    $a = Module::make('A', 'A', '/p/A')->withConfig(['depends_on' => ['B']]);
+    $b = Module::make('B', 'B', '/p/B');
+    $context = new AnalysisContext(new ModuleMap([$a, $b]), SymbolTable::fromAnalyses([]), new PublicApiPolicy, [], ['/p/A/Broken.php' => 'Syntax error']);
+
+    expect(iterator_to_array((new UnusedDependencyRule)->check($context), false))->toBe([]);
+});
+
 it('points a cross-module Eloquent relation to the recipe', function () {
     $a = Module::make('A', 'A', '/p/A');
     $b = Module::make('B', 'B', '/p/B');

@@ -31,6 +31,9 @@ final readonly class PublicApiPolicy
 
     /**
      * Why the class is public or internal, in words (for cordon:explain).
+     * The wording may change in any version.
+     *
+     * @internal
      */
     public function reason(string $fqcn, Module $module, ?ClassDeclaration $declaration = null): string
     {

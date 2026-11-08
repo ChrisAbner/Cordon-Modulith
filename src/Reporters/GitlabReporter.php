@@ -31,7 +31,7 @@ final class GitlabReporter implements Reporter
         $issues = [];
         $seen = [];
 
-        foreach ([...$result->violations, ...$result->warnings] as $violation) {
+        foreach ([...$result->violations, ...$result->warnings, ...ParseErrors::asWarnings($result)] as $violation) {
             $key = $violation->baselineKey($result->basePath);
             $seen[$key] = ($seen[$key] ?? 0) + 1;
 

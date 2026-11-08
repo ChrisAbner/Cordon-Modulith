@@ -137,3 +137,22 @@ it('shows the description and owner from the module metadata', function () {
         ->toContain('| Owner | payments-team |')
         ->and(listeners_canvas('Billing'))->not->toContain('| Owner |');
 });
+
+it('takes the role from the name inside the module, not from the module name', function () {
+    $modules = (new NamespaceResolver(fixture_path('roles-app/app/Modules'), 'App\\Modules'))->resolve();
+    $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig());
+    $snapshot = $analyzer->snapshot($modules);
+    $canvas = (new DocumentationGenerator)->generate($snapshot, [], EventInventory::build($snapshot), fixture_path('roles-app'))['modules/Notifications.md'];
+
+    expect($canvas)->toContain(implode("\n", [
+        '| Models | `Entities\\BaseModel`, `Entities\\Subscription`, `Entities\\Template` |',
+        '| Controllers | `Http\\PreferencesController` |',
+        '| Jobs | `Handlers\\SendWelcome` |',
+        '| Other | `Services\\Sender` |',
+    ]));
+});
+
+it('escapes pipes in the module metadata', function () {
+    expect(listeners_canvas('Billing', ['Billing' => ['metadata' => ['owner' => 'team | payments']]]))
+        ->toContain('| Owner | team \\| payments |');
+});

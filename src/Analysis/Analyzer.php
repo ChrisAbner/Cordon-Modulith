@@ -110,7 +110,7 @@ final readonly class Analyzer
         }
 
         return new Snapshot(
-            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges),
+            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors),
             $analyses,
             $parseErrors,
         );

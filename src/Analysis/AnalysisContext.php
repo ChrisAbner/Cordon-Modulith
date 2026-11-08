@@ -15,11 +15,13 @@ final readonly class AnalysisContext
 {
     /**
      * @param  list<Edge>  $edges  Cross-module references only.
+     * @param  array<string, string>  $parseErrors  Files that could not be parsed (file => message): their references are missing from $edges.
      */
     public function __construct(
         public ModuleMap $modules,
         public SymbolTable $symbols,
         public PublicApiPolicy $policy,
         public array $edges,
+        public array $parseErrors = [],
     ) {}
 }

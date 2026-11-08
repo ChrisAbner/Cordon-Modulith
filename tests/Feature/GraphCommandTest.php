@@ -1,5 +1,6 @@
 <?php
 
+use Cordon\Documentation\GraphExporter;
 use Illuminate\Support\Facades\Artisan;
 
 /**
@@ -33,7 +34,15 @@ it('exports the module graph as Mermaid by default, with the edges that have vio
         ->toContain('m0["Billing"]')
         ->toContain('m0 -->|4| m1')
         ->toContain('linkStyle 0 stroke:#d33')
+        ->toContain('m1 -.->|1| m0')
         ->not->toContain('```');
+});
+
+it('labels every format with the number of references, not of classes', function () {
+    $model = ['modules' => ['A', 'B'], 'edges' => [['from' => 'A', 'to' => 'B', 'references' => 5, 'kinds' => ['use'], 'violations' => 0]]];
+
+    expect(GraphExporter::flowchart($model))->toBe(implode(PHP_EOL, ['flowchart LR', '    m0["A"]', '    m1["B"]', '    m0 -->|5| m1']).PHP_EOL)
+        ->and(GraphExporter::dot($model))->toContain('"A" -> "B" [label="5"];');
 });
 
 it('exports the module graph as DOT, with listener-only edges dashed', function () {

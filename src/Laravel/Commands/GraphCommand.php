@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel\Commands;
 
-use Cordon\Analysis\Edge;
 use Cordon\Documentation\GraphExporter;
 use Cordon\Laravel\Commands\Concerns\ExploresModules;
 use Cordon\Laravel\Verifier;
@@ -26,13 +25,11 @@ final class GraphCommand extends Command
 
     public function handle(Verifier $verifier): int
     {
-        $format = $this->option('format');
-
-        if (! in_array($format, ['mermaid', 'dot', 'json'], true)) {
-            $this->error(sprintf('Unknown format [%s]. Use mermaid, dot or json.', is_string($format) ? $format : ''));
-
+        if ($this->formatFailed(['mermaid', 'dot', 'json'])) {
             return self::INVALID;
         }
+
+        $format = $this->option('format');
 
         if ($this->configurationFailed($verifier)) {
             return self::INVALID;
@@ -46,40 +43,17 @@ final class GraphCommand extends Command
         }
 
         $snapshot = $verifier->snapshot();
-        $edges = $snapshot->context->edges;
         $violations = $verifier->check($snapshot)->violations;
-        $model = GraphExporter::model($verifier->modules()->names(), $edges, $violations, $focus);
+        $model = GraphExporter::model($verifier->modules()->names(), $snapshot->context->edges, $violations, $focus);
 
         $output = match ($format) {
             'json' => (string) json_encode($model, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL,
             'dot' => GraphExporter::dot($model),
-            default => $this->mermaid($model, $edges),
+            default => GraphExporter::flowchart($model),
         };
 
         $this->output->write($output, false, OutputInterface::OUTPUT_RAW);
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int}>}  $model
-     * @param  list<Edge>  $edges
-     */
-    private function mermaid(array $model, array $edges): string
-    {
-        $kept = array_flip($model['modules']);
-        $dependencies = GraphExporter::dependencies(array_values(array_filter(
-            $edges,
-            static fn ($edge): bool => isset($kept[$edge->from->name], $kept[$edge->to->name]),
-        )));
-        $marked = [];
-
-        foreach ($model['edges'] as $edge) {
-            if ($edge['violations'] > 0) {
-                $marked[$edge['from'].'|'.$edge['to']] = true;
-            }
-        }
-
-        return implode(PHP_EOL, GraphExporter::mermaid($model['modules'], $dependencies, $marked)).PHP_EOL;
     }
 }

@@ -10,12 +10,37 @@ use Cordon\Support\ConfigValidator;
 
 /**
  * Shared by the commands that answer questions about the modules
- * (explain, why, impact): config checks and module lookup.
+ * (explain, why, impact, graph): format and config checks, module lookup,
+ * and errors on stderr so that --format=json output stays JSON.
  *
  * @internal
  */
 trait ExploresModules
 {
+    /**
+     * Prints an error on stderr when --format is not one of $formats.
+     *
+     * @param  list<string>  $formats
+     */
+    private function formatFailed(array $formats = ['text', 'json']): bool
+    {
+        $format = $this->option('format');
+
+        if (in_array($format, $formats, true)) {
+            return false;
+        }
+
+        $last = array_pop($formats);
+        $this->stderr(sprintf('Unknown format [%s]. Use %s or %s.', is_string($format) ? $format : '', implode(', ', $formats), $last));
+
+        return true;
+    }
+
+    private function stderr(string $message): void
+    {
+        $this->output->getErrorStyle()->writeln('<error>'.$message.'</error>');
+    }
+
     /**
      * Prints the config errors, if any: the answers would describe a config
      * that does not do what it says.
@@ -25,7 +50,7 @@ trait ExploresModules
         $errors = $verifier->configurationErrors();
 
         foreach ($errors as $error) {
-            $this->error($error);
+            $this->stderr($error);
         }
 
         return $errors !== [];
@@ -36,7 +61,7 @@ trait ExploresModules
         $module = $verifier->modules()->get($name);
 
         if ($module === null) {
-            $this->error(sprintf('Unknown module [%s].%s', $name, ConfigValidator::didYouMean($name, $verifier->modules()->names())));
+            $this->stderr(sprintf('Unknown module [%s].%s', $name, ConfigValidator::didYouMean($name, $verifier->modules()->names())));
         }
 
         return $module;

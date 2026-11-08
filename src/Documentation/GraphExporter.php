@@ -9,7 +9,9 @@ use Cordon\Analysis\Reference;
 use Cordon\Analysis\Violation;
 
 /**
- * The module graph, for cordon:graph (Mermaid, DOT, JSON) and the diagrams of cordon:docs.
+ * The module graph, for cordon:graph (Mermaid, DOT, JSON: labels count
+ * references) and the diagrams of cordon:docs (labels count the classes used,
+ * as its tables list them).
  *
  * @internal
  */
@@ -145,6 +147,40 @@ final class GraphExporter
                 return [...$pair, 'kinds' => $kinds];
             }, $pairs)),
         ];
+    }
+
+    /**
+     * The Mermaid flowchart of cordon:graph, without the code fence: like
+     * DOT, each arrow is labelled with its number of references, red when it
+     * has violations and dotted when it is made only of listeners.
+     *
+     * @param  array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int}>}  $model
+     */
+    public static function flowchart(array $model): string
+    {
+        $ids = array_flip($model['modules']);
+        $lines = ['flowchart LR'];
+
+        foreach ($model['modules'] as $index => $module) {
+            $lines[] = sprintf('    m%d["%s"]', $index, str_replace('"', '#quot;', $module));
+        }
+
+        $red = [];
+
+        foreach ($model['edges'] as $link => $edge) {
+            $arrow = $edge['kinds'] === [Reference::LISTENER] ? '-.->' : '-->';
+            $lines[] = sprintf('    m%d %s|%d| m%d', $ids[$edge['from']], $arrow, $edge['references'], $ids[$edge['to']]);
+
+            if ($edge['violations'] > 0) {
+                $red[] = $link;
+            }
+        }
+
+        if ($red !== []) {
+            $lines[] = '    linkStyle '.implode(',', $red).' stroke:#d33,stroke-width:2px';
+        }
+
+        return implode(PHP_EOL, $lines).PHP_EOL;
     }
 
     /**

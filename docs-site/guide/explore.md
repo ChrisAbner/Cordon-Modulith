@@ -16,7 +16,7 @@ App\Modules\Catalog\Models\Product
     x Billing  app/Modules/Billing/Services/CheckoutService.php:13 (use)
 ```
 
-The status gives the reason: `#[Internal]` or `#[PublicApi]` on the class, an open module, a public namespace such as `Contracts`, or the module's `public` setting. `x` marks the uses that are violations; `listener` uses come from listeners of the class.
+The status gives the reason: `#[Internal]` or `#[PublicApi]` on the class, an open module, a public namespace such as `Contracts`, or the module's `public` setting. `x` marks the uses that `cordon:verify` reports as errors and `!` the ones it reports as warnings, after the baseline; `-` is a use it does not report. In JSON, each use has `violation` and its `severity`. `listener` uses come from listeners of the class.
 
 ## Why does this module depend on that one?
 
@@ -56,4 +56,6 @@ php artisan cordon:graph --format=json    # for your own tools
 php artisan cordon:graph --module=Billing # Billing and its neighbours only
 ```
 
-Each arrow is a dependency with its number of references. Dependencies with violations are red; in DOT, a dependency made only of listeners is dashed. The JSON lists `modules`, and per dependency `from`, `to`, `references`, `kinds` (`use`, `listener`) and `violations`. `cordon:docs` draws the same diagrams in the generated documentation.
+Each arrow is a dependency labelled with its number of references, the same number in the three formats. Dependencies with violations (after the baseline) are red, and a dependency made only of listeners is dotted in Mermaid and dashed in DOT. The JSON lists `modules`, and per dependency `from`, `to`, `references`, `kinds` (`use`, `listener`) and `violations`.
+
+The diagrams of `cordon:docs` differ on purpose: their labels count the classes used, as the tables next to them list, and only `internal_access` makes an arrow red.

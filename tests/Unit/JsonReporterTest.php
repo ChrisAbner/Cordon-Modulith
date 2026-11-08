@@ -48,6 +48,16 @@ it('accepts new optional fields, so adding one keeps version 1', function () {
     expect(schema_errors(json_encode($report)))->toBe([]);
 });
 
+it('still accepts a version 1 report written before docs_url existed', function () {
+    $report = json_decode(json_report(), true);
+
+    foreach ($report['violations'] as &$violation) {
+        unset($violation['docs_url']);
+    }
+
+    expect(schema_errors(json_encode($report)))->toBe([]);
+});
+
 it('requires the fields of version 1', function (Closure $remove) {
     $report = json_decode(json_report(), true);
     $remove($report);

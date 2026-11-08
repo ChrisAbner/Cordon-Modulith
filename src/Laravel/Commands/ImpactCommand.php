@@ -23,7 +23,7 @@ final class ImpactCommand extends Command
 
     public function handle(Verifier $verifier): int
     {
-        if ($this->configurationFailed($verifier)) {
+        if ($this->formatFailed() || $this->configurationFailed($verifier)) {
             return self::INVALID;
         }
 

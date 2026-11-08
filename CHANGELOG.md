@@ -10,6 +10,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 
 ### May report different violations
 - A listener's reference to another module's event no longer closes a dependency cycle. Two modules that call each other through a contract one way and an event the other are not reported as a cycle any more, and their `cycles` entries in the baseline become stale. Set `listeners.cycles` to `true` to count listeners again.
+- Files outside the project root, such as the packages of a monorepo, are written relative to it with `../` (they used to be absolute paths, different on every machine). Baseline entries for those files become stale: run `cordon:verify --generate-baseline` once.
 - `config/cordon.php` is validated before anything is analysed: unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rule ids now stop `cordon:verify` with exit code `2`, with a suggestion for the closest valid name. They used to be ignored or only warned about, so a typo such as `depend_on` could leave a module open with CI green.
 
 ### Added
@@ -27,7 +28,8 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - An `internal_access` on the model of an Eloquent relation (`$this->belongsTo(Model::class)` and its siblings) links to the recipe for cross-module relations. `Reference` has a new `relation` flag.
 - `cordon:graph`: the module graph as Mermaid, DOT (Graphviz) or JSON, with the dependencies that have violations marked; `--module` keeps one module and its neighbours.
 - `--format=gitlab`, `junit` and `checkstyle` reports, for GitLab Code Quality and the CI tools that read JUnit or Checkstyle.
-- `unused_dependency` (a warning by default): a `depends_on` entry the module never uses.
+- `unused_dependency` (a warning by default): a `depends_on` entry the module never uses. It says nothing about a module with a file that does not parse.
+- `AnalysisContext` has the files that could not be parsed (`parseErrors`), for custom rules.
 - A `parser-floor` CI job checks that the lowest `nikic/php-parser` allowed analyses modern PHP.
 
 ### Changed

@@ -67,10 +67,10 @@ php artisan cordon:verify --format=json > cordon-report.json
 | Format | For |
 |---|---|
 | `gitlab` | GitLab Code Quality (`artifacts: reports: codequality: cordon.json`). Errors are major issues, warnings minor. The fingerprint does not change when the code above a violation moves. |
-| `junit` | Any CI that shows JUnit results: one test case per module, failing with its errors; warnings go to the output. |
+| `junit` | Any CI that shows JUnit results: one test case per checked module (with `--module` or paths, only those), failing with its errors; `failures` counts the failing modules. Warnings and files that do not parse go to the output. |
 | `checkstyle` | Jenkins, reviewdog and other Checkstyle readers. |
 
-Violations without a file, such as cycles, are reported at `config/cordon.php`, where `depends_on` and `listeners` are set.
+In GitLab and Checkstyle, violations without a file, such as cycles, are reported at `config/cordon.php`, where `depends_on` and `listeners` are set; JUnit lists them under their module, without a location. A file that does not parse is a warning (`cordon.parse_error`) in GitLab and Checkstyle. Files outside the project root, such as the packages of a monorepo, are written with `../`, so reports and baselines are the same on every machine.
 
 ```yaml
 # .gitlab-ci.yml

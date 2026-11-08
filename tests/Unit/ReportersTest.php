@@ -1,5 +1,6 @@
 <?php
 
+use Cordon\Analysis\ModuleFilter;
 use Cordon\Analysis\Result;
 use Cordon\Analysis\Violation;
 use Cordon\Module\ModuleMap;
@@ -61,7 +62,7 @@ it('writes JUnit with a test case per module', function () {
 
     expect($suite?->getAttribute('name'))->toBe('Cordon Modulith')
         ->and($suite?->getAttribute('tests'))->toBe('3')
-        ->and($suite?->getAttribute('failures'))->toBe((string) count(report_result()->violations))
+        ->and($suite?->getAttribute('failures'))->toBe('2')
         ->and($cases)->toBe(['Billing' => 3, 'Catalog' => 1, 'Shared' => 0])
         ->and($xml->getElementsByTagName('failure')->item(0)?->getAttribute('type'))->toBe('internal_access');
 });
@@ -95,4 +96,41 @@ it('escapes the messages in XML', function () {
     foreach ([new JunitReporter, new CheckstyleReporter] as $reporter) {
         expect((new DOMDocument)->loadXML($reporter->render(result_of([$violation]))))->toBeTrue();
     }
+});
+
+/**
+ * The JUnit test cases of a report: module => number of failures.
+ *
+ * @return array<string, int>
+ */
+function junit_cases(Result $result): array
+{
+    $xml = new DOMDocument;
+    $xml->loadXML((new JunitReporter)->render($result));
+    $cases = [];
+
+    foreach ($xml->getElementsByTagName('testcase') as $case) {
+        $cases[$case->getAttribute('classname')] = $case->getElementsByTagName('failure')->length;
+    }
+
+    return $cases;
+}
+
+it('writes JUnit test cases only for the modules that were checked', function () {
+    expect(junit_cases(ModuleFilter::apply(report_result(), ['Shared'])))->toBe(['Shared' => 0])
+        ->and(junit_cases(ModuleFilter::apply(report_result(), ['Catalog'])))->toHaveKeys(['Catalog'])->not->toHaveKey('Shared')
+        ->and(junit_cases(ModuleFilter::applyPaths(report_result(), [fixture_path('namespace-app/app/Modules/Shared')])))->toBe(['Shared' => 0]);
+});
+
+it('reports the files that do not parse in every CI format', function () {
+    $result = new Result(new ModuleMap([]), [], 1, 0, ['/p/app/Broken.php' => 'Syntax error, unexpected EOF'], 0, '/p');
+    $issue = json_decode((new GitlabReporter)->render($result), true)[0];
+    $checkstyle = new DOMDocument;
+    $checkstyle->loadXML((new CheckstyleReporter)->render($result));
+
+    expect($issue)->toMatchArray(['check_name' => 'cordon.parse_error', 'severity' => 'minor', 'location' => ['path' => 'app/Broken.php', 'lines' => ['begin' => 1]]])
+        ->and($issue['description'])->toContain('Syntax error, unexpected EOF')
+        ->and((new JunitReporter)->render($result))->toContain('[parse error] app/Broken.php: Syntax error, unexpected EOF')
+        ->and($checkstyle->getElementsByTagName('file')->item(0)?->getAttribute('name'))->toBe('app/Broken.php')
+        ->and($checkstyle->getElementsByTagName('error')->item(0)?->getAttribute('source'))->toBe('cordon.parse_error');
 });

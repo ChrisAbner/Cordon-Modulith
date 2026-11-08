@@ -149,3 +149,12 @@ it('warns on stderr when the project config cannot be evaluated', function () {
 it('accepts the artisan command names too', function () {
     expect(run_cordon(['cordon:modules'], fixture_path('namespace-app'))['code'])->toBe(0);
 });
+
+it('writes the errors of the explore commands to stderr, so JSON output stays JSON', function () {
+    $project = temp_project('namespace-app');
+    $run = run_cordon(['why', 'Biling', 'Catalog', '--format=json'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toBe('')
+        ->and($run['err'])->toContain('Unknown module [Biling].');
+});
