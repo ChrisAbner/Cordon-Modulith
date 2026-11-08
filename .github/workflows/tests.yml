@@ -13,6 +13,7 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
         laravel: ['12.*', '13.*']
+        dependencies: ['highest']
         exclude:
           # Laravel 13 requires PHP 8.3.
           - php: '8.2'
@@ -22,8 +23,13 @@ jobs:
             testbench: '10.*'
           - laravel: '13.*'
             testbench: '11.*'
+          # The lowest version of every dependency, so the minimums in composer.json stay honest.
+          - php: '8.2'
+            laravel: '12.*'
+            testbench: '10.*'
+            dependencies: 'lowest'
 
-    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} (${{ matrix.dependencies }})
 
     steps:
       - uses: actions/checkout@v7
@@ -36,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/console:${{ matrix.laravel }}" "illuminate/contracts:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
-          composer update --prefer-dist --no-interaction
+          composer update --prefer-dist --no-interaction ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
 
       - name: Tests
         run: vendor/bin/pest

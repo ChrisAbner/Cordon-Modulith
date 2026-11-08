@@ -16,7 +16,7 @@
         "illuminate/container": "^12.0|^13.0",
         "illuminate/contracts": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
-        "nikic/php-parser": "^5.0",
+        "nikic/php-parser": "^5.3",
         "vlucas/phpdotenv": "^5.6.1"
     },
     "require-dev": {

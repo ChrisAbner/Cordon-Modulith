@@ -46,6 +46,16 @@ it('detects every class position of modern PHP', function (string $target) {
     'new in initializer' => 'NewInInitializer',
 ]);
 
+it('finds references inside property hooks', function () {
+    expect(edge_case_targets('PropertyHooks.php'))->toEqualCanonicalizing([
+        'Edge\\Target\\HookType',
+        'Edge\\Target\\HookParam',
+        'Edge\\Target\\HookBody',
+        'Edge\\Target\\PromotedHookType',
+        'Edge\\Target\\PromotedHookBody',
+    ]);
+});
+
 it('does not report imports that are never used', function () {
     expect(edge_case_targets('References.php'))->not->toContain('Edge\\Target\\UnusedImport');
 });
