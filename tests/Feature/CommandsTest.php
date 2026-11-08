@@ -173,6 +173,15 @@ it('checks the whole baseline for stale entries when given paths', function () {
     expect(Artisan::call('cordon:verify', ['paths' => [fixture_path('namespace-app/app/Modules/Shared')], '--fail-on-stale' => true]))->toBe(0);
 });
 
+it('prints GitLab Code Quality, JUnit and Checkstyle reports', function (string $format, Closure $parse) {
+    expect(Artisan::call('cordon:verify', ['--format' => $format]))->toBe(1)
+        ->and($parse(Artisan::output()))->toBeTrue();
+})->with([
+    'gitlab' => ['gitlab', fn (string $output) => is_array(json_decode($output, true))],
+    'junit' => ['junit', fn (string $output) => (new DOMDocument)->loadXML($output)],
+    'checkstyle' => ['checkstyle', fn (string $output) => (new DOMDocument)->loadXML($output)],
+]);
+
 it('lists the detected modules', function () {
     $this->artisan('cordon:modules')
         ->expectsOutputToContain('Billing')

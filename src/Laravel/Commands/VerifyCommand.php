@@ -10,8 +10,11 @@ use Cordon\Baseline\Baseline;
 use Cordon\Contracts\Reporter;
 use Cordon\Laravel\Verifier;
 use Cordon\Laravel\XdebugWarning;
+use Cordon\Reporters\CheckstyleReporter;
 use Cordon\Reporters\GithubReporter;
+use Cordon\Reporters\GitlabReporter;
 use Cordon\Reporters\JsonReporter;
+use Cordon\Reporters\JunitReporter;
 use Cordon\Reporters\TextReporter;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
@@ -25,7 +28,7 @@ final class VerifyCommand extends Command
 {
     protected $signature = 'cordon:verify
         {paths?* : Only report the violations of these files or directories; the whole project is still analysed}
-        {--format=text : Output format: text, json or github}
+        {--format=text : Output format: text, json, github, gitlab, junit or checkstyle}
         {--module=* : Only report the violations of this module (repeatable)}
         {--fail-on-parse-error : Fail when a file cannot be parsed, since its references are not checked}
         {--generate-baseline : Record every current violation in the baseline file and exit}
@@ -43,7 +46,7 @@ final class VerifyCommand extends Command
         $reporter = $this->reporter($format);
 
         if ($reporter === null) {
-            $this->error(sprintf('Unknown format [%s]. Use text, json or github.', $format));
+            $this->error(sprintf('Unknown format [%s]. Use text, json, github, gitlab, junit or checkstyle.', $format));
 
             return self::INVALID;
         }
@@ -320,6 +323,9 @@ final class VerifyCommand extends Command
             'text' => new TextReporter,
             'json' => new JsonReporter,
             'github' => new GithubReporter,
+            'gitlab' => new GitlabReporter,
+            'junit' => new JunitReporter,
+            'checkstyle' => new CheckstyleReporter,
             default => null,
         };
     }

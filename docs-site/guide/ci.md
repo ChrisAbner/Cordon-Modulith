@@ -60,6 +60,29 @@ Use `--format=json` for a machine readable report. It starts with `"version": 1`
 php artisan cordon:verify --format=json > cordon-report.json
 ```
 
+## Other report formats
+
+`--format` also writes reports other CI tools read:
+
+| Format | For |
+|---|---|
+| `gitlab` | GitLab Code Quality (`artifacts: reports: codequality: cordon.json`). Errors are major issues, warnings minor. The fingerprint does not change when the code above a violation moves. |
+| `junit` | Any CI that shows JUnit results: one test case per module, failing with its errors; warnings go to the output. |
+| `checkstyle` | Jenkins, reviewdog and other Checkstyle readers. |
+
+Violations without a file, such as cycles, are reported at `config/cordon.php`, where `depends_on` and `listeners` are set.
+
+```yaml
+# .gitlab-ci.yml
+cordon:
+  script:
+    - vendor/bin/cordon verify --format=gitlab > cordon.json
+  artifacts:
+    when: always
+    reports:
+      codequality: cordon.json
+```
+
 ## One job per module
 
 Teams that own modules can check only theirs:
