@@ -46,10 +46,6 @@ final class VerifyCommand extends Command
             $this->output->getErrorStyle()->writeln('<comment>'.$message.'</comment>');
         }
 
-        foreach ($verifier->configurationWarnings() as $warning) {
-            $this->output->getErrorStyle()->writeln('<comment>'.$warning.'</comment>');
-        }
-
         $modules = $verifier->modules();
 
         if (count($modules) === 0) {
@@ -70,6 +66,21 @@ final class VerifyCommand extends Command
             }
 
             return self::FAILURE;
+        }
+
+        // A typo in the config changes what is checked (a misspelled depends_on
+        // leaves the module open), so it fails before anything is analysed. It runs
+        // after the check above: with no modules, every configured module is unknown.
+        if (($errors = $verifier->configurationErrors()) !== []) {
+            foreach ($errors as $error) {
+                if ($format === 'github') {
+                    $this->output->writeln('::error title=Cordon::'.$error, OutputInterface::OUTPUT_RAW);
+                } else {
+                    $this->output->getErrorStyle()->writeln('<error>'.$error.'</error>');
+                }
+            }
+
+            return self::INVALID;
         }
 
         $only = array_values(array_map('strval', (array) $this->option('module')));

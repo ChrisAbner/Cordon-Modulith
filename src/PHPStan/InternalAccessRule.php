@@ -17,6 +17,7 @@ use Cordon\Laravel\StandaloneConfig;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\InternalAccessRule as CordonInternalAccessRule;
+use Cordon\Support\ConfigValidator;
 use Cordon\Support\Paths;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
@@ -150,9 +151,9 @@ final class InternalAccessRule implements Rule
             $config = StandaloneConfig::load($this->basePath);
             $this->pendingWarnings = $config->warnings();
 
-            $this->modules = ResolverFactory::make($config, $this->basePath)
-                ->resolve()
-                ->configure((array) $config->get('cordon.modules', []));
+            $resolved = ResolverFactory::make($config, $this->basePath)->resolve();
+            $this->modules = $resolved->configure((array) $config->get('cordon.modules', []));
+            array_push($this->pendingWarnings, ...ConfigValidator::errors((array) $config->get('cordon', []), $resolved));
             $this->policy = new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', [])));
             $this->exclude = self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']));
             $this->enabled = $config->get('cordon.rules.'.CordonInternalAccessRule::ID, true) !== false;

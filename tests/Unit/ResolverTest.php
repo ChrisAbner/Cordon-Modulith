@@ -43,7 +43,7 @@ it('maps classes and files to the most specific module', function () {
         ->and($modules->forPath('/project/app/Kernel.php')?->name)->toBe('App');
 })->skipOnWindows();
 
-it('applies per-module config and warns about unknown modules', function () {
+it('applies per-module config', function () {
     $modules = (new NamespaceResolver(fixture_path('namespace-app/app/Modules'), 'App\\Modules'))->resolve();
     $config = [
         'Billing' => ['depends_on' => ['Catalog', 'Ghost'], 'public' => ['Services\\CheckoutService']],
@@ -54,8 +54,7 @@ it('applies per-module config and warns about unknown modules', function () {
 
     expect($configured->get('Billing')?->dependsOn)->toBe(['Catalog', 'Ghost'])
         ->and($configured->get('Billing')?->publicApi)->toBe(['Services\\CheckoutService'])
-        ->and($configured->get('Catalog')?->dependsOn)->toBeNull()
-        ->and($modules->configurationWarnings($config))->toHaveCount(2);
+        ->and($configured->get('Catalog')?->dependsOn)->toBeNull();
 });
 
 it('matches file paths regardless of directory separators', function () {

@@ -66,6 +66,21 @@ final class InternalAccessRuleTest extends RuleTestCase
         ]);
     }
 
+    public function test_it_reports_config_errors_once(): void
+    {
+        $this->app = $this->copyOfTheApp(['version' => 2, 'violations' => []]);
+        file_put_contents($this->app.'/config/cordon.php', "<?php\n\nreturn ['modules' => ['Shared' => ['open' => true], 'Billing' => ['depend_on' => []]]];\n");
+
+        $this->analyse([
+            $this->app.'/app/Modules/Billing/Services/CheckoutService.php',
+            $this->app.'/app/Modules/Billing/Services/InvoiceRenderer.php',
+        ], [
+            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, metadata.', 1],
+            ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
+            ['Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog].', 10, self::TIP],
+        ]);
+    }
+
     public function test_it_applies_the_cordon_baseline(): void
     {
         $this->app = $this->copyOfTheApp([

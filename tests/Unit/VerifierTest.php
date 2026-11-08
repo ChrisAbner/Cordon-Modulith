@@ -50,7 +50,7 @@ it('resolves the modules once', function () {
     $verifier = namespace_app_verifier($resolver, ['modules' => ['Shared' => ['open' => true]]]);
 
     $verifier->modules();
-    $verifier->configurationWarnings();
+    $verifier->configurationErrors();
 
     expect($resolver->calls)->toBe(1);
 });

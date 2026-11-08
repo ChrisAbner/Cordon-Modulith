@@ -63,6 +63,11 @@ return [
     |             dependency is reported. Omit it to leave dependencies open.
     | public:     extra namespaces or classes (relative) exposed as public API.
     | open:       every class is public (useful for a shared kernel module).
+    | metadata:   free-form information about the module (owner, description...).
+    |             Cordon does not read it yet; the key is reserved for it.
+    |
+    | Unknown keys and modules are configuration errors: cordon:verify stops
+    | before analysing, so a typo such as depend_on cannot leave a module open.
     |
     */
 

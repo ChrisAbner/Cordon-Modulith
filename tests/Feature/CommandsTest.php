@@ -41,6 +41,32 @@ it('passes after generating a baseline and fails again without it', function () 
     $this->artisan('cordon:verify', ['--no-baseline' => true])->assertExitCode(1);
 });
 
+it('stops before analysing when the config has errors', function () {
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Billing' => ['depend_on' => ['Catalog']]]);
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]?')
+        ->doesntExpectOutputToContain('internal_access')
+        ->assertExitCode(2);
+});
+
+it('prints config errors as GitHub annotations', function () {
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Biling' => ['open' => true]]);
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain('::error title=Cordon::config/cordon.php configures unknown module [Biling]. Did you mean [Billing]?')
+        ->assertExitCode(2);
+});
+
+it('lists the modules even when the config has errors, and shows the errors', function () {
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Biling' => ['open' => true]]);
+
+    $this->artisan('cordon:modules')
+        ->expectsOutputToContain('config/cordon.php configures unknown module [Biling].')
+        ->expectsOutputToContain('Billing')
+        ->assertExitCode(0);
+});
+
 it('lists the detected modules', function () {
     $this->artisan('cordon:modules')
         ->expectsOutputToContain('Billing')
@@ -122,6 +148,7 @@ function app_with_a_file_that_does_not_parse(): string
     file_put_contents($root.'/Billing/Broken.php', "<?php\n\nnamespace App\\Modules\\Billing;\n\nfinal class Broken {\n");
 
     config()->set('cordon.resolvers.namespace.path', $root);
+    config()->set('cordon.modules', []);
 
     return $root;
 }

@@ -9,6 +9,7 @@ use Cordon\Analysis\Result;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Module\ModuleMap;
+use Cordon\Support\ConfigValidator;
 use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
 
@@ -48,13 +49,13 @@ final class Verifier
     }
 
     /**
-     * Problems in the per-module config, such as unknown module names.
+     * Problems in config/cordon.php, such as unknown keys or module names.
      *
      * @return list<string>
      */
-    public function configurationWarnings(): array
+    public function configurationErrors(): array
     {
-        return $this->resolvedModules()->configurationWarnings($this->moduleConfig());
+        return ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
     }
 
     /**

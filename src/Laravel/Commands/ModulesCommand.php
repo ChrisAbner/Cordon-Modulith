@@ -8,6 +8,7 @@ use Cordon\Contracts\ModuleResolver;
 use Cordon\Laravel\ResolverFactory;
 use Cordon\Module\LayeredLayout;
 use Cordon\Module\Module;
+use Cordon\Support\ConfigValidator;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Config\Repository;
@@ -23,9 +24,15 @@ final class ModulesCommand extends Command
     public function handle(ModuleResolver $resolver, Repository $config): int
     {
         $basePath = $this->laravel->basePath();
-        $modules = $resolver->resolve()->configure((array) $config->get('cordon.modules', []));
+        $resolved = $resolver->resolve();
+        $modules = $resolved->configure((array) $config->get('cordon.modules', []));
 
         $this->line(sprintf('Resolver: <info>%s</info>', ResolverFactory::driver($config, $basePath)));
+
+        // Listing modules is how a broken config gets fixed, so errors are shown, not fatal.
+        foreach (ConfigValidator::errors((array) $config->get('cordon', []), $resolved) as $error) {
+            $this->warn($error);
+        }
 
         if (count($modules) === 0) {
             $this->warn('No modules found. Check the resolver settings in config/cordon.php.');
