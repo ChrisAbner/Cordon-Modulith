@@ -13,11 +13,14 @@ Cordon Modulith checks that modules only talk to each other through their public
 php artisan cordon:verify --format=json
 ```
 
-Each entry in `violations` has:
+The report has a `version` (1; its schema is `resources/schemas/report-v1.schema.json` in the package), a `summary`, the `violations` that fail the check, the `warnings` of rules set to `warn` (they never fail, but fix them too when your change touches them) and the `parse_errors`.
+
+Each entry in `violations` and `warnings` has:
 
 | Field | Meaning |
 |---|---|
 | `rule` | `internal_access`, `undeclared_dependency` or `cycles` |
+| `severity` | `error` (in `violations`) or `warn` (in `warnings`) |
 | `file`, `line` | Where the offending reference is (null for `cycles`) |
 | `source_module` | The module that has the problem |
 | `target_module` | The module it reaches into |

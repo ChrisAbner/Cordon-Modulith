@@ -20,6 +20,7 @@
         "vlucas/phpdotenv": "^5.6.1"
     },
     "require-dev": {
+        "justinrainbow/json-schema": "^6.0",
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^10.0|^11.0",

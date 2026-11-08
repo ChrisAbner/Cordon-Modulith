@@ -11,6 +11,12 @@ use Cordon\Support\Paths;
 
 final class JsonReporter implements Reporter
 {
+    /**
+     * Version of the report format, described by resources/schemas/report-v<VERSION>.schema.json.
+     * Adding, removing or renaming a field means a new version.
+     */
+    public const VERSION = 1;
+
     public function formatted(): bool
     {
         return false;
@@ -25,6 +31,7 @@ final class JsonReporter implements Reporter
         }
 
         return json_encode([
+            'version' => self::VERSION,
             'summary' => [
                 'modules' => count($result->modules),
                 'files' => $result->filesAnalysed,
