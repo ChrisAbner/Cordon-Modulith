@@ -78,6 +78,10 @@ The severity of each rule:
 
 Custom rules are classes that implement `Cordon\Contracts\Rule`, listed as values (`MyRule::class`) or as keys with a severity (`MyRule::class => 'warn'`). See [custom rules](./custom-rules).
 
+## layers
+
+Layers from the top down, each a list of module names; see [the layers rule](./rules#layers). A module may be in one layer only, a layer may not be empty, and every name must be a detected module. `[]` (the default) turns layers off.
+
 ## host
 
 The code outside the modules, which [`host_access`](./rules#host-access) checks.

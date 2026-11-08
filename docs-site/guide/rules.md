@@ -104,6 +104,25 @@ Code outside the modules (controllers in `app/Http`, Filament resources in `app/
 
 The code outside the modules is what `host.paths` lists (`app`, `routes` and `database` by default), without the files of a module. It has no `depends_on`, takes no part in cycles and is not a module in `cordon:modules`, the graph or the docs. The rule is a warning by default (it arrived in 0.4); set `'host_access' => 'error'` to make it fail, or `host.paths` to `[]` to leave that code unchecked. The PHPStan rule does not report it yet.
 
+## layers
+
+With `layers` in `config/cordon.php`, a module depends on a module of a layer above its own:
+
+```php
+'layers' => [
+    ['Orders', 'Billing'], // layer 1, the top
+    ['Catalog'],
+    ['Shared'],            // layer 3
+],
+```
+
+```text
+x [layers] app/Modules/Shared/Money.php:12
+  Module [Shared] (layer 3) depends on [Orders] (layer 1); a layer may only depend on the layers below it.
+```
+
+A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. The PHPStan rule does not report it yet.
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.

@@ -33,13 +33,13 @@ it('accepts the per-module settings of the fixture app', function () {
 
 it('rejects an unknown top-level key and suggests the closest one', function () {
     expect(config_errors(['rule' => []]))->toBe([
-        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, rules, listeners, exclude, baseline.',
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline.',
     ]);
 });
 
 it('leaves the suggestion out when no key is close', function () {
     expect(config_errors(['colour' => 'red']))->toBe([
-        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, rules, listeners, exclude, baseline.',
+        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline.',
     ]);
 });
 
@@ -106,4 +106,18 @@ it('reserves the module name host while the code outside the modules is checked'
 
     expect(ConfigValidator::errors([], $modules))->toBe(['A module cannot be named [host] while host.paths is set: the name is reserved for the code outside the modules. Rename the module or set host.paths to [].'])
         ->and(ConfigValidator::errors(['host' => ['paths' => []]], $modules))->toBe([]);
+});
+
+it('validates the layers', function (mixed $layers, string $error) {
+    expect(config_errors(['layers' => $layers]))->toContain($error);
+})->with([
+    'not a list of layers' => ['Billing', 'layers must be a list of layers from the top down, each a list of module names.'],
+    'a layer that is not a list' => [[['Billing'], 'Catalog'], 'layers must be a list of layers from the top down, each a list of module names.'],
+    'an empty layer' => [[['Billing'], []], 'Layer 2 in layers is empty.'],
+    'an unknown module' => [[['Biling']], 'layers lists unknown module [Biling]. Did you mean [Billing]?'],
+    'a module in two layers' => [[['Billing', 'Catalog'], ['Billing']], 'Module [Billing] is in layers 1 and 2; a module belongs to one layer.'],
+]);
+
+it('accepts layers that cover some of the modules', function () {
+    expect(config_errors(['layers' => [['Billing'], ['Shared']]]))->toBe([]);
 });

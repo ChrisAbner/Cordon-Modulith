@@ -424,3 +424,14 @@ it('does not hint for modules split by feature', function () {
         ->doesntExpectOutputToContain('look like the layers')
         ->assertExitCode(0);
 });
+
+it('checks the layers from the config', function () {
+    config()->set('cordon.layers', [['Shared'], ['Billing']]);
+
+    Artisan::call('cordon:verify', ['--format' => 'json']);
+    $layers = array_values(array_filter(json_decode(Artisan::output(), true)['violations'], fn (array $violation) => $violation['rule'] === 'layers'));
+
+    expect($layers)->not->toBe([])
+        ->and($layers[0]['message'])->toBe('Module [Billing] (layer 2) depends on [Shared] (layer 1); a layer may only depend on the layers below it.')
+        ->and($layers[0]['docs_url'])->toEndWith('/guide/rules#layers');
+});

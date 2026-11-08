@@ -15,7 +15,7 @@ use InvalidArgumentException;
 final class RuleSet
 {
     /** The ids of the built-in rules, in the order they run. */
-    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID];
+    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID];
 
     /**
      * Built-in rules that start below error: checks added after 0.3 arrive as
@@ -34,9 +34,10 @@ final class RuleSet
      * @param  array<array-key, mixed>  $config  e.g. ['cycles' => 'warn', MyRule::class]
      * @param  (Closure(class-string<Rule>): Rule)|null  $make  Builds custom rules (the Laravel container in the service provider).
      * @param  array<array-key, mixed>  $listeners  The `listeners` config: whether listener edges count for cycles and depends_on.
+     * @param  array<array-key, mixed>  $layers  The `layers` config, from the top down; the layers rule checks nothing without it.
      * @return list<Rule>
      */
-    public static function fromConfig(array $config = [], ?Closure $make = null, array $listeners = []): array
+    public static function fromConfig(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = []): array
     {
         $available = [
             InternalAccessRule::ID => static fn (): Rule => new InternalAccessRule,
@@ -44,6 +45,7 @@ final class RuleSet
             CycleRule::ID => static fn (): Rule => new CycleRule(($listeners['cycles'] ?? false) === true),
             UnusedDependencyRule::ID => static fn (): Rule => new UnusedDependencyRule(($listeners['depends_on'] ?? true) === true),
             HostAccessRule::ID => static fn (): Rule => new HostAccessRule,
+            LayerRule::ID => static fn (): Rule => new LayerRule(self::layers($layers), ($listeners['depends_on'] ?? true) === true),
         ];
 
         $rules = [];
@@ -209,5 +211,24 @@ final class RuleSet
         }
 
         return $make !== null ? $make($class) : new $class;
+    }
+
+    /**
+     * The valid part of the layers config (ConfigValidator reports the rest).
+     *
+     * @param  array<array-key, mixed>  $layers
+     * @return list<list<string>>
+     */
+    private static function layers(array $layers): array
+    {
+        $valid = [];
+
+        foreach ($layers as $layer) {
+            if (is_array($layer)) {
+                $valid[] = array_values(array_filter($layer, 'is_string'));
+            }
+        }
+
+        return $valid;
     }
 }

@@ -17,7 +17,7 @@ use Cordon\Rules\RuleSet;
  */
 final class ConfigValidator
 {
-    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'rules', 'listeners', 'exclude', 'baseline'];
+    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'layers', 'rules', 'listeners', 'exclude', 'baseline'];
 
     private const HOST_KEYS = ['paths'];
 
@@ -75,9 +75,50 @@ final class ConfigValidator
             $errors[] = sprintf('A module cannot be named [%s] while host.paths is set: the name is reserved for the code outside the modules. Rename the module or set host.paths to [].', Module::HOST);
         }
 
+        if (array_key_exists('layers', $config)) {
+            array_push($errors, ...self::layerErrors($config['layers'], $modules));
+        }
+
         if (is_array($config['modules'] ?? null)) {
             foreach ($config['modules'] as $name => $settings) {
                 array_push($errors, ...self::moduleErrors((string) $name, $settings, $modules));
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function layerErrors(mixed $layers, ModuleMap $modules): array
+    {
+        $shape = 'layers must be a list of layers from the top down, each a list of module names.';
+
+        if (! is_array($layers) || ! array_is_list($layers)) {
+            return [$shape];
+        }
+
+        $errors = [];
+        $seen = [];
+
+        foreach ($layers as $index => $layer) {
+            if (! is_array($layer) || ! array_is_list($layer) || array_filter($layer, static fn (mixed $module): bool => ! is_string($module)) !== []) {
+                return [$shape];
+            }
+
+            if ($layer === []) {
+                $errors[] = sprintf('Layer %d in layers is empty.', $index + 1);
+            }
+
+            foreach ($layer as $module) {
+                if (! $modules->has($module)) {
+                    $errors[] = sprintf('layers lists unknown module [%s].%s', $module, self::didYouMean($module, $modules->names()));
+                } elseif (isset($seen[$module]) && $seen[$module] !== $index + 1) {
+                    $errors[] = sprintf('Module [%s] is in layers %d and %d; a module belongs to one layer.', $module, $seen[$module], $index + 1);
+                }
+
+                $seen[$module] ??= $index + 1;
             }
         }
 

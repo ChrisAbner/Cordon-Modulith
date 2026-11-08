@@ -73,7 +73,7 @@ final class CordonServiceProvider extends ServiceProvider
             /** @var Repository $config */
             $config = $app->make(Repository::class);
             $rulesConfig = (array) $config->get('cordon.rules', []);
-            $rules = RuleSet::fromConfig($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []));
+            $rules = RuleSet::fromConfig($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []), (array) $config->get('cordon.layers', []));
 
             return new Analyzer(
                 $app->make(DependencyExtractor::class),

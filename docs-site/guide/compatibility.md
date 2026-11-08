@@ -13,7 +13,7 @@ From 1.0, the project follows [Semantic Versioning](https://semver.org) for ever
 | The command names, their options and the exit codes `0`, `1` and `2` | [Continuous integration](./ci) |
 | The JSON report: its fields, versioned with `"version"` and described by `resources/schemas/report-v1.schema.json`. A new optional field keeps the version; removing or renaming one changes it, so ignore fields you do not know | [Continuous integration](./ci) |
 | The baseline format (version 2: `rule`, `file`, `target`, `count`) | [Adopting in an existing project](./baseline) |
-| Rule ids (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`) and PHPStan identifiers (`cordon.internalAccess`, `cordon.undeclaredDependency`, `cordon.cycle`, `cordon.incompleteGraph`, `cordon.configuration`) | [Rules](./rules), [PHPStan](./phpstan) |
+| Rule ids (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`) and PHPStan identifiers (`cordon.internalAccess`, `cordon.undeclaredDependency`, `cordon.cycle`, `cordon.incompleteGraph`, `cordon.configuration`) | [Rules](./rules), [PHPStan](./phpstan) |
 | `extension.neon` and its `cordon.basePath` parameter | [PHPStan](./phpstan) |
 | `toRespectBoundaries()` and `Cordon\Testing\Cordon` | [Pest](./pest) |
 | The inputs of the GitHub Action | [Continuous integration](./ci) |

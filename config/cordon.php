@@ -99,8 +99,26 @@ return [
         'cycles' => 'error',
         'unused_dependency' => 'warn',
         'host_access' => 'warn',
+        'layers' => 'error',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Layers
+    |--------------------------------------------------------------------------
+    |
+    | A shorthand for depends_on in large projects: layers from the top down,
+    | each a list of module names. A module may depend on its own layer and
+    | the layers below, never above. Modules left out are not checked.
+    |
+    */
+
+    'layers' => [
+        // ['Orders', 'Billing'],
+        // ['Catalog'],
+        // ['Shared'],
     ],
 
     /*
