@@ -6,6 +6,7 @@ namespace Cordon\Analysis;
 
 use Cordon\Attributes\Internal;
 use Cordon\Attributes\PublicApi;
+use PhpParser\Modifiers;
 use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
 
@@ -26,6 +27,8 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
     private const RELATION = 'cordon.relation';
 
+    private const SIGNATURE = 'cordon.signature';
+
     /** Eloquent methods whose first argument is the related model. */
     private const RELATIONS = ['belongsto', 'hasone', 'hasmany', 'belongstomany', 'hasonethrough', 'hasmanythrough', 'morphone', 'morphmany', 'morphtomany', 'morphedbymany'];
 
@@ -37,6 +40,9 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
     /** @var list<string|null> */
     private array $classStack = [];
+
+    /** @var list<bool> Per open class: whether it is named (members of anonymous classes are no API). */
+    private array $namedStack = [];
 
     /**
      * Per open class: the index of its first reference, and the events its
@@ -73,6 +79,7 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
             // Anonymous classes are attributed to the enclosing class.
             $this->classStack[] = $fqcn ?? $this->currentClass();
+            $this->namedStack[] = $fqcn !== null;
             $this->listenerStack[] = ['start' => count($this->references), 'events' => []];
 
             if ($node instanceof Node\Stmt\Class_) {
@@ -82,6 +89,10 @@ final class ReferenceCollector extends NodeVisitorAbstract
             }
 
             return null;
+        }
+
+        if (end($this->namedStack) === true) {
+            $this->markPublicSignature($node);
         }
 
         // A listener's event is marked before its name is visited: such an edge
@@ -144,7 +155,8 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
         if ($node instanceof Node\Name\FullyQualified && $node->getAttribute(self::SKIP) !== true) {
             $kind = $node->getAttribute(self::KIND) === Reference::LISTENER ? Reference::LISTENER : Reference::USE;
-            $this->references[] = new Reference($this->file, $this->currentClass(), $node->toString(), $node->getStartLine(), $kind, $node->getAttribute(self::RELATION) === true);
+            $signature = $node->getAttribute(self::SIGNATURE);
+            $this->references[] = new Reference($this->file, $this->currentClass(), $node->toString(), $node->getStartLine(), $kind, $node->getAttribute(self::RELATION) === true, is_string($signature) ? $signature : null);
         }
 
         return null;
@@ -154,10 +166,56 @@ final class ReferenceCollector extends NodeVisitorAbstract
     {
         if ($node instanceof Node\Stmt\ClassLike) {
             array_pop($this->classStack);
+            array_pop($this->namedStack);
             $this->markHandledEvents((array) array_pop($this->listenerStack));
         }
 
         return null;
+    }
+
+    /**
+     * Marks the class names of a public member's signature (the NameResolver
+     * has already resolved them): public methods' parameters and return type,
+     * public properties (promoted ones too) and public typed constants. A
+     * constructor's other parameters are not API: the container passes them.
+     */
+    private function markPublicSignature(Node $node): void
+    {
+        if ($node instanceof Node\Stmt\ClassMethod && $node->isPublic()) {
+            $method = $node->name->toString();
+
+            foreach ($node->params as $param) {
+                $name = $param->var instanceof Node\Expr\Variable && is_string($param->var->name) ? $param->var->name : '';
+
+                if ($param->flags !== 0) {
+                    if (($param->flags & (Modifiers::PRIVATE | Modifiers::PROTECTED)) === 0) {
+                        self::mark($param->type, '$'.$name.' has type');
+                    }
+                } elseif ($method !== '__construct') {
+                    self::mark($param->type, $method.'() takes');
+                }
+            }
+
+            self::mark($node->returnType, $method.'() returns');
+        }
+
+        if ($node instanceof Node\Stmt\Property && $node->isPublic() && $node->props !== []) {
+            self::mark($node->type, '$'.$node->props[0]->name->toString().' has type');
+        }
+
+        if ($node instanceof Node\Stmt\ClassConst && $node->isPublic() && $node->consts !== []) {
+            self::mark($node->type, $node->consts[0]->name->toString().' has type');
+        }
+    }
+
+    private static function mark(?Node $type, string $signature): void
+    {
+        match (true) {
+            $type instanceof Node\Name\FullyQualified => $type->setAttribute(self::SIGNATURE, $signature),
+            $type instanceof Node\NullableType => self::mark($type->type, $signature),
+            $type instanceof Node\UnionType, $type instanceof Node\IntersectionType => array_map(static fn (Node $member) => self::mark($member, $signature), $type->types),
+            default => null,
+        };
     }
 
     /**

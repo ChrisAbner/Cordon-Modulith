@@ -140,6 +140,7 @@ final readonly class Analyzer
 
         $edges = [];
         $hostEdges = [];
+        $signatures = [];
         $hostModule = Module::host();
 
         foreach ($analyses as $analysis) {
@@ -164,6 +165,10 @@ final readonly class Analyzer
             foreach ($analysis->references as $reference) {
                 $to = $modules->forClass($reference->target);
 
+                if ($reference->signature !== null) {
+                    $signatures[] = $reference;
+                }
+
                 if ($to !== null && $to->name !== $from->name) {
                     $edges[] = new Edge($from, $to, $reference);
                 }
@@ -171,7 +176,7 @@ final readonly class Analyzer
         }
 
         return new Snapshot(
-            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges),
+            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges, $signatures),
             $analyses,
             $parseErrors,
         );

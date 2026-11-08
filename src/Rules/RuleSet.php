@@ -15,14 +15,14 @@ use InvalidArgumentException;
 final class RuleSet
 {
     /** The ids of the built-in rules, in the order they run. */
-    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID];
+    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID, PublicApiLeakRule::ID];
 
     /**
      * Built-in rules that start below error: checks added after 0.3 arrive as
      * warnings, so an upgrade does not fail a build that passed (see the
      * compatibility page).
      */
-    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn'];
+    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn', PublicApiLeakRule::ID => 'warn'];
 
     /**
      * Built-in rules, enabled unless set to off (or false), followed by custom rules.
@@ -46,6 +46,7 @@ final class RuleSet
             UnusedDependencyRule::ID => static fn (): Rule => new UnusedDependencyRule(($listeners['depends_on'] ?? true) === true),
             HostAccessRule::ID => static fn (): Rule => new HostAccessRule,
             LayerRule::ID => static fn (): Rule => new LayerRule(self::layers($layers), ($listeners['depends_on'] ?? true) === true),
+            PublicApiLeakRule::ID => static fn (): Rule => new PublicApiLeakRule,
         ];
 
         $rules = [];

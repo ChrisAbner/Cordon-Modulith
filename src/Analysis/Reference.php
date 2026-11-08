@@ -20,6 +20,7 @@ final readonly class Reference
     /**
      * @param  self::USE|self::LISTENER  $kind
      * @param  bool  $relation  The model of an Eloquent relation: $this->belongsTo(Target::class) and its siblings.
+     * @param  ?string  $signature  In the public signature of $sourceClass, the member that names it: "find() returns", "pay() takes", "$customer has type", "DEFAULT has type".
      */
     public function __construct(
         public string $sourceFile,
@@ -28,5 +29,6 @@ final readonly class Reference
         public int $line,
         public string $kind = self::USE,
         public bool $relation = false,
+        public ?string $signature = null,
     ) {}
 }

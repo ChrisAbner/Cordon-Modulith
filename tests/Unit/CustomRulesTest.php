@@ -9,7 +9,7 @@ use Cordon\Tests\Fixtures\Rules\DuplicateIdRule;
 it('runs custom rules after the built-in ones', function () {
     $rules = RuleSet::fromConfig(['cycles' => false, DeclareDependenciesRule::class]);
 
-    expect(array_map(fn ($rule) => $rule->id(), $rules))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers', 'declare_dependencies']);
+    expect(array_map(fn ($rule) => $rule->id(), $rules))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers', 'public_api_leak', 'declare_dependencies']);
 });
 
 it('reports custom rule violations', function () {
@@ -36,8 +36,8 @@ it('turns a built-in rule off or into a warning', function () {
     $off = RuleSet::fromConfig(['cycles' => 'off']);
     $warn = RuleSet::fromConfig(['cycles' => 'warn']);
 
-    expect(array_map(fn ($rule) => $rule->id(), $off))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers'])
-        ->and(array_map(fn ($rule) => $rule->id(), $warn))->toBe(['internal_access', 'undeclared_dependency', 'cycles', 'unused_dependency', 'host_access', 'layers'])
+    expect(array_map(fn ($rule) => $rule->id(), $off))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers', 'public_api_leak'])
+        ->and(array_map(fn ($rule) => $rule->id(), $warn))->toBe(['internal_access', 'undeclared_dependency', 'cycles', 'unused_dependency', 'host_access', 'layers', 'public_api_leak'])
         ->and(RuleSet::severities(['cycles' => 'warn'], $warn))->toBe([
             'internal_access' => Severity::Error,
             'undeclared_dependency' => Severity::Error,
@@ -45,6 +45,7 @@ it('turns a built-in rule off or into a warning', function () {
             'unused_dependency' => Severity::Warn,
             'host_access' => Severity::Warn,
             'layers' => Severity::Error,
+            'public_api_leak' => Severity::Warn,
         ]);
 });
 
@@ -57,7 +58,7 @@ it('gives custom rules a severity when their class is the key', function () {
     expect(RuleSet::severities([DeclareDependenciesRule::class], $listed)['declare_dependencies'])->toBe(Severity::Error)
         ->and(RuleSet::severities(['mine' => DeclareDependenciesRule::class], $named)['declare_dependencies'])->toBe(Severity::Error)
         ->and(RuleSet::severities([DeclareDependenciesRule::class => 'warn'], $warn)['declare_dependencies'])->toBe(Severity::Warn)
-        ->and(array_map(fn ($rule) => $rule->id(), $off))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers']);
+        ->and(array_map(fn ($rule) => $rule->id(), $off))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers', 'public_api_leak']);
 });
 
 it('lists the problems in the rules config', function () {
@@ -67,7 +68,7 @@ it('lists the problems in the rules config', function () {
         'App\\Missing\\Rule',
         DeclareDependenciesRule::class => 'loud',
     ]))->toBe([
-        'Unknown rule [internal_acess] in rules. Did you mean [internal_access]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers.',
+        'Unknown rule [internal_acess] in rules. Did you mean [internal_access]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak.',
         'Rule [cycles] has an invalid value [warning]. Use error, warn or off (or true/false).',
         'Custom rule [App\\Missing\\Rule] must be an existing class that implements Cordon\\Contracts\\Rule.',
         'Rule [Cordon\\Tests\\Fixtures\\Rules\\DeclareDependenciesRule] has an invalid value [loud]. Use error, warn or off (or true/false).',

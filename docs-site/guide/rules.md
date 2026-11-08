@@ -123,6 +123,17 @@ x [layers] app/Modules/Shared/Money.php:12
 
 A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. The PHPStan rule does not report it yet.
 
+## public_api_leak
+
+A public class names an internal class of its own module in its public signature, so other modules cannot use the public class without reaching the internal one:
+
+```text
+! [public_api_leak] (warn) app/Modules/Billing/Contracts/Invoices.php:10
+  App\Modules\Billing\Contracts\Invoices::find() returns App\Modules\Billing\Models\Invoice, which is internal to [Billing]: other modules reach it through the public API.
+```
+
+The public signature is what other modules see: the parameters and return types of public methods, public properties (promoted ones too) and the types of public constants. Private and protected members, the other parameters of a constructor (the container passes them) and anonymous classes do not count. Return a class from a public namespace instead, such as a DTO in `Data`, or mark the class `#[PublicApi]` if it is meant to be shared. It is a warning by default (it arrived in 0.4).
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.

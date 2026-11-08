@@ -100,6 +100,7 @@ return [
         'unused_dependency' => 'warn',
         'host_access' => 'warn',
         'layers' => 'error',
+        'public_api_leak' => 'warn',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
     ],
