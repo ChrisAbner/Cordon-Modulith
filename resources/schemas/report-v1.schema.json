@@ -1,9 +1,9 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Cordon Modulith report, version 1 (cordon:verify --format=json)",
-    "description": "Every object is closed (additionalProperties: false): a new field means a new version of the format.",
+    "description": "Adding an optional field keeps version 1, so every object accepts fields this schema does not list. Removing or renaming a field means a new version.",
     "type": "object",
-    "additionalProperties": false,
+    "additionalProperties": true,
     "required": ["version", "summary", "violations", "warnings", "parse_errors"],
     "properties": {
         "version": {
@@ -11,7 +11,7 @@
         },
         "summary": {
             "type": "object",
-            "additionalProperties": false,
+            "additionalProperties": true,
             "required": ["modules", "files", "cross_module_references", "violations", "warnings", "suppressed", "parse_errors"],
             "properties": {
                 "modules": { "type": "integer", "minimum": 0 },
@@ -35,7 +35,7 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "additionalProperties": false,
+                "additionalProperties": true,
                 "required": ["file", "error"],
                 "properties": {
                     "file": { "type": ["string", "null"], "description": "Relative to the project root." },
@@ -47,7 +47,7 @@
     "definitions": {
         "violation": {
             "type": "object",
-            "additionalProperties": false,
+            "additionalProperties": true,
             "required": ["rule", "severity", "message", "file", "line", "source_module", "target_module", "target"],
             "properties": {
                 "rule": { "type": "string", "description": "Rule id: internal_access, undeclared_dependency, cycles, or a custom rule's id." },
@@ -57,7 +57,8 @@
                 "line": { "type": ["integer", "null"], "minimum": 1 },
                 "source_module": { "type": ["string", "null"] },
                 "target_module": { "type": ["string", "null"] },
-                "target": { "type": ["string", "null"], "description": "The class used, or the dependency for cycles (\"A -> B\")." }
+                "target": { "type": ["string", "null"], "description": "The class used, or the dependency for cycles (\"A -> B\")." },
+                "docs_url": { "type": ["string", "null"], "description": "The documentation of the rule; null for custom rules. Added in 0.4." }
             }
         }
     }

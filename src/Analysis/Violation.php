@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+use Cordon\Rules\RuleDocs;
 use Cordon\Rules\Severity;
 use Cordon\Support\Paths;
 
@@ -24,6 +25,14 @@ final readonly class Violation
     ) {}
 
     /**
+     * The documentation of the rule; null for a custom rule.
+     */
+    public function docsUrl(): ?string
+    {
+        return RuleDocs::url($this->rule);
+    }
+
+    /**
      * The same violation with another severity; the rule's configured severity is applied after it runs.
      */
     public function withSeverity(Severity $severity): self
@@ -41,7 +50,7 @@ final readonly class Violation
     }
 
     /**
-     * @return array{rule: string, severity: string, message: string, file: string|null, line: int|null, source_module: string|null, target_module: string|null, target: string|null}
+     * @return array{rule: string, severity: string, message: string, file: string|null, line: int|null, source_module: string|null, target_module: string|null, target: string|null, docs_url: string|null}
      */
     public function toArray(?string $basePath = null): array
     {
@@ -54,6 +63,7 @@ final readonly class Violation
             'source_module' => $this->sourceModule,
             'target_module' => $this->targetModule,
             'target' => $this->target,
+            'docs_url' => $this->docsUrl(),
         ];
     }
 }

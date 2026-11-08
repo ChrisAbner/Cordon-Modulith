@@ -54,7 +54,7 @@ Use artisan when the configuration needs the booted application, or when custom 
 | `1` | Violations of rules set to `error`; no modules found (`--allow-empty` passes while a project has none yet); a stale baseline entry with `--fail-on-stale`; a file that does not parse with `--fail-on-parse-error`. |
 | `2` | Invalid options or an invalid `config/cordon.php`. Nothing is analysed. |
 
-Use `--format=json` for a machine readable report. It starts with `"version": 1` and follows the schema in `resources/schemas/report-v1.schema.json`:
+Use `--format=json` for a machine readable report. It starts with `"version": 1` and follows the schema in `resources/schemas/report-v1.schema.json`; each violation links to its rule's documentation in `docs_url`. New optional fields may appear in a minor release without changing the version:
 
 ```bash
 php artisan cordon:verify --format=json > cordon-report.json
