@@ -8,6 +8,8 @@ use Cordon\Module\ModuleMap;
 
 /**
  * Discovers the modules of an application (nwidart, InterNACHI, plain namespaces...).
+ *
+ * @internal
  */
 interface ModuleResolver
 {

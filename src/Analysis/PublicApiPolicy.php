@@ -12,6 +12,8 @@ use Cordon\Module\Module;
  * Precedence: #[Internal] > #[PublicApi] > open module > public namespaces
  * (global config, matched at any depth; module "public" list, anchored at the
  * module root) > internal by default.
+ *
+ * @api
  */
 final readonly class PublicApiPolicy
 {

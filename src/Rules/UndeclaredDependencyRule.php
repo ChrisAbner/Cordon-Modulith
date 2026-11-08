@@ -11,6 +11,8 @@ use Cordon\Contracts\Rule;
 /**
  * When a module declares depends_on, it may only depend on the listed modules.
  * Modules without a depends_on declaration are not checked.
+ *
+ * @internal
  */
 final class UndeclaredDependencyRule implements Rule
 {

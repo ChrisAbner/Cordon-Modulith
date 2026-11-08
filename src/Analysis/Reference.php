@@ -6,6 +6,8 @@ namespace Cordon\Analysis;
 
 /**
  * One usage of a class name inside a file (new, static call, type, extends, attribute...).
+ *
+ * @api
  */
 final readonly class Reference
 {

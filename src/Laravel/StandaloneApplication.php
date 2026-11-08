@@ -22,6 +22,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * Configuration comes from StandaloneConfig and the services from the same
  * bindings CordonServiceProvider registers, on a bare ProjectContainer.
+ *
+ * @internal
  */
 final class StandaloneApplication
 {

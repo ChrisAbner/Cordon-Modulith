@@ -18,6 +18,9 @@ use Illuminate\Console\Command;
 use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * @internal
+ */
 final class VerifyCommand extends Command
 {
     protected $signature = 'cordon:verify

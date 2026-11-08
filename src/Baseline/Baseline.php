@@ -12,6 +12,8 @@ use RuntimeException;
 /**
  * Known violations that are tolerated, so existing projects can adopt Cordon
  * and only fail on new violations.
+ *
+ * @internal
  */
 final readonly class Baseline
 {

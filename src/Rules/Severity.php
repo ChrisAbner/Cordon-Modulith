@@ -9,6 +9,8 @@ use InvalidArgumentException;
 /**
  * How a rule's violations count: errors fail the check, warnings are only
  * reported, and an off rule does not run.
+ *
+ * @api
  */
 enum Severity: string
 {

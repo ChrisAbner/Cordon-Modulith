@@ -16,6 +16,8 @@ use Cordon\Module\ModuleMap;
  * explicitly (event(new X), Event::dispatch, Event::listen). X::dispatch()
  * and handle(X $x) only count for classes that are already events, because
  * jobs use the same methods.
+ *
+ * @internal
  */
 final readonly class EventInventory
 {

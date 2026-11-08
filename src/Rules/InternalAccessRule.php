@@ -10,6 +10,8 @@ use Cordon\Contracts\Rule;
 
 /**
  * A module may only use classes from another module's public API.
+ *
+ * @internal
  */
 final class InternalAccessRule implements Rule
 {

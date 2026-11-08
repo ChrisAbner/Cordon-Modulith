@@ -11,6 +11,8 @@ use Cordon\Support\Paths;
 
 /**
  * GitHub Actions workflow commands: violations show up as annotations on the pull request.
+ *
+ * @internal
  */
 final class GithubReporter implements Reporter
 {

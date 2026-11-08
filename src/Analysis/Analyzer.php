@@ -11,6 +11,8 @@ use Cordon\Rules\Severity;
 
 /**
  * Pipeline: collect files -> extract declarations/references -> build cross-module edges -> run rules.
+ *
+ * @internal
  */
 final readonly class Analyzer
 {

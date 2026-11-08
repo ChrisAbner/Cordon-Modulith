@@ -7,6 +7,9 @@ namespace Cordon\Analysis;
 use Cordon\Rules\Severity;
 use Cordon\Support\Paths;
 
+/**
+ * @api
+ */
 final readonly class Violation
 {
     public function __construct(

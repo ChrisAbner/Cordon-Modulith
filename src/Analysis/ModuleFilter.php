@@ -9,6 +9,8 @@ use Cordon\Rules\CycleRule;
 /**
  * Narrows a result to the violations of some modules: the ones they cause
  * (source module) and the dependency cycles they take part in.
+ *
+ * @internal
  */
 final class ModuleFilter
 {

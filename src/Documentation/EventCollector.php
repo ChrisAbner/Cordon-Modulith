@@ -17,6 +17,8 @@ use PhpParser\NodeVisitorAbstract;
  * Dispatch: event(new X), broadcast(new X), $dispatcher->dispatch(new X),
  * Event::dispatch(new X), X::dispatch(), X::dispatchIf(), X::dispatchUnless(), X::broadcast().
  * Listen:   handle(X $event) / __invoke(X $event) in a class, Event::listen(X::class, ...).
+ *
+ * @internal
  */
 final class EventCollector extends NodeVisitorAbstract
 {

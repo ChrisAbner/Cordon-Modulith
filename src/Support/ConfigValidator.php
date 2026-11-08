@@ -11,6 +11,8 @@ use Cordon\Rules\RuleSet;
  * Checks config/cordon.php before anything is analysed, so a typo fails
  * instead of silently changing what is checked: a misspelled depends_on
  * would leave the module's dependencies open and CI green.
+ *
+ * @internal
  */
 final class ConfigValidator
 {

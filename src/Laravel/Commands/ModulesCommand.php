@@ -13,6 +13,9 @@ use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Config\Repository;
 
+/**
+ * @internal
+ */
 final class ModulesCommand extends Command
 {
     private const DOCS = 'https://chrisabner.github.io/Cordon-Modulith/guide/installation#is-cordon-for-my-project';

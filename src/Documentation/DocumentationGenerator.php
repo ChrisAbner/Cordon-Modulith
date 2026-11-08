@@ -16,6 +16,8 @@ use Cordon\Support\Paths;
  * Renders Markdown documentation of the real module architecture:
  * README.md (overview and global dependency diagram), modules/<Name>.md
  * (one canvas per module) and events.md (event inventory). Output is deterministic so it can be committed.
+ *
+ * @internal
  */
 final class DocumentationGenerator
 {

@@ -10,6 +10,8 @@ use Cordon\Contracts\Rule;
 
 /**
  * Modules must not depend on each other in a cycle (A -> B -> A).
+ *
+ * @internal
  */
 final class CycleRule implements Rule
 {

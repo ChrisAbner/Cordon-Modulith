@@ -17,6 +17,8 @@ use LogicException;
  *
  * The analysis runs once per process and is reused while the config and the
  * baseline file stay the same, so many module expectations stay fast.
+ *
+ * @api
  */
 final class Cordon
 {

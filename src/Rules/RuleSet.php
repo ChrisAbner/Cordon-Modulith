@@ -9,6 +9,9 @@ use Cordon\Contracts\Rule;
 use Cordon\Support\ConfigValidator;
 use InvalidArgumentException;
 
+/**
+ * @internal
+ */
 final class RuleSet
 {
     private const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID];

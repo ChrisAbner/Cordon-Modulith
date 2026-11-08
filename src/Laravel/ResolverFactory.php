@@ -12,6 +12,9 @@ use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
 use InvalidArgumentException;
 
+/**
+ * @internal
+ */
 final class ResolverFactory
 {
     public static function make(Repository $config, string $basePath): ModuleResolver

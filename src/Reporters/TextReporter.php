@@ -10,6 +10,9 @@ use Cordon\Contracts\Reporter;
 use Cordon\Support\Paths;
 use Symfony\Component\Console\Formatter\OutputFormatter;
 
+/**
+ * @internal
+ */
 final class TextReporter implements Reporter
 {
     public function formatted(): bool

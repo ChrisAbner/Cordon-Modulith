@@ -12,6 +12,8 @@ use Cordon\Support\Paths;
 /**
  * nwidart/laravel-modules: every directory with a module.json is a module.
  * Example: Modules/Blog (with app/, routes/, ...) => Modules\Blog.
+ *
+ * @internal
  */
 final readonly class NwidartResolver implements ModuleResolver
 {

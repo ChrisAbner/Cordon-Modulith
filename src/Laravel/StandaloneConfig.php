@@ -17,6 +17,8 @@ use Throwable;
  * can be loaded without the framework.
  *
  * @implements ArrayAccess<string, mixed>
+ *
+ * @internal
  */
 final class StandaloneConfig implements ArrayAccess, Repository
 {

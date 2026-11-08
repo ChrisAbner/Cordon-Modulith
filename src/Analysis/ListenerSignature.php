@@ -12,6 +12,8 @@ use PhpParser\Node\Name\FullyQualified;
  * Where a listener names the event it handles, shared by the dependency
  * analysis (listener edges) and the generated event inventory. Expects names
  * already resolved by PhpParser's NameResolver.
+ *
+ * @internal
  */
 final class ListenerSignature
 {

@@ -12,6 +12,8 @@ use PhpParser\ParserFactory;
 
 /**
  * Static extraction of event dispatches and listeners; the code is never loaded.
+ *
+ * @internal
  */
 final class EventExtractor
 {

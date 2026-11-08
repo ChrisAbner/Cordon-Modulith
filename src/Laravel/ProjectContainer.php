@@ -11,6 +11,8 @@ use Illuminate\Container\Container;
  * (base_path, app_path, config_path...) ask the application, resolved against
  * a project root. It boots nothing and loads none of the project's code, so
  * config files that call those helpers can be evaluated outside Laravel.
+ *
+ * @internal
  */
 final class ProjectContainer extends Container
 {

@@ -10,6 +10,8 @@ use PHPUnit\Framework\Assert;
 
 /**
  * Implementation of the Pest expectation toRespectBoundaries().
+ *
+ * @internal
  */
 final class BoundaryExpectation
 {

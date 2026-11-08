@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+/**
+ * @internal
+ */
 final readonly class FileAnalysis
 {
     /**

@@ -13,6 +13,8 @@ use PhpParser\ParserFactory;
 
 /**
  * Static extractor based on nikic/php-parser: the analysed code is never loaded.
+ *
+ * @internal
  */
 final class PhpParserExtractor implements DependencyExtractor
 {

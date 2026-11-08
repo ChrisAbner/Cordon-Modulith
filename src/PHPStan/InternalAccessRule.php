@@ -41,6 +41,8 @@ use Throwable;
  * honoured without loading code.
  *
  * @implements Rule<FileNode>
+ *
+ * @internal
  */
 final class InternalAccessRule implements Rule
 {

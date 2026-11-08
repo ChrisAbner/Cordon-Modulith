@@ -8,6 +8,8 @@ use Cordon\Module\Module;
 
 /**
  * A reference that crosses a module boundary.
+ *
+ * @api
  */
 final readonly class Edge
 {

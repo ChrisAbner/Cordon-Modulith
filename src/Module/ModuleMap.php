@@ -11,6 +11,8 @@ use Traversable;
 
 /**
  * @implements IteratorAggregate<int, Module>
+ *
+ * @api
  */
 final class ModuleMap implements Countable, IteratorAggregate
 {

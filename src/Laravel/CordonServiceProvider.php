@@ -19,6 +19,9 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 
+/**
+ * @internal
+ */
 final class CordonServiceProvider extends ServiceProvider
 {
     public function register(): void

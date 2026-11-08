@@ -6,6 +6,8 @@ namespace Cordon\Analysis;
 
 /**
  * A class, interface, trait or enum declared in an analysed file.
+ *
+ * @api
  */
 final readonly class ClassDeclaration
 {

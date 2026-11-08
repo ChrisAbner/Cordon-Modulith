@@ -8,6 +8,8 @@ use Cordon\Module\ModuleMap;
 
 /**
  * Everything a rule needs. Rules must treat it as read-only.
+ *
+ * @api
  */
 final readonly class AnalysisContext
 {

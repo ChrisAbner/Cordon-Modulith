@@ -6,6 +6,8 @@ namespace Cordon\Documentation;
 
 /**
  * A place where an event class is dispatched or listened to.
+ *
+ * @internal
  */
 final readonly class EventUsage
 {

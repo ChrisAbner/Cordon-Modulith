@@ -17,6 +17,8 @@ use Illuminate\Contracts\Config\Repository;
 /**
  * The verification flow shared by cordon:verify and the Pest expectation:
  * resolve and configure modules, analyse them and apply the baseline.
+ *
+ * @internal
  */
 final class Verifier
 {

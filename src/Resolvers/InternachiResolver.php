@@ -14,6 +14,8 @@ use JsonException;
  * InterNACHI/modular: every directory with a composer.json is a module; its
  * namespace comes from the PSR-4 autoload entry (preferably the one mapped to src/).
  * Example: app-modules/billing => Modules\Billing (module name "billing").
+ *
+ * @internal
  */
 final readonly class InternachiResolver implements ModuleResolver
 {

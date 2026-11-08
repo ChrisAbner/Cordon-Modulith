@@ -6,6 +6,9 @@ namespace Cordon\Support;
 
 use DirectoryIterator;
 
+/**
+ * @internal
+ */
 final class Paths
 {
     public static function isAbsolute(string $path): bool

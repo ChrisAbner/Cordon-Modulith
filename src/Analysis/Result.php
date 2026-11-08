@@ -7,6 +7,9 @@ namespace Cordon\Analysis;
 use Cordon\Baseline\Baseline;
 use Cordon\Module\ModuleMap;
 
+/**
+ * @internal
+ */
 final readonly class Result
 {
     /**

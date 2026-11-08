@@ -15,6 +15,8 @@ use PhpParser\NodeVisitorAbstract;
  * Must run after PhpParser's NameResolver, which turns every class name in a
  * class position into a Name\FullyQualified node. Import statements (use ...)
  * are plain Name nodes and therefore never count as a dependency on their own.
+ *
+ * @internal
  */
 final class ReferenceCollector extends NodeVisitorAbstract
 {

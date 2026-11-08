@@ -9,6 +9,9 @@ use Cordon\Analysis\Violation;
 use Cordon\Contracts\Reporter;
 use Cordon\Support\Paths;
 
+/**
+ * @internal
+ */
 final class JsonReporter implements Reporter
 {
     /**
