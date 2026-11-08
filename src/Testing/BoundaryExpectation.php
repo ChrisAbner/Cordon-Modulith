@@ -21,6 +21,12 @@ final class BoundaryExpectation
             Assert::fail(sprintf('toRespectBoundaries() expects a module name, got %s.', get_debug_type($module)));
         }
 
+        // Like cordon:verify, a broken config fails instead of changing what is
+        // checked: with depend_on instead of depends_on the module would pass.
+        if (($errors = Cordon::configurationErrors()) !== []) {
+            Assert::fail(implode(PHP_EOL, ['config/cordon.php has errors:', ...array_map(fn (string $error): string => '  - '.$error, $errors)]));
+        }
+
         $modules = Cordon::modules();
 
         if (! in_array($module, $modules, true)) {

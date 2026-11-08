@@ -86,6 +86,19 @@ it('passes with warnings only and shows them in every format', function () {
         ->assertExitCode(0);
 });
 
+it('keeps the warnings of the selected module with --module', function () {
+    config()->set('cordon.rules', ['internal_access' => 'warn']);
+
+    expect(Artisan::call('cordon:verify', ['--module' => ['Billing'], '--format' => 'json']))->toBe(0);
+    $report = json_decode(Artisan::output(), true);
+
+    expect($report['summary']['warnings'])->toBe(2)
+        ->and(array_unique(array_column($report['warnings'], 'source_module')))->toBe(['Billing']);
+
+    expect(Artisan::call('cordon:verify', ['--module' => ['Shared'], '--format' => 'json']))->toBe(0)
+        ->and(json_decode(Artisan::output(), true)['warnings'])->toBe([]);
+});
+
 it('leaves warnings out of a generated baseline', function () {
     config()->set('cordon.rules', ['cycles' => 'warn']);
 
@@ -238,6 +251,18 @@ it('fails on stale baseline entries with --fail-on-stale, listing each one', fun
 
     expect(Artisan::call('cordon:verify', ['--fail-on-stale' => true, '--format' => 'github']))->toBe(1)
         ->and(Artisan::output())->toContain('::error title=Cordon::1 baseline entry no longer matches the code.');
+});
+
+it('does not take the entries of a rule moved to warn for stale', function () {
+    $this->artisan('cordon:verify', ['--generate-baseline' => true])->assertExitCode(0);
+    $recorded = json_decode((string) file_get_contents((string) config('cordon.baseline')), true)['violations'];
+    config()->set('cordon.rules', ['internal_access' => 'warn']);
+
+    expect(Artisan::call('cordon:verify', ['--fail-on-stale' => true]))->toBe(0)
+        ->and(Artisan::output())->not->toContain('no longer match');
+
+    expect(Artisan::call('cordon:verify', ['--prune-baseline' => true]))->toBe(0)
+        ->and(json_decode((string) file_get_contents((string) config('cordon.baseline')), true)['violations'])->toBe($recorded);
 });
 
 it('counts an entry that records more occurrences than the code has as stale', function () {

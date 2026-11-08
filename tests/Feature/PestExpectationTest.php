@@ -34,6 +34,13 @@ it('works on every module with each', function () {
         ->toThrow(AssertionFailedError::class, 'Module [Billing]');
 });
 
+it('fails when the config has errors, as cordon:verify does', function () {
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Catalog' => ['depend_on' => []]]);
+
+    expect(fn () => expect('Catalog')->toRespectBoundaries())
+        ->toThrow(AssertionFailedError::class, 'Unknown key [depend_on] for module [Catalog]. Did you mean [depends_on]?');
+});
+
 it('rejects unknown modules', function () {
     expect(fn () => expect('Ghost')->toRespectBoundaries())
         ->toThrow(AssertionFailedError::class, 'Unknown module [Ghost]. Detected modules: Billing, Catalog, Shared.');

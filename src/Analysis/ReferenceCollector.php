@@ -33,6 +33,14 @@ final class ReferenceCollector extends NodeVisitorAbstract
     /** @var list<string|null> */
     private array $classStack = [];
 
+    /**
+     * Per open class: the index of its first reference, and the events its
+     * handle() or __invoke() handles, so its other methods (failed()) count too.
+     *
+     * @var list<array{start: int, events: array<string, true>}>
+     */
+    private array $listenerStack = [];
+
     public function __construct(private readonly string $file) {}
 
     public function enterNode(Node $node)
@@ -47,6 +55,13 @@ final class ReferenceCollector extends NodeVisitorAbstract
 
             // Anonymous classes are attributed to the enclosing class.
             $this->classStack[] = $fqcn ?? $this->currentClass();
+            $this->listenerStack[] = ['start' => count($this->references), 'events' => []];
+
+            if ($node instanceof Node\Stmt\Class_) {
+                foreach (ListenerSignature::listenMapFetches($node) as $fetch) {
+                    $fetch->setAttribute(self::KIND, Reference::LISTENER);
+                }
+            }
 
             return null;
         }
@@ -59,6 +74,10 @@ final class ReferenceCollector extends NodeVisitorAbstract
                 // a class under an Events namespace counts as the handled event.
                 if (in_array('Events', array_slice(explode('\\', $name->toString()), 0, -1), true)) {
                     $name->setAttribute(self::KIND, Reference::LISTENER);
+
+                    if (($top = array_key_last($this->listenerStack)) !== null) {
+                        $this->listenerStack[$top]['events'][$name->toString()] = true;
+                    }
                 }
             }
         }
@@ -66,6 +85,15 @@ final class ReferenceCollector extends NodeVisitorAbstract
         if ($node instanceof Node\Expr\StaticCall) {
             foreach (ListenerSignature::listenedClassFetches($node) as $fetch) {
                 $fetch->setAttribute(self::KIND, Reference::LISTENER);
+            }
+
+            ListenerSignature::listenedClosure($node)?->setAttribute(self::KIND, Reference::LISTENER);
+        }
+
+        // A closure registered with Event::listen: its parameter types are resolved on entering it.
+        if (($node instanceof Node\Expr\Closure || $node instanceof Node\Expr\ArrowFunction) && $node->getAttribute(self::KIND) === Reference::LISTENER) {
+            foreach (ListenerSignature::firstParameterTypes($node) as $name) {
+                $name->setAttribute(self::KIND, Reference::LISTENER);
             }
         }
 
@@ -94,9 +122,36 @@ final class ReferenceCollector extends NodeVisitorAbstract
     {
         if ($node instanceof Node\Stmt\ClassLike) {
             array_pop($this->classStack);
+            $this->markHandledEvents((array) array_pop($this->listenerStack));
         }
 
         return null;
+    }
+
+    /**
+     * In a listener, every reference to the event it handles is the listener's,
+     * wherever it appears (failed(), a helper method), before or after handle().
+     *
+     * @param  array{start?: int, events?: array<string, true>}  $class
+     */
+    private function markHandledEvents(array $class): void
+    {
+        $events = $class['events'] ?? [];
+
+        if ($events === []) {
+            return;
+        }
+
+        $start = $class['start'] ?? count($this->references);
+        $references = [];
+
+        foreach ($this->references as $i => $reference) {
+            $references[] = $i >= $start && isset($events[$reference->target]) && $reference->kind === Reference::USE
+                ? new Reference($reference->sourceFile, $reference->sourceClass, $reference->target, $reference->line, Reference::LISTENER)
+                : $reference;
+        }
+
+        $this->references = $references;
     }
 
     /**

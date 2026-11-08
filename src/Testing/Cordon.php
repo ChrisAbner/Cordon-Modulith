@@ -37,6 +37,16 @@ final class Cordon
     }
 
     /**
+     * Problems in config/cordon.php, as cordon:verify reports them.
+     *
+     * @return list<string>
+     */
+    public static function configurationErrors(): array
+    {
+        return self::verifier()->configurationErrors();
+    }
+
+    /**
      * The verification result with the baseline applied.
      */
     public static function result(): Result

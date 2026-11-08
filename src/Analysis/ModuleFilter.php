@@ -19,17 +19,17 @@ final class ModuleFilter
      */
     public static function apply(Result $result, array $modules): Result
     {
+        $involved = static fn (Violation $violation): bool => self::involvesAny($violation, $modules);
+
         return new Result(
             $result->modules,
-            array_values(array_filter(
-                $result->violations,
-                static fn (Violation $violation): bool => self::involvesAny($violation, $modules),
-            )),
+            array_values(array_filter($result->violations, $involved)),
             $result->filesAnalysed,
             $result->crossModuleReferences,
             $result->parseErrors,
             $result->suppressed,
             $result->basePath,
+            array_values(array_filter($result->warnings, $involved)),
         );
     }
 

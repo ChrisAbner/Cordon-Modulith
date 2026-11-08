@@ -82,3 +82,26 @@ it('marks every other reference as a use', function () {
         'App\\Modules\\Orders\\Events\\OrderPlaced' => Reference::USE,
     ]);
 });
+
+it('marks the event in the other methods of a listener, such as failed()', function () {
+    $analysis = (new PhpParserExtractor)->extract(fixture_path('listeners-app/app/Modules/Billing/Listeners/ChargeOrderQueued.php'));
+    $kinds = array_map(
+        fn (Reference $reference) => $reference->line.':'.$reference->kind,
+        array_values(array_filter($analysis->references, fn (Reference $reference) => $reference->target === 'App\\Modules\\Orders\\Events\\OrderPlaced')),
+    );
+
+    expect($kinds)->toBe(['11:'.Reference::LISTENER, '13:'.Reference::LISTENER]);
+});
+
+it('marks the events of the $listen map of an EventServiceProvider', function () {
+    expect(listener_app_kinds('Billing/Providers/EventServiceProvider.php'))->toBe([
+        'App\\Modules\\Orders\\Events\\OrderPlaced' => Reference::LISTENER,
+        'App\\Modules\\Billing\\Listeners\\ChargeOrder' => Reference::USE,
+    ]);
+});
+
+it('marks the event of a closure registered with Event::listen', function () {
+    expect(listener_app_kinds('Billing/Providers/ClosureListeners.php'))->toBe([
+        'App\\Modules\\Orders\\Events\\OrderPlaced' => Reference::LISTENER,
+    ]);
+});

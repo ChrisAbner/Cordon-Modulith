@@ -14,7 +14,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 
 ### Added
 - Severities per rule: `error`, `warn` or `off` (`true` and `false` keep working). Violations of a rule in `warn` are reported, never fail, and are not written to the baseline. The JSON report lists them under `warnings`, the GitHub format as `::warning`. Custom rules take a severity when their class is the key.
-- `listeners` config (`cycles: false`, `depends_on: true` by default), and listener references in the analysis: the type of the first parameter of `handle()` or `__invoke()` under an `Events` namespace, and the event of `Event::listen()`.
+- `listeners` config (`cycles: false`, `depends_on: true` by default), and listener references in the analysis: the type of the first parameter of `handle()` or `__invoke()` under an `Events` namespace (and that event elsewhere in the listener, such as `failed()`), the keys of an `EventServiceProvider`'s `$listen` map, and the event of `Event::listen()`, with a class name or a closure.
 - `--fail-on-stale`: a baseline entry that no longer matches the code fails `cordon:verify`, and each one is listed with the occurrences it records and the ones found. The check is skipped when a file does not parse.
 - The JSON report starts with `"version": 1` and is described by `resources/schemas/report-v1.schema.json`. Each violation has a `severity`.
 - A per-module `metadata` key (free-form, not read yet) and the reserved `Module::Interface` syntax in `depends_on`, for named interfaces later.

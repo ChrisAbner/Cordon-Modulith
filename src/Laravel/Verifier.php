@@ -7,6 +7,7 @@ namespace Cordon\Laravel;
 use Closure;
 use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\Result;
+use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Module\ModuleMap;
@@ -109,7 +110,7 @@ final class Verifier
      */
     public function staleBaselineEntries(Result $result): int
     {
-        return $this->baseline()?->staleEntries($result->violations, $this->basePath) ?? 0;
+        return $this->baseline()?->staleEntries($this->found($result), $this->basePath) ?? 0;
     }
 
     /**
@@ -119,7 +120,7 @@ final class Verifier
      */
     public function staleBaselineDetails(Result $result): array
     {
-        return $this->baseline()?->staleDetails($result->violations, $this->basePath) ?? [];
+        return $this->baseline()?->staleDetails($this->found($result), $this->basePath) ?? [];
     }
 
     /**
@@ -131,13 +132,13 @@ final class Verifier
     public function pruneBaseline(Result $result): array
     {
         $baseline = $this->baseline() ?? Baseline::empty();
-        $pruned = $baseline->prune($result->violations, $this->basePath);
+        $pruned = $baseline->prune($this->found($result), $this->basePath);
         $pruned->save($this->baselineFile());
         $this->baseline = $pruned;
 
         [$new] = $pruned->filter($result->violations, $this->basePath);
 
-        return [$baseline->staleEntries($result->violations, $this->basePath), $pruned->count(), count($new)];
+        return [$baseline->staleEntries($this->found($result), $this->basePath), $pruned->count(), count($new)];
     }
 
     public function baselineFile(): string
@@ -145,6 +146,17 @@ final class Verifier
         $file = $this->config->get('cordon.baseline', 'cordon-baseline.json');
 
         return Paths::join($this->basePath, is_string($file) && $file !== '' ? $file : 'cordon-baseline.json');
+    }
+
+    /**
+     * Every violation still in the code, warnings included: moving a rule to
+     * warn does not fix its violations, so their baseline entries still match.
+     *
+     * @return list<Violation>
+     */
+    private function found(Result $result): array
+    {
+        return [...$result->violations, ...$result->warnings];
     }
 
     private function analyzer(): Analyzer

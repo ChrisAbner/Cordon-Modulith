@@ -19,6 +19,8 @@ final class ListenerSignature
 {
     private const EVENT_FACADE = 'Illuminate\\Support\\Facades\\Event';
 
+    private const EVENT_SERVICE_PROVIDER = 'Illuminate\\Foundation\\Support\\Providers\\EventServiceProvider';
+
     /**
      * The class types of the first parameter of handle() or __invoke(), unions included.
      * Callers decide whether those are events: a job's handle() receives services too.
@@ -31,7 +33,58 @@ final class ListenerSignature
             return [];
         }
 
-        return self::classNames($method->params[0]->type ?? null);
+        return self::firstParameterTypes($method);
+    }
+
+    /**
+     * The class types of the first parameter of a function, method or closure, unions included.
+     *
+     * @return list<FullyQualified>
+     */
+    public static function firstParameterTypes(Node\FunctionLike $function): array
+    {
+        return self::classNames($function->getParams()[0]->type ?? null);
+    }
+
+    /**
+     * The closure passed as the listener of Event::listen(function (Event $e) {...}), if any.
+     */
+    public static function listenedClosure(Expr\StaticCall $call): Expr\Closure|Expr\ArrowFunction|null
+    {
+        $value = self::isEventListen($call) && ($call->args[0] ?? null) instanceof Node\Arg ? $call->args[0]->value : null;
+
+        return $value instanceof Expr\Closure || $value instanceof Expr\ArrowFunction ? $value : null;
+    }
+
+    /**
+     * The X::class keys of the $listen map of an EventServiceProvider, what nwidart generates.
+     * Expects the parent class already resolved.
+     *
+     * @return list<Expr\ClassConstFetch>
+     */
+    public static function listenMapFetches(Node\Stmt\Class_ $class): array
+    {
+        if (! $class->extends instanceof FullyQualified || $class->extends->toString() !== self::EVENT_SERVICE_PROVIDER) {
+            return [];
+        }
+
+        $fetches = [];
+
+        foreach ($class->getProperties() as $property) {
+            foreach ($property->props as $item) {
+                if ($item->name->toString() !== 'listen' || ! $item->default instanceof Expr\Array_) {
+                    continue;
+                }
+
+                foreach ($item->default->items as $entry) {
+                    if (self::isClassFetch($entry->key)) {
+                        $fetches[] = $entry->key;
+                    }
+                }
+            }
+        }
+
+        return $fetches;
     }
 
     /**
@@ -44,10 +97,7 @@ final class ListenerSignature
      */
     public static function listenedClassFetches(Expr\StaticCall $call): array
     {
-        if (! $call->class instanceof FullyQualified
-            || $call->class->toString() !== self::EVENT_FACADE
-            || ! $call->name instanceof Node\Identifier
-            || $call->name->toLowerString() !== 'listen') {
+        if (! self::isEventListen($call)) {
             return [];
         }
 
@@ -64,15 +114,31 @@ final class ListenerSignature
         $fetches = [];
 
         foreach ($values as $value) {
-            if ($value instanceof Expr\ClassConstFetch
-                && $value->class instanceof Node\Name
-                && $value->name instanceof Node\Identifier
-                && $value->name->toLowerString() === 'class') {
+            if (self::isClassFetch($value)) {
                 $fetches[] = $value;
             }
         }
 
         return $fetches;
+    }
+
+    private static function isEventListen(Expr\StaticCall $call): bool
+    {
+        return $call->class instanceof FullyQualified
+            && $call->class->toString() === self::EVENT_FACADE
+            && $call->name instanceof Node\Identifier
+            && $call->name->toLowerString() === 'listen';
+    }
+
+    /**
+     * @phpstan-assert-if-true Expr\ClassConstFetch $node
+     */
+    private static function isClassFetch(?Node $node): bool
+    {
+        return $node instanceof Expr\ClassConstFetch
+            && $node->class instanceof Node\Name
+            && $node->name instanceof Node\Identifier
+            && $node->name->toLowerString() === 'class';
     }
 
     /**

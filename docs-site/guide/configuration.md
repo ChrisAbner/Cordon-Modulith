@@ -79,7 +79,7 @@ Custom rules are classes that implement `Cordon\Contracts\Rule`, listed as value
 
 ## listeners
 
-How a listener's reference to another module's event counts. It is a listener's when it is the type of the first parameter of `handle()` or `__invoke()` and the class sits under an `Events` namespace, or the event of `Event::listen(Event::class, ...)`.
+How a listener's reference to another module's event counts. See [what counts as a listener](../faq#does-listening-to-another-module-s-event-count-as-a-dependency): `handle()`/`__invoke()` with an event under an `Events` namespace (and the same event elsewhere in that class, such as `failed()`), the `$listen` map of an `EventServiceProvider`, and `Event::listen()` with a class name or a closure.
 
 | Key | Default | Meaning |
 |---|---|---|
