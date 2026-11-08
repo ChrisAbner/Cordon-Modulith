@@ -1,5 +1,6 @@
 <?php
 
+use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Support\ConfigValidator;
@@ -32,13 +33,13 @@ it('accepts the per-module settings of the fixture app', function () {
 
 it('rejects an unknown top-level key and suggests the closest one', function () {
     expect(config_errors(['rule' => []]))->toBe([
-        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, rules, listeners, exclude, baseline.',
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, rules, listeners, exclude, baseline.',
     ]);
 });
 
 it('leaves the suggestion out when no key is close', function () {
     expect(config_errors(['colour' => 'red']))->toBe([
-        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, rules, listeners, exclude, baseline.',
+        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, rules, listeners, exclude, baseline.',
     ]);
 });
 
@@ -89,4 +90,20 @@ it('rejects unknown listener keys and values that are not booleans', function ()
         'Unknown key [cycle] in listeners. Did you mean [cycles]? Valid keys: cycles, depends_on.',
         'listeners.depends_on must be true or false.',
     ]);
+});
+
+it('validates the host settings', function (mixed $host, string $error) {
+    expect(config_errors(['host' => $host]))->toContain($error);
+})->with([
+    'not an array' => ['app', 'host in config/cordon.php must be an array.'],
+    'an unknown key' => [['path' => ['app']], 'Unknown key [path] in host. Did you mean [paths]? Valid keys: paths.'],
+    'paths not a list of strings' => [['paths' => 'app'], 'host.paths must be a list of directories, relative to the project root.'],
+    'a path that is not a string' => [['paths' => ['app', 3]], 'host.paths must be a list of directories, relative to the project root.'],
+]);
+
+it('reserves the module name host while the code outside the modules is checked', function () {
+    $modules = new ModuleMap([Module::make('host', 'App\\Modules\\host', '/p/app/Modules/host')]);
+
+    expect(ConfigValidator::errors([], $modules))->toBe(['A module cannot be named [host] while host.paths is set: the name is reserved for the code outside the modules. Rename the module or set host.paths to [].'])
+        ->and(ConfigValidator::errors(['host' => ['paths' => []]], $modules))->toBe([]);
 });

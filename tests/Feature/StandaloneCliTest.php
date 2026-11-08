@@ -158,3 +158,17 @@ it('writes the errors of the explore commands to stderr, so JSON output stays JS
         ->and($run['out'])->toBe('')
         ->and($run['err'])->toContain('Unknown module [Biling].');
 });
+
+it('warns about the code outside the modules, unless host.paths is empty', function () {
+    $project = temp_project('host-app');
+    $report = json_decode(run_cordon(['verify', '--format=json'], $project)['out'], true);
+
+    expect(array_count_values(array_column($report['warnings'], 'rule')))->toBe(['host_access' => 4])
+        ->and(run_cordon(['modules'], $project)['out'])->toContain('Code outside the modules (host): app, routes, database');
+
+    mkdir($project.'/config');
+    file_put_contents($project.'/config/cordon.php', "<?php return ['host' => ['paths' => []]];");
+
+    expect(json_decode(run_cordon(['verify', '--format=json'], $project)['out'], true)['warnings'])->toBe([])
+        ->and(run_cordon(['modules'], $project)['out'])->not->toContain('Code outside the modules');
+});

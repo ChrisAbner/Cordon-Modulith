@@ -9,6 +9,7 @@ use Cordon\Laravel\ResolverFactory;
 use Cordon\Module\LayeredLayout;
 use Cordon\Module\Module;
 use Cordon\Support\ConfigValidator;
+use Cordon\Support\HostPaths;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Config\Repository;
@@ -57,6 +58,12 @@ final class ModulesCommand extends Command
                 $module->open ? 'yes' : 'no',
             ], $modules->all()),
         );
+
+        $host = HostPaths::configured((array) $config->get('cordon', []));
+
+        if ($host !== []) {
+            $this->line(sprintf('Code outside the modules (host): %s', implode(', ', $host)));
+        }
 
         if (($layers = LayeredLayout::layersIn($modules)) !== []) {
             $this->warn(sprintf(

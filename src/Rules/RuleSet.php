@@ -14,14 +14,14 @@ use InvalidArgumentException;
  */
 final class RuleSet
 {
-    private const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID];
+    private const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID];
 
     /**
      * Built-in rules that start below error: checks added after 0.3 arrive as
      * warnings, so an upgrade does not fail a build that passed (see the
      * compatibility page).
      */
-    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn'];
+    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn'];
 
     /**
      * Built-in rules, enabled unless set to off (or false), followed by custom rules.
@@ -42,6 +42,7 @@ final class RuleSet
             UndeclaredDependencyRule::ID => static fn (): Rule => new UndeclaredDependencyRule(($listeners['depends_on'] ?? true) === true),
             CycleRule::ID => static fn (): Rule => new CycleRule(($listeners['cycles'] ?? false) === true),
             UnusedDependencyRule::ID => static fn (): Rule => new UnusedDependencyRule(($listeners['depends_on'] ?? true) === true),
+            HostAccessRule::ID => static fn (): Rule => new HostAccessRule,
         ];
 
         $rules = [];

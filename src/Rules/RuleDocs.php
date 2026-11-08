@@ -13,7 +13,7 @@ final class RuleDocs
 {
     private const PAGE = 'https://chrisabner.github.io/Cordon-Modulith/guide/rules#';
 
-    private const RULES = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID];
+    private const RULES = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID];
 
     /**
      * The documentation of a built-in rule, or null for a custom rule.

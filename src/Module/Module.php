@@ -24,6 +24,23 @@ final readonly class Module
         public array $metadata = [],
     ) {}
 
+    /** The name of the code outside the modules (host.paths in config/cordon.php). */
+    public const HOST = 'host';
+
+    /**
+     * The code outside the modules, as the source of host_access violations.
+     * It owns no class and is never part of a ModuleMap.
+     */
+    public static function host(): self
+    {
+        return new self(self::HOST, '', '');
+    }
+
+    public function isHost(): bool
+    {
+        return $this->name === self::HOST && $this->namespace === '';
+    }
+
     public static function make(string $name, string $namespace, string $path): self
     {
         return new self($name, trim($namespace, '\\'), rtrim($path, '/\\'));

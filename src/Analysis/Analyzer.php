@@ -6,6 +6,7 @@ namespace Cordon\Analysis;
 
 use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\Rule;
+use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\Severity;
 
@@ -28,9 +29,12 @@ final readonly class Analyzer
         private array $severities = [],
     ) {}
 
-    public function analyze(ModuleMap $modules, ?string $basePath = null): Result
+    /**
+     * @param  list<string>  $hostPaths  Absolute directories of the code outside the modules (host.paths).
+     */
+    public function analyze(ModuleMap $modules, ?string $basePath = null, array $hostPaths = []): Result
     {
-        return $this->check($this->snapshot($modules), $basePath);
+        return $this->check($this->snapshot($modules, $hostPaths), $basePath);
     }
 
     /**
@@ -67,8 +71,12 @@ final readonly class Analyzer
 
     /**
      * Extract every module file and build the cross-module edges, without running rules.
+     * Files under $hostPaths that no module owns are the code outside the
+     * modules: their references to a module become host edges.
+     *
+     * @param  list<string>  $hostPaths  Absolute directories (host.paths).
      */
-    public function snapshot(ModuleMap $modules): Snapshot
+    public function snapshot(ModuleMap $modules, array $hostPaths = []): Snapshot
     {
         $analyses = [];
         $parseErrors = [];
@@ -91,9 +99,42 @@ final readonly class Analyzer
             }
         }
 
+        $host = [];
+
+        foreach ($hostPaths as $path) {
+            foreach ($this->files->collect($path) as $file) {
+                if (isset($seen[$file]) || $modules->forPath($file) !== null) {
+                    continue;
+                }
+
+                $seen[$file] = $host[$file] = true;
+                $analysis = $this->extractor->extract($file);
+
+                if ($analysis->error !== null) {
+                    $parseErrors[$file] = $analysis->error;
+                }
+
+                $analyses[] = $analysis;
+            }
+        }
+
         $edges = [];
+        $hostEdges = [];
+        $hostModule = Module::host();
 
         foreach ($analyses as $analysis) {
+            if (isset($host[$analysis->file])) {
+                foreach ($analysis->references as $reference) {
+                    $to = $modules->forClass($reference->target);
+
+                    if ($to !== null) {
+                        $hostEdges[] = new Edge($hostModule, $to, $reference);
+                    }
+                }
+
+                continue;
+            }
+
             $from = $modules->forPath($analysis->file);
 
             if ($from === null) {
@@ -110,7 +151,7 @@ final readonly class Analyzer
         }
 
         return new Snapshot(
-            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors),
+            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges),
             $analyses,
             $parseErrors,
         );

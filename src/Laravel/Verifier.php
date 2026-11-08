@@ -13,6 +13,7 @@ use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Module\ModuleMap;
 use Cordon\Support\ConfigValidator;
+use Cordon\Support\HostPaths;
 use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
 
@@ -59,6 +60,16 @@ final class Verifier
     }
 
     /**
+     * The existing directories of the code outside the modules (host.paths).
+     *
+     * @return list<string>
+     */
+    public function hostPaths(): array
+    {
+        return HostPaths::absolute((array) $this->config->get('cordon', []), $this->basePath);
+    }
+
+    /**
      * Problems in config/cordon.php, such as unknown keys or module names.
      *
      * @return list<string>
@@ -73,7 +84,7 @@ final class Verifier
      */
     public function snapshot(): Snapshot
     {
-        return $this->analyzer()->snapshot($this->modules());
+        return $this->analyzer()->snapshot($this->modules(), $this->hostPaths());
     }
 
     /**
@@ -91,7 +102,7 @@ final class Verifier
      */
     public function analyze(): Result
     {
-        return $this->analyzer()->analyze($this->modules(), $this->basePath);
+        return $this->analyzer()->analyze($this->modules(), $this->basePath, $this->hostPaths());
     }
 
     /**

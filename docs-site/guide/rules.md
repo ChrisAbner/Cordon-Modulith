@@ -93,13 +93,24 @@ A module lists a module in `depends_on` but none of its classes uses it. It usua
 
 It is a warning by default (it arrived in 0.4); set `'unused_dependency' => 'error'` to make it fail. Listening to an event of the module counts as using it, unless `listeners.depends_on` is `false`.
 
+## host_access
+
+Code outside the modules (controllers in `app/Http`, Filament resources in `app/Filament`, routes, migrations and factories) uses a class that is internal to a module. That code is usually where boundaries leak first: a Filament panel that edits every module's models ties them all to one screen.
+
+```text
+! [host_access] (warn) app/Filament/Resources/ProductResource.php:9
+  Code outside the modules uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog]. Depend on its public API instead (a class in a public namespace such as Contracts, or one marked #[PublicApi]).
+```
+
+The code outside the modules is what `host.paths` lists (`app`, `routes` and `database` by default), without the files of a module. It has no `depends_on`, takes no part in cycles and is not a module in `cordon:modules`, the graph or the docs. The rule is a warning by default (it arrived in 0.4); set `'host_access' => 'error'` to make it fail, or `host.paths` to `[]` to leave that code unchecked. The PHPStan rule does not report it yet.
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.
 
 Not counted: `use` imports on their own, function calls, constants, docblock types (`@var`, generics), class names in strings (`'App\\Foo'`, `app('...')`) and dynamic references. When unsure, Cordon Modulith reports nothing: false positives are treated as bugs.
 
-Files in `vendor`, `node_modules`, `tests` and `Tests` directories and Blade views are skipped. Code outside modules (for example `app/Http`) is not analysed.
+Files in `vendor`, `node_modules`, `tests` and `Tests` directories and Blade views are skipped. Code outside modules (for example `app/Http`) is checked by [`host_access`](#host-access).
 
 ## Your own rules
 

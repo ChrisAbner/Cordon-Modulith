@@ -98,8 +98,26 @@ return [
         'undeclared_dependency' => 'error',
         'cycles' => 'error',
         'unused_dependency' => 'warn',
+        'host_access' => 'warn',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Code outside the modules
+    |--------------------------------------------------------------------------
+    |
+    | Directories, relative to the project root, of the code that is not in a
+    | module: controllers in app/Http, Filament resources, routes, migrations.
+    | It may only use the public API of the modules (rule host_access); files
+    | of a module inside these directories still belong to their module.
+    | Set paths to [] to leave this code unchecked.
+    |
+    */
+
+    'host' => [
+        'paths' => ['app', 'routes', 'database'],
     ],
 
     /*

@@ -50,7 +50,7 @@
             "additionalProperties": true,
             "required": ["rule", "severity", "message", "file", "line", "source_module", "target_module", "target"],
             "properties": {
-                "rule": { "type": "string", "description": "Rule id: internal_access, undeclared_dependency, cycles, unused_dependency, or a custom rule's id." },
+                "rule": { "type": "string", "description": "Rule id: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, or a custom rule's id." },
                 "severity": { "enum": ["error", "warn"] },
                 "message": { "type": "string" },
                 "file": { "type": ["string", "null"], "description": "Relative to the project root (with ../ for a file outside it); null for violations about modules, such as cycles." },

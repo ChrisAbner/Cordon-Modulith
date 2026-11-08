@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Support;
 
+use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Rules\RuleSet;
 
@@ -16,7 +17,9 @@ use Cordon\Rules\RuleSet;
  */
 final class ConfigValidator
 {
-    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'rules', 'listeners', 'exclude', 'baseline'];
+    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'rules', 'listeners', 'exclude', 'baseline'];
+
+    private const HOST_KEYS = ['paths'];
 
     private const MODULE_KEYS = ['depends_on', 'public', 'open', 'metadata'];
 
@@ -36,7 +39,7 @@ final class ConfigValidator
             }
         }
 
-        foreach (['modules', 'rules', 'listeners'] as $key) {
+        foreach (['modules', 'host', 'rules', 'listeners'] as $key) {
             if (array_key_exists($key, $config) && ! is_array($config[$key])) {
                 $errors[] = sprintf('%s in config/cordon.php must be an array.', $key);
             }
@@ -54,6 +57,22 @@ final class ConfigValidator
                     $errors[] = sprintf('listeners.%s must be true or false.', $key);
                 }
             }
+        }
+
+        if (is_array($config['host'] ?? null)) {
+            foreach (array_keys($config['host']) as $key) {
+                if (! in_array($key, self::HOST_KEYS, true)) {
+                    $errors[] = self::unknownKey((string) $key, 'in host', self::HOST_KEYS);
+                }
+            }
+
+            if (array_key_exists('paths', $config['host']) && ! HostPaths::valid($config['host']['paths'])) {
+                $errors[] = 'host.paths must be a list of directories, relative to the project root.';
+            }
+        }
+
+        if ($modules->has(Module::HOST) && HostPaths::configured($config) !== []) {
+            $errors[] = sprintf('A module cannot be named [%s] while host.paths is set: the name is reserved for the code outside the modules. Rename the module or set host.paths to [].', Module::HOST);
         }
 
         if (is_array($config['modules'] ?? null)) {

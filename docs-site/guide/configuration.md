@@ -78,6 +78,16 @@ The severity of each rule:
 
 Custom rules are classes that implement `Cordon\Contracts\Rule`, listed as values (`MyRule::class`) or as keys with a severity (`MyRule::class => 'warn'`). See [custom rules](./custom-rules).
 
+## host
+
+The code outside the modules, which [`host_access`](./rules#host-access) checks.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `paths` | `['app', 'routes', 'database']` | Directories relative to the project root. Files of a module inside them (such as `app/Modules`) still belong to their module. `[]` leaves that code unchecked. |
+
+While `paths` is set, no module may be named `host`.
+
 ## listeners
 
 How a listener's reference to another module's event counts. See [what counts as a listener](../faq#does-listening-to-another-module-s-event-count-as-a-dependency): `handle()`/`__invoke()` with an event under an `Events` namespace (and the same event elsewhere in that class, such as `failed()`), the `$listen` map of an `EventServiceProvider`, and `Event::listen()` with a class name or a closure.

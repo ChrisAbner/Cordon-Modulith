@@ -30,6 +30,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - `--format=gitlab`, `junit` and `checkstyle` reports, for GitLab Code Quality and the CI tools that read JUnit or Checkstyle.
 - `unused_dependency` (a warning by default): a `depends_on` entry the module never uses. It says nothing about a module with a file that does not parse.
 - `AnalysisContext` has the files that could not be parsed (`parseErrors`), for custom rules.
+- `host_access` (a warning by default): the code outside the modules (`host.paths`: `app`, `routes` and `database`, without the module directories) may only use the public API of the modules. Filament resources, controllers and routes that reach into a module's internals are reported (#25). `AnalysisContext::$hostEdges` has its references.
 - A `parser-floor` CI job checks that the lowest `nikic/php-parser` allowed analyses modern PHP.
 
 ### Changed
