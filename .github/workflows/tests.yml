@@ -99,3 +99,6 @@ jobs:
 
       - name: The lowest php-parser analyses modern PHP
         run: php tests/parser-floor.php
+
+      - name: The position matrix passes on the lowest php-parser
+        run: php tests/Oracle/check-matrix.php
