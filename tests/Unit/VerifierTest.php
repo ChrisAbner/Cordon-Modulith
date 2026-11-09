@@ -10,6 +10,7 @@ use Cordon\Laravel\Verifier;
 use Cordon\Module\ModuleMap;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
+use Cordon\Tests\Oracle\Temp;
 use Illuminate\Config\Repository;
 
 /**
@@ -56,7 +57,7 @@ it('resolves the modules once', function () {
 });
 
 it('reads the baseline file once', function () {
-    $file = tempnam(sys_get_temp_dir(), 'cordon-baseline-');
+    $file = Temp::removeAtExit(tempnam(sys_get_temp_dir(), 'cordon-baseline-'));
     $verifier = namespace_app_verifier(counting_resolver(), ['baseline' => $file, 'modules' => ['Shared' => ['open' => true]]]);
     $result = $verifier->analyze();
     Baseline::fromViolations($result->violations, $verifier->basePath())->save($file);

@@ -72,8 +72,11 @@ function shape(Result $result, string $base, array $renamed = []): array
 it('gives the same result whatever form the class names take', function (string $project, string $form) {
     $copy = Transformations::copy($project);
     Transformations::{$form}($copy);
+    $before = shape(analyse_project($project), $project);
 
-    expect(shape(analyse_project($copy), $copy))->toBe(shape(analyse_project($project), $project));
+    // A project without cross-module references would pass any transformation.
+    expect($before['references'])->toBeGreaterThan(0)
+        ->and(shape(analyse_project($copy), $copy))->toBe($before);
 })->with(metamorphic_projects())->with(['fullyQualified', 'lowercase', 'aliased']);
 
 it('ignores unused imports, docblocks, strings and comments', function (string $project) {
@@ -81,7 +84,8 @@ it('ignores unused imports, docblocks, strings and comments', function (string $
     $copy = Transformations::copy($project);
     Transformations::noise($copy, array_values(array_unique(array_filter(array_map(fn (Violation $v) => $v->target, $before->violations), fn (?string $target) => $target !== null && ! str_contains($target, ' ')))));
 
-    expect(shape(analyse_project($copy), $copy))->toBe(shape($before, $project));
+    expect($before->crossModuleReferences)->toBeGreaterThan(0)
+        ->and(shape(analyse_project($copy), $copy))->toBe(shape($before, $project));
 })->with(metamorphic_projects());
 
 it('maps every edge and violation when a module is renamed', function () {

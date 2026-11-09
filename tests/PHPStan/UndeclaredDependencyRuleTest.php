@@ -4,6 +4,7 @@ namespace Cordon\Tests\PHPStan;
 
 use Cordon\PHPStan\CordonContext;
 use Cordon\PHPStan\UndeclaredDependencyRule;
+use Cordon\Tests\Oracle\Temp;
 use FilesystemIterator;
 use PHPStan\Rules\Rule;
 use PHPStan\Testing\RuleTestCase;
@@ -88,7 +89,7 @@ final class UndeclaredDependencyRuleTest extends RuleTestCase
      */
     private function copyOfTheApp(array $modules, string $extra = ''): string
     {
-        $directory = sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4));
+        $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4)));
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
         mkdir($directory);
 

@@ -18,6 +18,12 @@
             <directory>tests/PHPStan</directory>
         </testsuite>
     </testsuites>
+    <groups>
+        <!-- The oracles start a PHP process per cell or per mutation: composer oracle, and CI. -->
+        <exclude>
+            <group>oracle</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>src</directory>

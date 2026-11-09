@@ -8,6 +8,7 @@ use Cordon\Analysis\Violation;
 use Cordon\Laravel\ResolverFactory;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
+use Cordon\Tests\Oracle\Temp;
 use Illuminate\Config\Repository;
 use Symfony\Component\Process\Process;
 
@@ -24,9 +25,8 @@ const PHPSTAN_IDENTIFIERS = [
  */
 function parity_project(string $fixture, array $modules): string
 {
-    $project = sys_get_temp_dir().'/cordon-parity-'.getmypid().'-'.bin2hex(random_bytes(4));
+    $project = Temp::directory('cordon-parity-');
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(fixture_path($fixture), FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
-    mkdir($project);
 
     foreach ($files as $file) {
         $target = $project.substr($file->getPathname(), strlen(fixture_path($fixture)));
@@ -136,8 +136,7 @@ it('reports in PHPStan what cordon:verify reports', function (string $fixture, a
 function real_parity_project(string $directory): array
 {
     $expected = json_decode((string) file_get_contents($directory.'/expected.json'), true, 512, JSON_THROW_ON_ERROR);
-    $project = sys_get_temp_dir().'/cordon-parity-'.getmypid().'-'.bin2hex(random_bytes(4));
-    mkdir($project);
+    $project = Temp::directory('cordon-parity-');
 
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST) as $file) {
         $target = $project.substr($file->getPathname(), strlen($directory));
@@ -237,4 +236,4 @@ it('reports in PHPStan what cordon:verify reports on the real projects, except t
     }
 
     return $projects;
-});
+})->group('oracle');

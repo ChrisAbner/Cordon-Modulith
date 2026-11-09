@@ -24,8 +24,7 @@ final class Transformations
 {
     public static function copy(string $from): string
     {
-        $to = sys_get_temp_dir().'/cordon-metamorphic-'.getmypid().'-'.bin2hex(random_bytes(4));
-        mkdir($to, 0777, true);
+        $to = Temp::directory('cordon-metamorphic-');
 
         foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($from, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST) as $file) {
             $target = $to.substr($file->getPathname(), strlen($from));

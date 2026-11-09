@@ -34,13 +34,15 @@ if (isset($options['src']) && is_string($options['src'])) {
 require_once __DIR__.'/Cell.php';
 require_once __DIR__.'/PositionMatrix.php';
 require_once __DIR__.'/MatrixChecker.php';
+require_once __DIR__.'/Temp.php';
 
 use Composer\InstalledVersions;
 use Cordon\Tests\Oracle\MatrixChecker;
 use Cordon\Tests\Oracle\PositionMatrix;
+use Cordon\Tests\Oracle\Temp;
 
 $cells = PositionMatrix::cells();
-$directory = sys_get_temp_dir().'/cordon-matrix-'.getmypid();
+$directory = Temp::directory('cordon-matrix-');
 ['failures' => $failures, 'skipped' => $skipped] = MatrixChecker::check($cells, $directory);
 
 printf("Position matrix: %d cells, %d failed, %d skipped (nikic/php-parser %s, PHP %s)\n", count($cells), count($failures), count($skipped), InstalledVersions::getPrettyVersion('nikic/php-parser'), PHP_VERSION);
@@ -53,4 +55,5 @@ foreach (array_slice($failures, 0, 30) as $failure) {
     echo '  - ', $failure, PHP_EOL;
 }
 
-exit($failures === [] ? 0 : 1);
+// No cells would mean a broken generator, not a passing matrix.
+exit($failures === [] && count($cells) > count($skipped) ? 0 : 1);

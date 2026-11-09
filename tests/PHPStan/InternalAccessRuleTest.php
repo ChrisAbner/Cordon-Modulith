@@ -7,6 +7,7 @@ use Cordon\Analysis\Reference;
 use Cordon\Analysis\ReferenceCollector;
 use Cordon\PHPStan\CordonContext;
 use Cordon\PHPStan\InternalAccessRule;
+use Cordon\Tests\Oracle\Temp;
 use FilesystemIterator;
 use PhpParser\NodeTraverser;
 use PHPStan\Parser\Parser;
@@ -199,7 +200,7 @@ final class InternalAccessRuleTest extends RuleTestCase
      */
     private function copyOfTheApp(array|string $baseline): string
     {
-        $directory = sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4));
+        $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4)));
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
         mkdir($directory);
 

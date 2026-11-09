@@ -2,6 +2,7 @@
 
 use Cordon\Laravel\ResolverFactory;
 use Cordon\Laravel\StandaloneConfig;
+use Cordon\Tests\Oracle\Temp;
 use Illuminate\Container\Container;
 
 it('merges the project config over the package defaults', function () {
@@ -13,7 +14,7 @@ it('merges the project config over the package defaults', function () {
 });
 
 it('ignores config files that need the framework', function () {
-    $base = sys_get_temp_dir().'/cordon-standalone-'.uniqid();
+    $base = Temp::removeAtExit(sys_get_temp_dir().'/cordon-standalone-'.uniqid());
     mkdir($base.'/config', 0777, true);
     file_put_contents($base.'/config/modules.php', '<?php return ["paths" => ["modules" => not_a_laravel_helper("Modules")]];');
     file_put_contents($base.'/config/app-modules.php', '<?php return ["modules_directory" => "packages"];');

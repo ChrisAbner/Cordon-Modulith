@@ -8,6 +8,7 @@ use Cordon\Analysis\Result;
 use Cordon\Analysis\Violation;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
+use Cordon\Tests\Oracle\Temp;
 use Cordon\Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Feature');
@@ -56,8 +57,7 @@ function violations_for(Result $result, string $rule): array
  */
 function temp_project(?string $fixture = null): string
 {
-    $directory = sys_get_temp_dir().'/cordon-cli-'.getmypid().'-'.bin2hex(random_bytes(4));
-    mkdir($directory);
+    $directory = Temp::directory('cordon-cli-');
 
     if ($fixture !== null) {
         $source = fixture_path($fixture);

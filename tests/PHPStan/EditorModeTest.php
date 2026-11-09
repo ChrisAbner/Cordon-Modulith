@@ -1,5 +1,6 @@
 <?php
 
+use Cordon\Tests\Oracle\Temp;
 use Symfony\Component\Process\Process;
 
 /**
@@ -11,7 +12,7 @@ use Symfony\Component\Process\Process;
  */
 function phpstan_on_namespace_app(array $arguments, ?Closure $prepare = null): array
 {
-    $project = sys_get_temp_dir().'/cordon-editor-'.getmypid().'-'.bin2hex(random_bytes(4));
+    $project = Temp::removeAtExit(sys_get_temp_dir().'/cordon-editor-'.getmypid().'-'.bin2hex(random_bytes(4)));
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(fixture_path('namespace-app'), FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
     mkdir($project);
 
@@ -64,7 +65,7 @@ function phpstan_on_namespace_app(array $arguments, ?Closure $prepare = null): a
  */
 function edit_in_editor(string $relative, ?Closure $prepare = null, ?string $content = null): array
 {
-    $edited = sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php';
+    $edited = Temp::removeAtExit(sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php');
 
     return phpstan_on_namespace_app(['--tmp-file', $edited, '--instead-of', '{project}/'.$relative, 'app'], function (string $project) use ($relative, $prepare, $content, $edited): void {
         if ($prepare !== null) {
@@ -95,7 +96,7 @@ beforeEach(function () {
 });
 
 it('reports the file being edited in editor mode, under its real path', function () {
-    $edited = sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php';
+    $edited = Temp::removeAtExit(sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php');
     copy(fixture_path('namespace-app/app/Modules/Billing/Services/CheckoutService.php'), $edited);
 
     $errors = phpstan_on_namespace_app(['--tmp-file', $edited, '--instead-of', '{project}/app/Modules/Billing/Services/CheckoutService.php', 'app']);
@@ -104,7 +105,7 @@ it('reports the file being edited in editor mode, under its real path', function
 });
 
 it('skips an edited file under an excluded directory, such as a module test', function () {
-    $edited = sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php';
+    $edited = Temp::removeAtExit(sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php');
     copy(fixture_path('namespace-app/app/Modules/Billing/tests/CheckoutServiceFixture.php'), $edited);
 
     $errors = phpstan_on_namespace_app(['--tmp-file', $edited, '--instead-of', '{project}/app/Modules/Billing/tests/CheckoutServiceFixture.php', 'app']);
@@ -113,7 +114,7 @@ it('skips an edited file under an excluded directory, such as a module test', fu
 });
 
 it('applies the baseline to the file being edited', function () {
-    $edited = sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php';
+    $edited = Temp::removeAtExit(sys_get_temp_dir().'/cordon-edited-'.bin2hex(random_bytes(4)).'.php');
     copy(fixture_path('namespace-app/app/Modules/Billing/Services/CheckoutService.php'), $edited);
 
     $errors = phpstan_on_namespace_app(

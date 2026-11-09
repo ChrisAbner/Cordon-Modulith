@@ -89,14 +89,18 @@ final readonly class Analyzer
      */
     private static function sorted(AnalysisContext $context): AnalysisContext
     {
-        $byReference = static fn (Reference $reference): array => [$reference->sourceFile, $reference->line, $reference->target, $reference->kind];
-        $edges = static function (array $edges) use ($byReference): array {
-            usort($edges, static fn (Edge $a, Edge $b): int => $byReference($a->reference) <=> $byReference($b->reference));
+        // strcmp, not <=>: two numeric-looking strings must not compare as numbers.
+        $compare = static fn (Reference $a, Reference $b): int => strcmp($a->sourceFile, $b->sourceFile)
+            ?: $a->line <=> $b->line
+            ?: strcmp($a->target, $b->target)
+            ?: strcmp($a->kind, $b->kind);
+        $edges = static function (array $edges) use ($compare): array {
+            usort($edges, static fn (Edge $a, Edge $b): int => $compare($a->reference, $b->reference));
 
             return $edges;
         };
         $signatures = $context->signatures;
-        usort($signatures, static fn (Reference $a, Reference $b): int => $byReference($a) <=> $byReference($b));
+        usort($signatures, $compare);
 
         return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures);
     }

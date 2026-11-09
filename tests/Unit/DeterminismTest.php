@@ -18,6 +18,7 @@ use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\JunitReporter;
 use Cordon\Reporters\TextReporter;
 use Cordon\Rules\RuleSet;
+use Cordon\Tests\Oracle\Temp;
 use Illuminate\Config\Repository;
 
 /**
@@ -71,7 +72,7 @@ function every_output(Analyzer $analyzer, Snapshot $snapshot, string $base): arr
         $outputs[$name] = $reporter->render($result);
     }
 
-    $baseline = sys_get_temp_dir().'/cordon-determinism-'.bin2hex(random_bytes(4)).'.json';
+    $baseline = Temp::removeAtExit(sys_get_temp_dir().'/cordon-determinism-'.bin2hex(random_bytes(4)).'.json');
     Baseline::fromViolations($result->violations, $base)->save($baseline);
     $outputs['baseline'] = (string) file_get_contents($baseline);
 
@@ -97,6 +98,10 @@ it('writes the same bytes whatever the order of the files', function (string $fi
     $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $rules, RuleSet::severities(['unused_dependency' => 'error'], $rules));
     $snapshot = $analyzer->snapshot($modules);
     $outputs = every_output($analyzer, $snapshot, $base);
+
+    // Empty outputs would be equal in any order: each project has dependencies and violations.
+    expect(json_decode($outputs['graph json'], true)['edges'])->not->toBe([])
+        ->and(json_decode($outputs['json'], true)['summary']['violations'] + json_decode($outputs['json'], true)['summary']['warnings'])->toBeGreaterThan(0);
 
     foreach ([7, 42, 1999] as $seed) {
         expect(every_output($analyzer, shuffled_snapshot($snapshot, $seed), $base))->toBe($outputs);

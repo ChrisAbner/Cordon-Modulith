@@ -2,6 +2,7 @@
 
 use Cordon\Tests\Fixtures\Rules\DeclareDependenciesRule;
 use Cordon\Tests\Fixtures\Rules\DuplicateIdRule;
+use Cordon\Tests\Oracle\Temp;
 use Illuminate\Support\Facades\Artisan;
 
 afterEach(function () {
@@ -261,7 +262,7 @@ it('runs custom rules from the config', function () {
 
 function app_with_a_file_that_does_not_parse(): string
 {
-    $root = sys_get_temp_dir().'/cordon-parse-error-'.getmypid();
+    $root = Temp::removeAtExit(sys_get_temp_dir().'/cordon-parse-error-'.getmypid());
     @mkdir($root.'/Billing', 0777, true);
     file_put_contents($root.'/Billing/Broken.php', "<?php\n\nnamespace App\\Modules\\Billing;\n\nfinal class Broken {\n");
 

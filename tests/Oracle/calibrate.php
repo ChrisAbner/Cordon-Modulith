@@ -16,9 +16,11 @@ declare(strict_types=1);
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 require_once __DIR__.'/Cell.php';
 require_once __DIR__.'/PositionMatrix.php';
+require_once __DIR__.'/Temp.php';
 
 use Composer\InstalledVersions;
 use Cordon\Tests\Oracle\PositionMatrix;
+use Cordon\Tests\Oracle\Temp;
 
 /**
  * The number of cells that fail with $mutation applied to a copy of src/.
@@ -28,8 +30,7 @@ use Cordon\Tests\Oracle\PositionMatrix;
 function failing_cells(array $mutation): int
 {
     $root = dirname(__DIR__, 2);
-    $copy = sys_get_temp_dir().'/cordon-calibration-'.getmypid().'-'.bin2hex(random_bytes(3));
-    mkdir($copy, 0777, true);
+    $copy = Temp::directory('cordon-calibration-');
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/src', FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
 
     foreach ($files as $file) {

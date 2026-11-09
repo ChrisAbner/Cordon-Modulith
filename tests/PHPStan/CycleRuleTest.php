@@ -5,6 +5,7 @@ namespace Cordon\Tests\PHPStan;
 use Cordon\PHPStan\CordonContext;
 use Cordon\PHPStan\CycleRule;
 use Cordon\PHPStan\ModuleEdgeCollector;
+use Cordon\Tests\Oracle\Temp;
 use FilesystemIterator;
 use PhpParser\Node;
 use PHPStan\Collectors\Collector;
@@ -93,7 +94,7 @@ final class CycleRuleTest extends RuleTestCase
      */
     private function useApp(string $extra = ''): void
     {
-        $directory = sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4));
+        $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4)));
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
         mkdir($directory);
 

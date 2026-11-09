@@ -208,4 +208,5 @@ foreach ($failures as $failure) {
     echo '  - ', $failure, PHP_EOL;
 }
 
-exit($failures === [] ? 0 : 1);
+// No cell checked would mean a broken generator, not agreement.
+exit($failures === [] && $checked > 0 ? 0 : 1);

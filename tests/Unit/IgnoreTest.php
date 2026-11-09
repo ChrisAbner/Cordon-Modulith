@@ -9,6 +9,7 @@ use Cordon\Analysis\Result;
 use Cordon\Analysis\Violation;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
+use Cordon\Tests\Oracle\Temp;
 
 /**
  * @param  array<string, mixed>  $rules
@@ -53,7 +54,7 @@ it('warns about each rule of a directive that no longer matches a violation', fu
 });
 
 it('rejects directives without a reason, with an unknown rule or with a rule that has no line', function () {
-    $root = sys_get_temp_dir().'/cordon-ignore-'.bin2hex(random_bytes(4));
+    $root = Temp::removeAtExit(sys_get_temp_dir().'/cordon-ignore-'.bin2hex(random_bytes(4)));
     mkdir($root.'/app/Modules/Billing', 0777, true);
     mkdir($root.'/app/Modules/Catalog/Models', 0777, true);
     file_put_contents($root.'/app/Modules/Catalog/Models/Product.php', "<?php\n\nnamespace App\\Modules\\Catalog\\Models;\n\nfinal class Product {}\n");

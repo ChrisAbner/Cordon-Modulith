@@ -1,7 +1,9 @@
 <?php
 
+use Cordon\Tests\Oracle\Temp;
+
 it('writes the module documentation', function () {
-    $output = sys_get_temp_dir().'/cordon-docs-'.uniqid();
+    $output = Temp::removeAtExit(sys_get_temp_dir().'/cordon-docs-'.uniqid());
 
     $this->artisan('cordon:docs', ['--output' => $output])
         ->expectsOutputToContain('Documented 3 modules')

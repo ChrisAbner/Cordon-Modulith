@@ -4,6 +4,7 @@ use Cordon\Analysis\DeclaredVisibility;
 use Cordon\Analysis\FileAnalysis;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\Reference;
+use Cordon\Tests\Oracle\Temp;
 
 /**
  * @return list<string>
@@ -116,7 +117,7 @@ it('marks the models of Eloquent relations', function () {
  */
 function extract_code(string $code)
 {
-    $file = sys_get_temp_dir().'/cordon-extract-'.bin2hex(random_bytes(4)).'.php';
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-extract-'.bin2hex(random_bytes(4)).'.php');
     file_put_contents($file, $code);
 
     return (new PhpParserExtractor)->extract($file);

@@ -25,6 +25,7 @@ To mutate a class, add `mutates(TheClass::class);` to its test file. A surviving
 The oracles in `tests/Oracle/` check the extractor against independent sources:
 
 ```bash
+composer oracle                        # the slower oracle tests, left out of composer test
 php tests/Oracle/check-matrix.php      # 1,800+ positions x name forms x containers
 php tests/Oracle/calibrate.php         # the matrix must fail with known bugs put back
 tests/Oracle/run-reflection.sh         # the matrix against PHP reflection, PHP 8.2 to 8.5 in Docker

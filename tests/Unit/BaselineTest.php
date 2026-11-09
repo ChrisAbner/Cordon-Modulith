@@ -4,6 +4,7 @@ use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
+use Cordon\Tests\Oracle\Temp;
 
 mutates(Baseline::class);
 
@@ -23,7 +24,7 @@ it('suppresses known violations and keeps new ones', function () {
 });
 
 it('survives a save and load round trip and ignores line changes', function () {
-    $file = sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json';
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json');
 
     Baseline::fromViolations([violation('/app/Modules/A/X.php', 10)], '/app')->save($file);
     [$remaining, $suppressed] = Baseline::load($file)->filter([violation('/app/Modules/A/X.php', 99)], '/app');
@@ -43,7 +44,7 @@ it('only suppresses as many occurrences as were recorded', function () {
 });
 
 it('writes version 2 baselines', function () {
-    $file = sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json';
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json');
 
     Baseline::fromViolations([violation('/app/X.php')], '/app')->save($file);
     $data = json_decode((string) file_get_contents($file), true);
@@ -91,7 +92,7 @@ it('prunes fixed occurrences without adding new violations', function () {
 });
 
 it('prunes the cycle entries of a version 1 baseline', function () {
-    $file = sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json';
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-baseline-'.uniqid().'.json');
     $baseline = Baseline::load(fixture_path('baselines/v1-cycles.json'));
 
     $stillThere = violation('/app/app/Modules/Billing/Invoice.php', 10, 'App\\Modules\\Catalog\\Internal\\Price');
@@ -128,7 +129,7 @@ it('never suppresses the violations of a strict module', function () {
  */
 function baseline_from(string $json): Baseline
 {
-    $file = sys_get_temp_dir().'/cordon-baseline-'.bin2hex(random_bytes(4)).'.json';
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-baseline-'.bin2hex(random_bytes(4)).'.json');
     file_put_contents($file, $json);
 
     return Baseline::load($file);
@@ -172,7 +173,7 @@ it('skips entries without a rule and reads counts of at least one', function () 
 });
 
 it('saves the entries sorted, as a list, with readable paths', function () {
-    $file = sys_get_temp_dir().'/cordon-baseline-'.bin2hex(random_bytes(4)).'.json';
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-baseline-'.bin2hex(random_bytes(4)).'.json');
     Baseline::fromViolations([violation('/app/Modules/A/Z.php'), violation('/app/Modules/A/X.php')], '/app')->save($file);
     $saved = (string) file_get_contents($file);
 

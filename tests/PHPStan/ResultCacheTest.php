@@ -1,5 +1,6 @@
 <?php
 
+use Cordon\Tests\Oracle\Temp;
 use Symfony\Component\Process\Process;
 
 /**
@@ -33,7 +34,7 @@ it('notices a file that appears in a module PHPStan does not analyse', function 
         $this->markTestSkipped('This PHPStan version cannot track dependencies (2.3+).');
     }
 
-    $project = sys_get_temp_dir().'/cordon-cache-'.getmypid().'-'.bin2hex(random_bytes(4));
+    $project = Temp::removeAtExit(sys_get_temp_dir().'/cordon-cache-'.getmypid().'-'.bin2hex(random_bytes(4)));
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(fixture_path('namespace-app'), FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
     mkdir($project);
 

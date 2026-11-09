@@ -137,6 +137,9 @@ jobs:
 
       - run: composer update --prefer-dist --no-interaction
 
+      - name: Oracles (calibration and reflection)
+        run: composer oracle
+
       - name: Coverage (at least 95%)
         run: composer coverage
 
