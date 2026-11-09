@@ -144,6 +144,8 @@ Not counted: `use` imports on their own, function calls, constants, docblock typ
 
 Files in `vendor`, `node_modules`, `tests` and `Tests` directories and Blade views are skipped. Code outside modules (for example `app/Http`) is checked by [`host_access`](#host-access).
 
+A file belongs to the module of its directory, and a class name to the module of its namespace. A file whose namespace does not match its directory (it breaks PSR-4) is checked as code of the module it sits in.
+
 ## Your own rules
 
 See [custom rules](./custom-rules).
