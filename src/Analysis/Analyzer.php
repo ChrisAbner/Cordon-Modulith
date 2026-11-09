@@ -45,11 +45,12 @@ final readonly class Analyzer
     {
         $violations = [];
         $warnings = [];
+        $context = self::sorted($snapshot->context);
 
         foreach ($this->rules as $rule) {
             $severity = $this->severities[$rule->id()] ?? Severity::Error;
 
-            foreach ($rule->check($snapshot->context) as $violation) {
+            foreach ($rule->check($context) as $violation) {
                 if ($severity === Severity::Warn) {
                     $warnings[] = $violation->withSeverity(Severity::Warn);
                 } else {
@@ -79,6 +80,25 @@ final readonly class Analyzer
             $ignores->ignored(),
             array_column($ignores->unused(), 'file'),
         );
+    }
+
+    /**
+     * The context with its references in a fixed order (file, line, target,
+     * kind), so the violations, and the line each one reports, do not
+     * depend on the order the files were read in.
+     */
+    private static function sorted(AnalysisContext $context): AnalysisContext
+    {
+        $byReference = static fn (Reference $reference): array => [$reference->sourceFile, $reference->line, $reference->target, $reference->kind];
+        $edges = static function (array $edges) use ($byReference): array {
+            usort($edges, static fn (Edge $a, Edge $b): int => $byReference($a->reference) <=> $byReference($b->reference));
+
+            return $edges;
+        };
+        $signatures = $context->signatures;
+        usort($signatures, static fn (Reference $a, Reference $b): int => $byReference($a) <=> $byReference($b));
+
+        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures);
     }
 
     /**

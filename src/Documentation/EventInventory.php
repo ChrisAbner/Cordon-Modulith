@@ -37,6 +37,8 @@ final readonly class EventInventory
             }
         }
 
+        // Publishers and listeners are listed in file order, whatever order the files came in.
+        usort($usages, static fn (EventUsage $a, EventUsage $b): int => [$a->file, $a->line, $a->event, $a->kind] <=> [$b->file, $b->line, $b->event, $b->kind]);
         $events = [];
 
         foreach ($usages as $usage) {
