@@ -71,6 +71,12 @@ final class ConfigValidator
             }
         }
 
+        // Without modules (a wrong resolver path), every configured module would
+        // be unknown: only the keys that do not name modules are checked.
+        if ($modules->count() === 0) {
+            return $errors;
+        }
+
         if ($modules->has(Module::HOST) && HostPaths::configured($config) !== []) {
             $errors[] = sprintf('A module cannot be named [%s] while host.paths is set: the name is reserved for the code outside the modules. Rename the module or set host.paths to [].', Module::HOST);
         }
@@ -148,13 +154,11 @@ final class ConfigValidator
 
         $dependsOn = $settings['depends_on'] ?? null;
 
-        if (! is_array($dependsOn) && $dependsOn !== null) {
+        if ($dependsOn !== null && (! is_array($dependsOn) || array_filter($dependsOn, static fn (mixed $dependency): bool => ! is_string($dependency)) !== [])) {
             $errors[] = sprintf('Module [%s]: depends_on must be a list of module names, or null to leave dependencies open.', $name);
         }
 
-        foreach (is_array($dependsOn) ? $dependsOn : [] as $dependency) {
-            $dependency = (string) $dependency;
-
+        foreach (is_array($dependsOn) ? array_filter($dependsOn, 'is_string') : [] as $dependency) {
             if (str_contains($dependency, '::')) {
                 $errors[] = sprintf('Module [%s] depends on [%s]: the Module::Interface syntax is reserved for named interfaces in a later version.', $name, $dependency);
             } elseif (! $modules->has($dependency)) {
@@ -162,7 +166,7 @@ final class ConfigValidator
             }
         }
 
-        if (array_key_exists('public', $settings) && ! is_array($settings['public'])) {
+        if (array_key_exists('public', $settings) && (! is_array($settings['public']) || array_filter($settings['public'], static fn (mixed $entry): bool => ! is_string($entry)) !== [])) {
             $errors[] = sprintf('Module [%s]: public must be a list of namespaces or classes.', $name);
         }
 

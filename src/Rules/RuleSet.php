@@ -39,6 +39,23 @@ final class RuleSet
      */
     public static function fromConfig(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = []): array
     {
+        return self::build($config, $make, $listeners, $layers)[0];
+    }
+
+    /**
+     * Like fromConfig(), with the severity of each rule by id, taken from
+     * the config entry that built it: a rule the container decorates (a
+     * different class with the same id) keeps its severity.
+     *
+     * @param  array<array-key, mixed>  $config
+     * @param  (Closure(class-string<Rule>): Rule)|null  $make
+     * @param  array<array-key, mixed>  $listeners
+     * @param  array<array-key, mixed>  $layers
+     * @return array{0: list<Rule>, 1: array<string, Severity>}
+     */
+    public static function build(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = []): array
+    {
+        $severities = [];
         $available = [
             InternalAccessRule::ID => static fn (): Rule => new InternalAccessRule,
             UndeclaredDependencyRule::ID => static fn (): Rule => new UndeclaredDependencyRule(($listeners['depends_on'] ?? true) === true),
@@ -52,8 +69,11 @@ final class RuleSet
         $rules = [];
 
         foreach ($available as $id => $factory) {
-            if (Severity::fromConfig($id, $config[$id] ?? self::DEFAULTS[$id] ?? true) !== Severity::Off) {
+            $severity = Severity::fromConfig($id, $config[$id] ?? self::DEFAULTS[$id] ?? true);
+
+            if ($severity !== Severity::Off) {
                 $rules[] = $factory();
+                $severities[$id] = $severity;
             }
         }
 
@@ -70,7 +90,9 @@ final class RuleSet
                 throw new InvalidArgumentException(self::unknownRule($entry['key']));
             }
 
-            if (Severity::fromConfig($entry['class'], $entry['value']) === Severity::Off) {
+            $severity = Severity::fromConfig($entry['class'], $entry['value']);
+
+            if ($severity === Severity::Off) {
                 continue;
             }
 
@@ -87,13 +109,15 @@ final class RuleSet
 
             $ids[$rule->id()] = true;
             $rules[] = $rule;
+            $severities[$rule->id()] = $severity;
         }
 
-        return $rules;
+        return [$rules, $severities];
     }
 
     /**
-     * The configured severity of each rule in $rules, by rule id.
+     * The configured severity of each rule in $rules, by rule id. Kept for
+     * compatibility: build() is exact when the container decorates a rule.
      *
      * @param  array<array-key, mixed>  $config
      * @param  list<Rule>  $rules  The rules fromConfig() built from the same config.

@@ -2,7 +2,7 @@
 
 ## From 0.3 to 0.4
 
-1. **Run `cordon:verify` once and fix any configuration error.** `config/cordon.php` is now validated: unknown keys (`depend_on`), unknown modules, dependencies on modules that do not exist and unknown rule ids exit with code `2` and name the closest valid key. These were silently ignored before, so fixing them may change what is checked.
+1. **Run `cordon:verify` once and fix any configuration error.** `config/cordon.php` is now validated: unknown keys (`depend_on`), unknown modules, dependencies on modules that do not exist and unknown rule ids exit with code `2` and name the closest valid key. These were silently ignored before, so fixing them may change what is checked. `null` is no longer accepted where a list or a setting is expected: `'modules' => null`, a module set to `null` (`'Shared' => null`) and a rule set to `null` or `1` are errors; remove the entry, or use `[]`, `true`/`false` or `error`/`warn`/`off`. Two custom rules with the same id also exit with code `2`.
 2. **Check your cycles.** A listener of another module's event no longer closes a cycle. If your baseline recorded such cycles, `cordon:verify` now says those entries no longer match: remove them with `cordon:verify --prune-baseline`. To keep the 0.3 behaviour, set:
 
    ```php

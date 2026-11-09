@@ -172,3 +172,16 @@ it('fails with exit code 2 on a @cordon-ignore without a reason', function () {
         ->and($run['out'])->toBe('')
         ->and($run['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Unexplained.php:5 needs a reason in parentheses');
 });
+
+it('reports config errors even when there are no modules (M9)', function () {
+    $project = temp_project();
+    mkdir($project.'/config');
+    file_put_contents($project.'/config/cordon.php', "<?php return ['rule' => []];");
+
+    foreach ([['verify'], ['verify', '--allow-empty']] as $arguments) {
+        $run = run_cordon($arguments, $project);
+
+        expect($run['code'])->toBe(2)
+            ->and($run['err'])->toContain('Unknown key [rule] in config/cordon.php. Did you mean [rules]?');
+    }
+});

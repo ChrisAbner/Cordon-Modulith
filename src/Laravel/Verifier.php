@@ -16,6 +16,7 @@ use Cordon\Support\ConfigValidator;
 use Cordon\Support\HostPaths;
 use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
+use InvalidArgumentException;
 
 /**
  * The verification flow shared by cordon:verify and the Pest expectation:
@@ -76,7 +77,18 @@ final class Verifier
      */
     public function configurationErrors(): array
     {
-        return ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
+        $errors = ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
+
+        // Building the rules is the only check of custom rule ids (two rules with one id).
+        if ($errors === []) {
+            try {
+                $this->analyzer();
+            } catch (InvalidArgumentException $exception) {
+                $errors[] = $exception->getMessage();
+            }
+        }
+
+        return $errors;
     }
 
     /**

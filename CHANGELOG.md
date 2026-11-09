@@ -38,6 +38,8 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - A `parser-floor` CI job checks that the lowest `nikic/php-parser` allowed analyses modern PHP.
 
 ### Changed
+- A violation of a rule set to `error` is always reported as an error, whatever severity a custom rule gave it, so the JSON report matches its schema. `RuleSet::build()` returns the rules with their severities; a rule the container decorates keeps the severity of its config entry.
+- With no modules, `cordon:verify` still validates `config/cordon.php` (root keys, rules, listeners, host) and exits with code `2` on an error, before saying no modules were found.
 - If you use the PHPStan extension, PHPStan now also reports `cordon.undeclaredDependency` and `cordon.cycle`, and `cordon.incompleteGraph` when its `paths` leave a module out. Add the module directories to `paths`, or ignore `cordon.incompleteGraph` if you analyse parts of the project on purpose (see the PHPStan guide).
 - `nikic/php-parser` 5.3 or later is required. Older 5.x versions skipped files with PHP 8.4 property hooks as parse errors (5.0, 5.1) or lost the types of hook parameters (5.2).
 - The PHPStan rule reports only while `internal_access` is set to `error`.
@@ -46,6 +48,9 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 ### Fixed
 - `cordon:verify` resolved the modules twice and read the baseline once per use (#20).
 - The PHPStan rule reported nothing for the file being edited in editor mode (`--tmp-file`): its temporary path matched no module.
+
+### Removed
+- `ModuleMap::configurationWarnings()`: use `Cordon\Support\ConfigValidator::errors()`, which reports the same problems as errors.
 
 ## [0.3.1] - 2026-11-05
 

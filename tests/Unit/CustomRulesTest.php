@@ -4,7 +4,9 @@ use Cordon\Analysis\Violation;
 use Cordon\Rules\RuleSet;
 use Cordon\Rules\Severity;
 use Cordon\Tests\Fixtures\Rules\DeclareDependenciesRule;
+use Cordon\Tests\Fixtures\Rules\DecoratedRule;
 use Cordon\Tests\Fixtures\Rules\DuplicateIdRule;
+use Cordon\Tests\Fixtures\Rules\WarnSeverityRule;
 
 it('runs custom rules after the built-in ones', function () {
     $rules = RuleSet::fromConfig(['cycles' => false, DeclareDependenciesRule::class]);
@@ -82,3 +84,22 @@ it('rejects classes that are not rules and duplicated ids', function (array $con
     'not a rule' => [[stdClass::class], 'must be an existing class that implements'],
     'duplicated id' => [[DuplicateIdRule::class], 'uses the id [cycles], which is already taken'],
 ]);
+
+it('keeps the severity of a custom rule that the container decorates (M3)', function () {
+    $make = fn (string $class) => new DecoratedRule(new $class);
+    [$rules, $severities] = RuleSet::build([DeclareDependenciesRule::class => 'warn'], $make);
+
+    expect(array_map(fn ($rule) => $rule->id(), $rules))->toContain('declare_dependencies')
+        ->and($severities['declare_dependencies'])->toBe(Severity::Warn)
+        ->and($severities['cycles'])->toBe(Severity::Error)
+        ->and($severities['unused_dependency'])->toBe(Severity::Warn);
+});
+
+it('reports the violations of a rule in error as errors, whatever severity they claim (M5)', function () {
+    $result = analyse_namespace_app(rules: [WarnSeverityRule::class]);
+    $mine = array_values(array_filter($result->violations, fn (Violation $violation) => $violation->rule === 'warn_severity'));
+
+    expect($mine)->toHaveCount(1)
+        ->and($mine[0]->severity)->toBe(Severity::Error)
+        ->and($mine[0]->toArray()['severity'])->toBe('error');
+});

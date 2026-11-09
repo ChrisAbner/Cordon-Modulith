@@ -126,3 +126,18 @@ it('requires strict to be true or false', function () {
     expect(config_errors(['modules' => ['Billing' => ['strict' => 'yes']]]))->toBe(['Module [Billing]: strict must be true or false.'])
         ->and(config_errors(['modules' => ['Billing' => ['strict' => true]]]))->toBe([]);
 });
+
+it('rejects depends_on and public entries that are not names, without crashing (M1)', function () {
+    expect(config_errors(['modules' => ['Billing' => ['depends_on' => ['Catalog', ['Shared']], 'public' => ['Services\\Billing', 3]]]]))->toBe([
+        'Module [Billing]: depends_on must be a list of module names, or null to leave dependencies open.',
+        'Module [Billing]: public must be a list of namespaces or classes.',
+    ])
+        ->and(Module::make('Billing', 'B', '/p/B')->withConfig(['depends_on' => ['Catalog', ['Shared']], 'public' => [3, 'X']])->dependsOn)->toBe(['Catalog']);
+});
+
+it('validates the root keys and the rules even without modules (M9)', function () {
+    expect(ConfigValidator::errors(['rule' => [], 'rules' => ['cycle' => true], 'modules' => ['Billing' => []]], new ModuleMap([])))->toBe([
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline.',
+        'Unknown rule [cycle] in rules. Did you mean [cycles]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak.',
+    ]);
+});

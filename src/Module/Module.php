@@ -78,12 +78,12 @@ final readonly class Module
 
         if (array_key_exists('depends_on', $config)) {
             $dependsOn = is_array($config['depends_on'])
-                ? array_values(array_map('strval', $config['depends_on']))
+                ? array_values(array_filter($config['depends_on'], 'is_string'))
                 : null;
         }
 
         $publicApi = isset($config['public']) && is_array($config['public'])
-            ? array_values(array_map('strval', $config['public']))
+            ? array_values(array_filter($config['public'], 'is_string'))
             : $this->publicApi;
 
         return new self(

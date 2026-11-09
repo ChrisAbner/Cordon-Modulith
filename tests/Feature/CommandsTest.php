@@ -1,6 +1,7 @@
 <?php
 
 use Cordon\Tests\Fixtures\Rules\DeclareDependenciesRule;
+use Cordon\Tests\Fixtures\Rules\DuplicateIdRule;
 use Illuminate\Support\Facades\Artisan;
 
 afterEach(function () {
@@ -457,4 +458,12 @@ it('leaves a module that is not strict as it was', function () {
     config()->set('cordon.modules', ['Shared' => ['open' => true], 'Billing' => ['strict' => false]]);
 
     $this->artisan('cordon:verify')->assertExitCode(0);
+});
+
+it('fails with exit code 2 when two rules share an id (M4)', function () {
+    config()->set('cordon.rules', [DuplicateIdRule::class]);
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('uses the id [cycles], which is already taken')
+        ->assertExitCode(2);
 });

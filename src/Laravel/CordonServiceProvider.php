@@ -73,14 +73,14 @@ final class CordonServiceProvider extends ServiceProvider
             /** @var Repository $config */
             $config = $app->make(Repository::class);
             $rulesConfig = (array) $config->get('cordon.rules', []);
-            $rules = RuleSet::fromConfig($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []), (array) $config->get('cordon.layers', []));
+            [$rules, $severities] = RuleSet::build($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []), (array) $config->get('cordon.layers', []));
 
             return new Analyzer(
                 $app->make(DependencyExtractor::class),
                 new FileCollector(self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']))),
                 new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))),
                 $rules,
-                RuleSet::severities($rulesConfig, $rules),
+                $severities,
             );
         });
 

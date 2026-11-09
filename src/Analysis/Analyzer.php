@@ -53,7 +53,8 @@ final readonly class Analyzer
                 if ($severity === Severity::Warn) {
                     $warnings[] = $violation->withSeverity(Severity::Warn);
                 } else {
-                    $violations[] = $violation;
+                    // A rule in error reports errors, whatever severity its violations claim.
+                    $violations[] = $violation->severity === Severity::Error ? $violation : $violation->withSeverity(Severity::Error);
                 }
             }
         }
