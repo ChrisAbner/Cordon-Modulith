@@ -5,8 +5,10 @@ use Cordon\Analysis\FileCollector;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Violation;
+use Cordon\Laravel\ResolverFactory;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
+use Illuminate\Config\Repository;
 use Symfony\Component\Process\Process;
 
 const PHPSTAN_IDENTIFIERS = [
@@ -124,3 +126,115 @@ it('reports in PHPStan what cordon:verify reports', function (string $fixture, a
     'namespace app' => ['namespace-app', ['Shared' => ['open' => true], 'Catalog' => ['depends_on' => []]]],
     'listeners app' => ['listeners-app', ['Billing' => ['depends_on' => []]]],
 ]);
+
+/**
+ * A copy of a real-* project with its expected.json config written where
+ * the PHPStan extension reads it, every listener counted for cycles.
+ *
+ * @return array{0: string, 1: array<string, mixed>, 2: array<string, mixed>} The copy, the cordon config and the Laravel config.
+ */
+function real_parity_project(string $directory): array
+{
+    $expected = json_decode((string) file_get_contents($directory.'/expected.json'), true, 512, JSON_THROW_ON_ERROR);
+    $project = sys_get_temp_dir().'/cordon-parity-'.getmypid().'-'.bin2hex(random_bytes(4));
+    mkdir($project);
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST) as $file) {
+        $target = $project.substr($file->getPathname(), strlen($directory));
+        $file->isDir() ? mkdir($target) : copy($file->getPathname(), $target);
+    }
+
+    $cordon = [...($expected['config'] ?? []), 'listeners' => ['cycles' => true]];
+    is_dir($project.'/config') || mkdir($project.'/config');
+    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export($cordon, true).';');
+
+    foreach ($expected['laravel'] ?? [] as $name => $values) {
+        file_put_contents($project.'/config/'.$name.'.php', '<?php return '.var_export($values, true).';');
+    }
+
+    file_put_contents($project.'/phpstan.neon', "includes:\n    - ".dirname(__DIR__, 2)."/extension.neon\nparameters:\n    level: 0\n    paths:\n        - .\n    excludePaths:\n        - .phpstan\n        - config\n    tmpDir: {$project}/.phpstan\n    parallel:\n        maximumNumberOfProcesses: 1\n");
+
+    $defaults = require dirname(__DIR__, 2).'/config/cordon.php';
+
+    return [$project, array_replace($defaults, $cordon), $expected['laravel'] ?? []];
+}
+
+/**
+ * cordon:verify's findings for a real project, in the format of phpstan_findings().
+ *
+ * @param  array<string, mixed>  $cordon
+ * @param  array<string, mixed>  $laravel
+ * @return list<string>
+ */
+function real_verify_findings(string $project, array $cordon, array $laravel): array
+{
+    $config = new Repository([...$laravel, 'cordon' => $cordon]);
+    $map = ResolverFactory::make($config, $project)->resolve()->configure($cordon['modules']);
+    $rules = RuleSet::fromConfig($cordon['rules'], null, $cordon['listeners']);
+    $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector($cordon['exclude']), new PublicApiPolicy($cordon['public_namespaces']), $rules, RuleSet::severities($cordon['rules'], $rules));
+    $snapshot = $analyzer->snapshot($map);
+    $first = [];
+
+    foreach ($snapshot->context->edges as $edge) {
+        $location = [str_replace($project.'/', '', $edge->reference->sourceFile), $edge->reference->line];
+        $key = $edge->from->name.' -> '.$edge->to->name;
+
+        if (! isset($first[$key]) || $location < $first[$key]) {
+            $first[$key] = $location;
+        }
+    }
+
+    $findings = array_map(function (Violation $violation) use ($project, $first): string {
+        [$file, $line] = $violation->file !== null ? [str_replace($project.'/', '', $violation->file), $violation->line] : $first[(string) $violation->target];
+
+        return $violation->rule.' '.$file.':'.$line.' '.parity_target($violation->message);
+    }, $analyzer->check($snapshot)->violations);
+
+    sort($findings);
+
+    return $findings;
+}
+
+/**
+ * The accepted differences between PHPStan and cordon:verify, with their reason.
+ *
+ * @return array<string, string> "project|finding" => reason
+ */
+function known_differences(): array
+{
+    $catalog = json_decode((string) file_get_contents(dirname(__DIR__).'/Oracle/known-differences.json'), true, 512, JSON_THROW_ON_ERROR);
+    $known = [];
+
+    foreach ($catalog['differences'] as $difference) {
+        $known[$difference['project'].'|'.$difference['finding']] = $difference['reason'];
+    }
+
+    return $known;
+}
+
+it('reports in PHPStan what cordon:verify reports on the real projects, except the known differences', function (string $directory) {
+    [$project, $cordon, $laravel] = real_parity_project($directory);
+    $name = basename($directory);
+    $phpstan = phpstan_findings($project);
+    $verify = real_verify_findings($project, $cordon, $laravel);
+    $known = array_filter(known_differences(), fn (string $key) => str_starts_with($key, $name.'|'), ARRAY_FILTER_USE_KEY);
+    $differences = [
+        ...array_map(fn (string $f) => $name.'|only phpstan: '.$f, array_values(array_diff($phpstan, $verify))),
+        ...array_map(fn (string $f) => $name.'|only verify: '.$f, array_values(array_diff($verify, $phpstan))),
+    ];
+
+    // An empty PHPStan report would match an empty verify report: a project with reviewed violations must have findings.
+    $reviewed = json_decode((string) file_get_contents($directory.'/expected.json'), true)['violations'] ?? [];
+
+    expect($reviewed === [] || ($verify !== [] && $phpstan !== []))->toBeTrue()
+        ->and(array_values(array_diff($differences, array_keys($known))))->toBe([], 'New differences between PHPStan and cordon:verify')
+        ->and(array_values(array_diff(array_keys($known), $differences)))->toBe([], 'Stale entries in tests/Oracle/known-differences.json');
+})->with(function () {
+    $projects = [];
+
+    foreach (glob(fixture_path('real-*'), GLOB_ONLYDIR) ?: [] as $directory) {
+        $projects[basename($directory)] = [$directory];
+    }
+
+    return $projects;
+});

@@ -79,7 +79,7 @@ final class PositionMatrix
         'dnf_param' => ['member', 'public function m(({T}&\\Countable)|null $v): void{BODY}', 'ref', null, '8.2', '5.3', true],
         'promoted_property' => ['member', 'public function __construct(private {T} $p) {}', 'ref', self::WITH_PROPERTIES, '8.2', '5.3', true],
         'default_new' => ['member', 'public function m(object $v = new {T}): void{BODY}', 'ref', null, '8.2', '5.3', false],
-        'typed_const' => ['member', 'public const {T} C = null;', 'ref', self::ALL_MEMBERS, '8.3', '5.3', true],
+        'typed_const' => ['member', 'public const ?{T} C = null;', 'ref', self::ALL_MEMBERS, '8.3', '5.3', true],
         'method_attribute' => ['member', '#[{T}] public function m(): void{BODY}', 'ref', null, '8.2', '5.3', true],
         'param_attribute' => ['member', 'public function m(#[{T}] int $v): void{BODY}', 'ref', null, '8.2', '5.3', true],
         'property_attribute' => ['member', '#[{T}] public int $a = 1;', 'ref', self::WITH_PROPERTIES, '8.2', '5.3', true],

@@ -16,3 +16,10 @@ it('has a calibration for the current matrix', function () {
         ->and(array_keys($manifest['mutations'] ?? []))->toBe(array_keys(require dirname(__DIR__).'/Oracle/mutations.php'))
         ->and(array_filter($manifest['mutations'], fn (int $failing) => $failing === 0))->toBe([]);
 });
+
+it('agrees with reflection on the declaration positions', function () {
+    exec(escapeshellarg(PHP_BINARY).' '.escapeshellarg(dirname(__DIR__).'/Oracle/reflection.php'), $output, $code);
+
+    expect($code)->toBe(0, implode("\n", $output))
+        ->and($output[0] ?? '')->toMatch('/[1-9]\d* cells checked .*, 0 failed/');
+});
