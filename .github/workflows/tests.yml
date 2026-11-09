@@ -121,3 +121,24 @@ jobs:
           coverage: none
 
       - run: php tests/Oracle/reflection.php
+
+  # Coverage of the whole package, and mutation testing of the classes whose
+  # tests declare mutates(). Thresholds are the measured values, rounded down.
+  quality:
+    name: Coverage and mutation testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+
+      - run: composer update --prefer-dist --no-interaction
+
+      - name: Coverage (at least 95%)
+        run: composer coverage
+
+      - name: Mutation testing (at least 88%)
+        run: composer mutate

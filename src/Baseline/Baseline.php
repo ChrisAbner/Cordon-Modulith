@@ -65,7 +65,7 @@ final readonly class Baseline
 
     public static function load(string $file): self
     {
-        $contents = @file_get_contents($file);
+        $contents = is_file($file) && is_readable($file) ? file_get_contents($file) : false;
 
         if ($contents === false) {
             throw new RuntimeException(sprintf('Unable to read the Cordon baseline [%s].', $file));
@@ -129,7 +129,7 @@ final readonly class Baseline
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
         );
 
-        if (@file_put_contents($file, $json.PHP_EOL) === false) {
+        if (! is_dir(dirname($file)) || @file_put_contents($file, $json.PHP_EOL) === false) {
             throw new RuntimeException(sprintf('Unable to write the Cordon baseline [%s].', $file));
         }
     }
