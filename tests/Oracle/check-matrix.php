@@ -12,7 +12,11 @@
 
 declare(strict_types=1);
 
+require dirname(__DIR__, 2).'/vendor/autoload.php';
+
 $options = getopt('', ['src:']);
+
+// Registered after Composer's loader, and in front of it, so the copy wins.
 
 if (isset($options['src']) && is_string($options['src'])) {
     $src = rtrim($options['src'], '/');
@@ -27,7 +31,6 @@ if (isset($options['src']) && is_string($options['src'])) {
     }, true, true);
 }
 
-require dirname(__DIR__, 2).'/vendor/autoload.php';
 require_once __DIR__.'/Cell.php';
 require_once __DIR__.'/PositionMatrix.php';
 require_once __DIR__.'/MatrixChecker.php';
