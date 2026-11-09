@@ -1,5 +1,7 @@
 <?php
 
+use Cordon\Analysis\DeclaredVisibility;
+use Cordon\Analysis\FileAnalysis;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\Reference;
 
@@ -107,4 +109,40 @@ it('marks the models of Eloquent relations', function () {
         'QueryTarget' => false,
         'TypeTarget' => false,
     ]);
+});
+
+/**
+ * @return FileAnalysis
+ */
+function extract_code(string $code)
+{
+    $file = sys_get_temp_dir().'/cordon-extract-'.bin2hex(random_bytes(4)).'.php';
+    file_put_contents($file, $code);
+
+    return (new PhpParserExtractor)->extract($file);
+}
+
+it('reads listeners and visibility attributes whatever the letter case of their names', function () {
+    $analysis = extract_code(implode("\n", [
+        '<?php',
+        'namespace App\\Listeners;',
+        '#[\\cordon\\attributes\\publicapi]',
+        'final class SendReceipt',
+        '{',
+        '    public function handle(\\app\\modules\\billing\\events\\invoicepaid $event): void {}',
+        '    public function failed(\\App\\Modules\\Billing\\Events\\InvoicePaid $event): void {}',
+        '}',
+    ]));
+
+    $events = array_values(array_filter($analysis->references, fn (Reference $reference) => stripos($reference->target, 'App\\Modules\\') === 0));
+
+    expect(array_map(fn (Reference $reference) => $reference->kind, $events))->toBe([Reference::LISTENER, Reference::LISTENER])
+        ->and($analysis->declarations[0]->visibility)->toBe(DeclaredVisibility::PublicApi);
+});
+
+it('keeps the signature of a reference it turns into a listener', function () {
+    $analysis = extract_code("<?php\nnamespace App\\Listeners;\nfinal class SendReceipt\n{\n    public function handle(\\App\\Billing\\Events\\InvoicePaid \$event): void {}\n    public function failed(\\App\\Billing\\Events\\InvoicePaid \$event): void {}\n}\n");
+
+    expect($analysis->references[1]->kind)->toBe(Reference::LISTENER)
+        ->and($analysis->references[1]->signature)->toBe('failed() takes');
 });

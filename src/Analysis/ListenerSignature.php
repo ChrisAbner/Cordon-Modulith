@@ -64,7 +64,7 @@ final class ListenerSignature
      */
     public static function listenMapFetches(Node\Stmt\Class_ $class): array
     {
-        if (! $class->extends instanceof FullyQualified || $class->extends->toString() !== self::EVENT_SERVICE_PROVIDER) {
+        if (! $class->extends instanceof FullyQualified || strcasecmp($class->extends->toString(), self::EVENT_SERVICE_PROVIDER) !== 0) {
             return [];
         }
 
@@ -125,7 +125,7 @@ final class ListenerSignature
     private static function isEventListen(Expr\StaticCall $call): bool
     {
         return $call->class instanceof FullyQualified
-            && $call->class->toString() === self::EVENT_FACADE
+            && strcasecmp($call->class->toString(), self::EVENT_FACADE) === 0
             && $call->name instanceof Node\Identifier
             && $call->name->toLowerString() === 'listen';
     }

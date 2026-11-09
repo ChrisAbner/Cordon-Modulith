@@ -47,6 +47,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 - The generated docs and the outdated baseline warning no longer say `php artisan` (#23).
 
 ### Fixed
+- Class names written in another letter case (`\app\modules\billing\events\invoicepaid`) are read like PHP reads them: a listener's event under an `events` namespace, `#[\cordon\attributes\publicapi]`, an `EventServiceProvider` and the `Event` facade are recognised whatever their case. They used to turn a listener into a plain use (and could report a cycle) or ignore the attribute.
 - `cordon:verify` resolved the modules twice and read the baseline once per use (#20).
 - The PHPStan rule reported nothing for the file being edited in editor mode (`--tmp-file`): its temporary path matched no module.
 

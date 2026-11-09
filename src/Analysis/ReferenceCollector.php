@@ -101,11 +101,12 @@ final class ReferenceCollector extends NodeVisitorAbstract
             foreach (ListenerSignature::eventTypes($node) as $name) {
                 // handle() also receives injected services (jobs, commands): only
                 // a class under an Events namespace counts as the handled event.
-                if (in_array('Events', array_slice(explode('\\', $name->toString()), 0, -1), true)) {
+                // Class names are case-insensitive, so the segment is compared in lowercase.
+                if (in_array('events', array_slice(explode('\\', strtolower($name->toString())), 0, -1), true)) {
                     $name->setAttribute(self::KIND, Reference::LISTENER);
 
                     if (($top = array_key_last($this->listenerStack)) !== null) {
-                        $this->listenerStack[$top]['events'][$name->toString()] = true;
+                        $this->listenerStack[$top]['events'][strtolower($name->toString())] = true;
                     }
                 }
             }
@@ -236,8 +237,8 @@ final class ReferenceCollector extends NodeVisitorAbstract
         $references = [];
 
         foreach ($this->references as $i => $reference) {
-            $references[] = $i >= $start && isset($events[$reference->target]) && $reference->kind === Reference::USE
-                ? new Reference($reference->sourceFile, $reference->sourceClass, $reference->target, $reference->line, Reference::LISTENER, $reference->relation)
+            $references[] = $i >= $start && isset($events[strtolower($reference->target)]) && $reference->kind === Reference::USE
+                ? new Reference($reference->sourceFile, $reference->sourceClass, $reference->target, $reference->line, Reference::LISTENER, $reference->relation, $reference->signature)
                 : $reference;
         }
 
@@ -271,11 +272,11 @@ final class ReferenceCollector extends NodeVisitorAbstract
             foreach ($group->attrs as $attribute) {
                 $name = ltrim($attribute->name->toString(), '\\');
 
-                if ($name === Internal::class) {
+                if (strcasecmp($name, Internal::class) === 0) {
                     return DeclaredVisibility::Internal;
                 }
 
-                if ($name === PublicApi::class) {
+                if (strcasecmp($name, PublicApi::class) === 0) {
                     return DeclaredVisibility::PublicApi;
                 }
             }
