@@ -52,7 +52,7 @@ final class BoundaryExpectation
     /**
      * @param  list<Violation>  $violations
      */
-    private static function message(string $module, array $violations, ?string $basePath): string
+    public static function message(string $module, array $violations, ?string $basePath): string
     {
         $lines = [sprintf(
             'Module [%s] does not respect its boundaries (%d %s):',

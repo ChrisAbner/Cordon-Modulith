@@ -45,6 +45,10 @@ final class CordonServiceProvider extends ServiceProvider
             __DIR__.'/../../config/cordon.php' => $this->app->configPath('cordon.php'),
         ], 'cordon-config');
 
+        $this->publishes([
+            __DIR__.'/../../stubs/ModuleBoundariesTest.php' => $this->app->basePath('tests/Feature/ModuleBoundariesTest.php'),
+        ], 'cordon-tests');
+
         $this->commands([
             VerifyCommand::class,
             ModulesCommand::class,
