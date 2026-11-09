@@ -104,6 +104,8 @@ Code outside the modules (controllers in `app/Http`, Filament resources in `app/
 
 The code outside the modules is what `host.paths` lists (`app`, `routes` and `database` by default), without the files of a module. It has no `depends_on`, takes no part in cycles and is not a module in `cordon:modules`, the graph or the docs. The rule is a warning by default (it arrived in 0.4); set `'host_access' => 'error'` to make it fail, or `host.paths` to `[]` to leave that code unchecked. The PHPStan rule does not report it yet.
 
+The code outside the modules is reported as module `host`: `--module Catalog` shows what Catalog's own code does, not the host code that uses Catalog. `cordon:explain`, `why` and `impact` describe the modules only, so they do not list uses from the host either; `cordon:verify` is where they appear.
+
 ## layers
 
 With `layers` in `config/cordon.php`, a module depends on a module of a layer above its own:

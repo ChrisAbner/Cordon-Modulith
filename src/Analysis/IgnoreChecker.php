@@ -29,7 +29,8 @@ final class IgnoreChecker
     /** @var array<string, true> "file|line|rule" of the directives that matched */
     private array $used = [];
 
-    private int $ignored = 0;
+    /** @var list<Violation> */
+    private array $ignored = [];
 
     /**
      * @param  list<FileAnalysis>  $analyses
@@ -64,13 +65,16 @@ final class IgnoreChecker
             }
 
             $this->used[$violation->file.'|'.$directive->line.'|'.$violation->rule] = true;
-            $this->ignored++;
+            $this->ignored[] = $violation;
         }
 
         return $kept;
     }
 
-    public function ignored(): int
+    /**
+     * @return list<Violation>
+     */
+    public function ignored(): array
     {
         return $this->ignored;
     }
@@ -84,7 +88,7 @@ final class IgnoreChecker
     }
 
     /**
-     * @return list<string>
+     * @return list<array{file: string, message: string}>
      */
     public function unused(): array
     {
@@ -94,13 +98,15 @@ final class IgnoreChecker
             foreach ($directives as $directive) {
                 foreach ($directive->rules as $rule) {
                     if (! isset($this->used[$file.'|'.$directive->line.'|'.$rule])) {
-                        $unused[] = [$file, $directive->line, sprintf('%s (%s) no longer matches a violation; remove it.', $this->where($file, $directive), $rule)];
+                        $unused[] = [$file, $directive->line, sprintf('%s (%s) no longer matches a violation on its line or the statement after it; remove it.', $this->where($file, $directive), $rule)];
                     }
                 }
             }
         }
 
-        return $this->sorted($unused);
+        usort($unused, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+        return array_map(static fn (array $entry): array => ['file' => $entry[0], 'message' => $entry[2]], $unused);
     }
 
     private function validate(string $file, IgnoreDirective $directive): bool
@@ -109,6 +115,11 @@ final class IgnoreChecker
 
         if ($directive->reason === null) {
             $this->errors[] = [$file, $directive->line, sprintf('%s needs a reason in parentheses: // @cordon-ignore %s (why this is accepted).', $this->where($file, $directive), implode(', ', $directive->rules))];
+            $valid = false;
+        }
+
+        if ($directive->rules === []) {
+            $this->errors[] = [$file, $directive->line, sprintf('%s names no rule: // @cordon-ignore <rule> (<reason>).', $this->where($file, $directive))];
             $valid = false;
         }
 

@@ -73,9 +73,11 @@ final readonly class Analyzer
             $basePath,
             $warnings,
             null,
-            $ignores->ignored(),
+            count($ignores->ignored()),
             $ignores->errors(),
-            $ignores->unused(),
+            array_column($ignores->unused(), 'message'),
+            $ignores->ignored(),
+            array_column($ignores->unused(), 'file'),
         );
     }
 

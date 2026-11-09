@@ -159,7 +159,7 @@ it('reports what @cordon-ignore accepted, and the comments that no longer match'
 
     expect($json['code'])->toBe(1)
         ->and(json_decode($json['out'], true)['summary']['ignored'])->toBe(2)
-        ->and($json['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Catalogue.php:9 (internal_access) no longer matches a violation; remove it.')
+        ->and($json['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Catalogue.php:9 (internal_access) no longer matches a violation on its line or the statement after it; remove it.')
         ->and($text['out'])->toContain('2 ignored in place');
 });
 

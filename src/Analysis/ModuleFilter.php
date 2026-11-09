@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+use Closure;
 use Cordon\Rules\CycleRule;
 
 /**
@@ -31,9 +32,7 @@ final class ModuleFilter
             $result->basePath,
             array_values(array_filter($result->warnings, $involved)),
             array_values(array_intersect($result->checkedModules ?? $modules, $modules)),
-            $result->ignored,
-            $result->ignoreErrors,
-            $result->ignoreWarnings,
+            ...self::ignores($result, static fn (Violation $violation): bool => self::involvesAny($violation, $modules), static fn (string $file): bool => in_array($result->modules->forPath($file)?->name, $modules, true)),
         );
     }
 
@@ -87,9 +86,15 @@ final class ModuleFilter
             $result->basePath,
             array_values(array_filter($result->warnings, $kept)),
             array_values(array_intersect($result->checkedModules ?? $touched, $touched)),
-            $result->ignored,
-            $result->ignoreErrors,
-            $result->ignoreWarnings,
+            ...self::ignores($result, $kept, static function (string $file) use ($paths): bool {
+                foreach ($paths as $path) {
+                    if (self::within(realpath($file) ?: $file, $path)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }),
         );
     }
 
@@ -114,6 +119,32 @@ final class ModuleFilter
         }
 
         return $violation->sourceModule === $module;
+    }
+
+    /**
+     * The @cordon-ignore fields of a filtered result: what was ignored and the
+     * comments that match nothing, only for the violations and files kept.
+     *
+     * @param  Closure(Violation): bool  $keepViolation
+     * @param  Closure(string): bool  $keepFile
+     * @return array{0: int, 1: list<string>, 2: list<string>, 3: list<Violation>, 4: list<string>}
+     */
+    private static function ignores(Result $result, Closure $keepViolation, Closure $keepFile): array
+    {
+        $ignored = array_values(array_filter($result->ignoredViolations, $keepViolation));
+        $warnings = [];
+        $files = [];
+
+        foreach ($result->ignoreWarnings as $index => $warning) {
+            $file = $result->ignoreWarningFiles[$index] ?? null;
+
+            if ($file !== null && $keepFile($file)) {
+                $warnings[] = $warning;
+                $files[] = $file;
+            }
+        }
+
+        return [count($ignored), $result->ignoreErrors, $warnings, $ignored, $files];
     }
 
     private static function within(string $path, string $directory): bool

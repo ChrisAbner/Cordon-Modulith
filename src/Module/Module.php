@@ -38,11 +38,6 @@ final readonly class Module
         return new self(self::HOST, '', '');
     }
 
-    public function isHost(): bool
-    {
-        return $this->name === self::HOST && $this->namespace === '';
-    }
-
     public static function make(string $name, string $namespace, string $path): self
     {
         return new self($name, trim($namespace, '\\'), rtrim($path, '/\\'));

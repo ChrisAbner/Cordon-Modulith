@@ -70,9 +70,9 @@ public function product(): Product // @cordon-ignore internal_access (the invoic
 public function price(Price $price): void {}
 ```
 
-A comment (`//`, `#` or `/* */`, not a docblock) that starts with `@cordon-ignore` accepts the violations of the rules it names on its own line and on the next line with code: put it on the line Cordon reports. Then:
+A comment (`//`, `#` or `/* */`, not a docblock) that starts with `@cordon-ignore` accepts the violations of the rules it names. At the end of a line of code, it covers that line only. On a line of its own, it covers the statement below it, to its `;` or `{`, so a signature or a call split over several lines is covered. Cordon reports a violation at the first use of a class in a file (not at its `use` import): put the comment there. Then:
 
-- The reason in parentheses is required. Without it, or with a rule that does not exist, `cordon:verify` stops with exit code `2`, like a config error, and names the file and line.
+- The reason in parentheses is required (it may contain parentheses). Without it, without a rule, or with a rule that does not exist, `cordon:verify` stops with exit code `2`, like a config error, and names the file and line.
 - `cycles` and `unused_dependency` report no line, so they cannot be ignored in place: record them in the baseline.
 - A comment that no longer matches a violation is a warning (`... no longer matches a violation; remove it.`), so stale decisions do not pile up.
 - Accepted violations are counted in the summary (`2 ignored in place`, `summary.ignored` in JSON) and never reach the baseline. The PHPStan rules honour the same comments.

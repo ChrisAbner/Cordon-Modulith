@@ -10,6 +10,7 @@ This release settles the model that 1.0 will freeze: rule severities, listener e
 
 ### May report different violations
 - A listener's reference to another module's event no longer closes a dependency cycle. Two modules that call each other through a contract one way and an event the other are not reported as a cycle any more, and their `cycles` entries in the baseline become stale. Set `listeners.cycles` to `true` to count listeners again.
+- The code outside the modules (`host.paths`: `app`, `routes` and `database` by default) is now analysed for `host_access`, so `summary.files` in JSON and the file count of the text report include its files, and a file there that does not parse is listed as skipped (and turns off `--fail-on-stale`, as any parse error does). Set `host.paths` to `[]` to keep the 0.3 counts.
 - Files outside the project root, such as the packages of a monorepo, are written relative to it with `../` (they used to be absolute paths, different on every machine). Baseline entries for those files become stale: run `cordon:verify --generate-baseline` once.
 - `config/cordon.php` is validated before anything is analysed: unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rule ids now stop `cordon:verify` with exit code `2`, with a suggestion for the closest valid name. They used to be ignored or only warned about, so a typo such as `depend_on` could leave a module open with CI green.
 

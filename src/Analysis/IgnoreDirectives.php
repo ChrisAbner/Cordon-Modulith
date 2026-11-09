@@ -12,7 +12,7 @@ namespace Cordon\Analysis;
  */
 final class IgnoreDirectives
 {
-    private const PATTERN = '~^@cordon-ignore\s+(?<rules>[^()\s][^()]*?)\s*(?:\((?<reason>[^()]*)\))?\s*$~';
+    private const PATTERN = '~^@cordon-ignore(?=[\s(]|$)\s*(?<rules>[^()]*?)\s*(?:\((?<reason>.*)\))?\s*$~s';
 
     /**
      * @return list<IgnoreDirective>
@@ -38,12 +38,11 @@ final class IgnoreDirectives
             }
 
             $reason = trim($match['reason'] ?? '');
-            $lines = [$token[2]];
-            $next = self::nextCodeLine($tokens, $index);
 
-            if ($next !== null && $next !== $token[2]) {
-                $lines[] = $next;
-            }
+            // After code, it is about that line; on its own line, about the statement below.
+            $lines = self::followsCode($tokens, $index)
+                ? [$token[2]]
+                : array_values(array_unique([$token[2], ...self::nextStatementLines($tokens, $index)]));
 
             $directives[] = new IgnoreDirective(
                 $token[2],
@@ -71,26 +70,64 @@ final class IgnoreDirectives
     }
 
     /**
+     * Whether code comes before the comment on its line.
+     *
      * @param  array<int, array{0: int, 1: string, 2: int}|string>  $tokens
      */
-    private static function nextCodeLine(array $tokens, int $index): ?int
+    private static function followsCode(array $tokens, int $index): bool
     {
-        $comment = $tokens[$index];
-        $line = is_array($comment) ? $comment[2] + substr_count($comment[1], "\n") : null;
+        for ($i = $index - 1; $i >= 0; $i--) {
+            $token = $tokens[$i];
+            $text = is_array($token) ? $token[1] : $token;
 
-        foreach (array_slice($tokens, $index + 1) as $token) {
-            // A single-character token, such as "(", has no line of its own.
-            if (! is_array($token)) {
-                return $line;
+            if (str_contains($text, "\n")) {
+                // A newline inside whitespace, or at the end of "<?php" or a // comment.
+                return is_array($token) && ! in_array($token[0], [T_WHITESPACE, T_OPEN_TAG, T_COMMENT], true);
             }
 
-            if (! in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
-                return $token[2];
+            if (! is_array($token) || $token[0] !== T_WHITESPACE) {
+                return true;
             }
-
-            $line = $token[2] + substr_count($token[1], "\n");
         }
 
-        return null;
+        return false;
+    }
+
+    /**
+     * The lines of the statement after the comment: from its first token to
+     * the first ";" or "{" outside parentheses and brackets, so a signature
+     * or a call split over several lines is covered.
+     *
+     * @param  array<int, array{0: int, 1: string, 2: int}|string>  $tokens
+     * @return list<int>
+     */
+    private static function nextStatementLines(array $tokens, int $index): array
+    {
+        $comment = $tokens[$index];
+        $line = is_array($comment) ? $comment[2] + substr_count($comment[1], "\n") : 0;
+        $first = null;
+        $depth = 0;
+
+        foreach (array_slice($tokens, $index + 1) as $token) {
+            $text = is_array($token) ? $token[1] : $token;
+            $line = is_array($token) ? $token[2] : $line;
+            $skip = is_array($token) && in_array($token[0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true);
+
+            if (! $skip) {
+                $first ??= $line;
+
+                if (in_array($text, ['(', '['], true)) {
+                    $depth++;
+                } elseif (in_array($text, [')', ']'], true)) {
+                    $depth--;
+                } elseif ($depth <= 0 && in_array($text, [';', '{'], true)) {
+                    return range($first, $line);
+                }
+            }
+
+            $line += substr_count($text, "\n");
+        }
+
+        return $first === null ? [] : range($first, $line);
     }
 }

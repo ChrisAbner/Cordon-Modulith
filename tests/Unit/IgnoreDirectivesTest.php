@@ -25,8 +25,8 @@ it('reads a directive with its rules, its reason and the lines it covers', funct
         ->and($directive->lines)->toBe([3, 5]);
 });
 
-it('covers its own line when it follows the code', function () {
-    expect(directives("new Product; // @cordon-ignore internal_access (shown on the PDF)\nnew Price;")[0]->lines)->toBe([2, 3])
+it('covers only its own line when it follows the code', function () {
+    expect(directives("new Product; // @cordon-ignore internal_access (shown on the PDF)\nnew Price;")[0]->lines)->toBe([2])
         ->and(directives('new Product; /* @cordon-ignore internal_access (shown) */')[0]->rules)->toBe(['internal_access'])
         ->and(directives('new Product; # @cordon-ignore internal_access (shown)')[0]->reason)->toBe('shown');
 });
@@ -52,4 +52,24 @@ it('ignores the words in docblocks, strings and other comments', function () {
 
 it('skips files that do not mention it', function () {
     expect(IgnoreDirectives::parse('<?php new Product;'))->toBe([]);
+});
+
+it('covers the whole statement that follows it, over several lines', function () {
+    expect(directives(implode("\n", [
+        '// @cordon-ignore internal_access (the form shows the product)',
+        'function show(',
+        '    int $id,',
+        '    Product $product,',
+        ') {',
+        '    new Price;',
+        '}',
+    ]))[0]->lines)->toBe([2, 3, 4, 5, 6]);
+});
+
+it('allows parentheses inside the reason', function () {
+    expect(directives("// @cordon-ignore internal_access (the PDF (and the email) show it)\nnew Product;")[0]->reason)->toBe('the PDF (and the email) show it');
+});
+
+it('keeps a directive that names no rule, so it can be reported', function () {
+    expect(directives("// @cordon-ignore (no rule)\nnew Product;")[0]->rules)->toBe([]);
 });

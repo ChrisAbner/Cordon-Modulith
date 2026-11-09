@@ -20,6 +20,8 @@ final readonly class Result
      * @param  int  $ignored  Violations and warnings a @cordon-ignore comment accepted.
      * @param  list<string>  $ignoreErrors  Invalid @cordon-ignore comments (no reason, unknown rule): they fail like config errors.
      * @param  list<string>  $ignoreWarnings  @cordon-ignore comments that no longer match a violation.
+     * @param  list<Violation>  $ignoredViolations  What $ignored counts, so a --module or paths filter can narrow it.
+     * @param  list<string>  $ignoreWarningFiles  The file of each of $ignoreWarnings, in the same order.
      */
     public function __construct(
         public ModuleMap $modules,
@@ -34,6 +36,8 @@ final readonly class Result
         public int $ignored = 0,
         public array $ignoreErrors = [],
         public array $ignoreWarnings = [],
+        public array $ignoredViolations = [],
+        public array $ignoreWarningFiles = [],
     ) {}
 
     public function hasViolations(): bool
@@ -58,6 +62,8 @@ final readonly class Result
             $this->ignored,
             $this->ignoreErrors,
             $this->ignoreWarnings,
+            $this->ignoredViolations,
+            $this->ignoreWarningFiles,
         );
     }
 }

@@ -2,6 +2,7 @@
 
 use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\FileCollector;
+use Cordon\Analysis\ModuleFilter;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Result;
@@ -46,8 +47,8 @@ it('ignores warnings too', function () {
 
 it('warns about each rule of a directive that no longer matches a violation', function () {
     expect(analyse_ignores(fixture_path('ignore-app'))->ignoreWarnings)->toBe([
-        'Cordon ignore directive in app/Modules/Billing/Catalogue.php:9 (internal_access) no longer matches a violation; remove it.',
-        'Cordon ignore directive in app/Modules/Billing/Invoice.php:16 (undeclared_dependency) no longer matches a violation; remove it.',
+        'Cordon ignore directive in app/Modules/Billing/Catalogue.php:9 (internal_access) no longer matches a violation on its line or the statement after it; remove it.',
+        'Cordon ignore directive in app/Modules/Billing/Invoice.php:16 (undeclared_dependency) no longer matches a violation on its line or the statement after it; remove it.',
     ]);
 });
 
@@ -66,6 +67,8 @@ it('rejects directives without a reason, with an unknown rule or with a rule tha
         '// @cordon-ignore internal_acess (a typo)',
         'new \\App\\Modules\\Catalog\\Models\\Product;',
         '// @cordon-ignore cycles (a cycle has no line)',
+        '// @cordon-ignore (which rule?)',
+        'new \\App\\Modules\\Catalog\\Models\\Product;',
         '',
     ]));
 
@@ -73,5 +76,16 @@ it('rejects directives without a reason, with an unknown rule or with a rule tha
         'Cordon ignore directive in app/Modules/Billing/Broken.php:5 needs a reason in parentheses: // @cordon-ignore internal_access (why this is accepted).',
         'Cordon ignore directive in app/Modules/Billing/Broken.php:7 names unknown rule [internal_acess]. Did you mean [internal_access]?',
         'Cordon ignore directive in app/Modules/Billing/Broken.php:9 names [cycles], which reports no line to ignore: record it in the baseline instead.',
+        'Cordon ignore directive in app/Modules/Billing/Broken.php:10 names no rule: // @cordon-ignore <rule> (<reason>).',
     ]);
+});
+
+it('narrows what was ignored to the modules and paths a filter keeps', function () {
+    $result = analyse_ignores(fixture_path('ignore-app'));
+
+    expect(ModuleFilter::apply($result, ['Catalog'])->ignored)->toBe(0)
+        ->and(ModuleFilter::apply($result, ['Catalog'])->ignoreWarnings)->toBe([])
+        ->and(ModuleFilter::apply($result, ['Billing'])->ignored)->toBe(2)
+        ->and(ModuleFilter::applyPaths($result, [fixture_path('ignore-app/app/Modules/Billing/Catalogue.php')])->ignoreWarnings)->toHaveCount(1)
+        ->and(ModuleFilter::applyPaths($result, [fixture_path('ignore-app/app/Modules/Billing/Catalogue.php')])->ignored)->toBe(0);
 });
