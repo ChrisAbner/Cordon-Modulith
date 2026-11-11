@@ -20,8 +20,11 @@ use Cordon\Support\TableNames;
  * A model uses the table of its `$table` literal, or Laravel's default name
  * (the plural snake case of its class) when it sets none, but only a class
  * that provably extends Eloquent's Model (or the framework's User) through
- * the analysed code, without a parent that sets a table of its own or a
- * getTable() method. Anything else is left out.
+ * the analysed code. Its table is unknown, and so it is left out and listed,
+ * when the class, a parent or a trait of the project it uses (or a parent's)
+ * sets `$table`, overrides getTable(), assigns `$this->table`, calls
+ * setTable() or sets `$connection` (another database, so the same name is
+ * another table). Traits from packages are assumed not to set a table.
  *
  * @internal
  */
@@ -63,7 +66,12 @@ final readonly class TableMap
      */
     private static function map(array $analyses, ModuleMap $modules, array $hostFiles, SymbolTable $symbols): self
     {
+        /** @var array<string, true> $declaring Classes and traits (lowercase) that set a table or override getTable(). */
         $declaring = [];
+        /** @var array<string, true> $connections Classes and traits that set a $connection. */
+        $connections = [];
+        /** @var array<string, list<string>> $traits The traits each class or trait uses. */
+        $traits = [];
         $owned = [];
 
         foreach ($analyses as $analysis) {
@@ -76,15 +84,24 @@ final readonly class TableMap
             $owned[] = [$analysis, $module];
 
             foreach ($analysis->tables as $use) {
-                if ($use->class !== null) {
-                    $declaring[strtolower($use->class)] = true;
+                if ($use->class === null) {
+                    continue;
                 }
+
+                $key = strtolower($use->class);
+
+                match ($use->kind) {
+                    TableUse::CONNECTION => $connections[$key] = true,
+                    TableUse::TRAIT_USE => $traits[$key][] = strtolower(ltrim($use->table, '\\')),
+                    default => $declaring[$key] = true,
+                };
             }
         }
 
         $creators = [];
         $uses = [];
-        $dynamic = [];
+        $unknown = [];
+        $models = [];
 
         foreach ($owned as [$analysis, $module]) {
             $inModule = $module !== Module::HOST;
@@ -92,16 +109,12 @@ final readonly class TableMap
             foreach ($analysis->tables as $use) {
                 if ($use->kind === TableUse::CREATE) {
                     $creators[$use->table][$module] = true;
-                } elseif (! $inModule) {
+                } elseif (! $inModule || $use->kind === TableUse::TRAIT_USE) {
                     continue;
                 } elseif ($use->kind === TableUse::MODEL) {
-                    if (self::isModel($use->class, $symbols, $declaring)[0]) {
-                        $uses[] = new TableUse($use->file, TableUse::QUERY, $use->table, $use->line, $use->class);
-                    }
-                } elseif ($use->kind === TableUse::DYNAMIC) {
-                    if (self::isModel($use->class, $symbols, $declaring)[0]) {
-                        $dynamic[] = $use;
-                    }
+                    $models[] = $use;
+                } elseif ($use->kind === TableUse::DYNAMIC || $use->kind === TableUse::CONNECTION) {
+                    $unknown[strtolower((string) $use->class)][] = $use;
                 } else {
                     $uses[] = $use;
                 }
@@ -112,15 +125,42 @@ final readonly class TableMap
             }
 
             foreach ($analysis->declarations as $declaration) {
-                if ($declaration->parent === null || isset($declaring[strtolower($declaration->fqcn)])) {
+                $trace = $declaration->parent === null ? null : self::trace($declaration->fqcn, $symbols, $traits);
+
+                if ($trace === null) {
                     continue;
                 }
 
-                [$model, $inherited] = self::isModel($declaration->fqcn, $symbols, $declaring);
+                $key = strtolower($declaration->fqcn);
 
-                if ($model && ! $inherited) {
+                // A trait of the project that sets the table makes a model's table unknown, whatever else the model says.
+                if (! isset($unknown[$key]) && self::any(array_slice($trace['own'], 1), $declaring + $connections)) {
+                    $unknown[$key][] = new TableUse($declaration->file, TableUse::DYNAMIC, '', $declaration->line, $declaration->fqcn, 'it uses a trait that sets its table');
+                }
+
+                // The default name is Laravel's only when nothing in the class, its traits or its parents can change the table.
+                if (! self::any([...$trace['own'], ...$trace['inherited']], $declaring + $connections)) {
                     $uses[] = new TableUse($declaration->file, TableUse::QUERY, TableNames::forModel($declaration->fqcn), $declaration->line, $declaration->fqcn);
                 }
+            }
+        }
+
+        $dynamic = [];
+
+        foreach ($unknown as $key => $found) {
+            $trace = self::trace($found[0]->class ?? '', $symbols, $traits);
+
+            if ($trace !== null) {
+                usort($found, static fn (TableUse $a, TableUse $b): int => $a->line <=> $b->line);
+                $dynamic[] = $found[0];
+            }
+        }
+
+        foreach ($models as $use) {
+            $trace = self::trace($use->class ?? '', $symbols, $traits);
+
+            if ($trace !== null && ! self::any([...$trace['own'], ...$trace['inherited']], $connections)) {
+                $uses[] = new TableUse($use->file, TableUse::QUERY, $use->table, $use->line, $use->class);
             }
         }
 
@@ -225,42 +265,84 @@ final readonly class TableMap
     }
 
     /**
-     * Whether a class provably extends a model, and whether a parent in the
-     * analysed code sets a table of its own (then the table it inherits is not
-     * the class's default one).
+     * Whether any of the classes (lowercase) is in the set.
      *
-     * @param  array<string, true>  $declaring  The classes, lowercase, that set a table or override getTable().
-     * @return array{0: bool, 1: bool}
+     * @param  list<string>  $keys
+     * @param  array<string, true>  $set
      */
-    private static function isModel(?string $class, SymbolTable $symbols, array $declaring): array
+    private static function any(array $keys, array $set): bool
     {
-        $parent = $class === null ? null : $symbols->get($class)?->parent;
-        $inherited = false;
-        $seen = [];
+        foreach ($keys as $key) {
+            if (isset($set[$key])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * What decides the table of a class that provably extends a model through
+     * the analysed code (null when it does not): the class and the traits it
+     * uses ("own", the class first), and its parents and their traits
+     * ("inherited"), all lowercase. A trait of a package is not here: it is
+     * assumed not to set a table.
+     *
+     * @param  array<string, list<string>>  $traits
+     * @return array{own: list<string>, inherited: list<string>}|null
+     */
+    private static function trace(string $class, SymbolTable $symbols, array $traits): ?array
+    {
+        $own = [strtolower(ltrim($class, '\\'))];
+        $inherited = [];
+        $parent = $symbols->get($class)?->parent;
+        $seen = $own;
 
         while ($parent !== null) {
             $key = strtolower(ltrim($parent, '\\'));
 
-            if (isset($seen[$key])) {
-                return [false, false];
+            if (in_array($key, $seen, true)) {
+                return null;
             }
 
-            $seen[$key] = true;
+            $seen[] = $key;
 
             if (in_array($key, self::MODELS, true)) {
-                return [true, $inherited];
+                return ['own' => self::withTraits($own, $traits), 'inherited' => self::withTraits($inherited, $traits)];
             }
 
             $declaration = $symbols->get($parent);
 
             if ($declaration === null) {
-                return [false, false];
+                return null;
             }
 
-            $inherited = $inherited || isset($declaring[$key]);
+            $inherited[] = $key;
             $parent = $declaration->parent;
         }
 
-        return [false, false];
+        return null;
+    }
+
+    /**
+     * The classes and, after them, the traits they use, and those traits' traits.
+     *
+     * @param  list<string>  $keys
+     * @param  array<string, list<string>>  $traits
+     * @return list<string>
+     */
+    private static function withTraits(array $keys, array $traits): array
+    {
+        $all = $keys;
+
+        for ($i = 0; $i < count($all); $i++) {
+            foreach ($traits[$all[$i]] ?? [] as $trait) {
+                if (! in_array($trait, $all, true)) {
+                    $all[] = $trait;
+                }
+            }
+        }
+
+        return $all;
     }
 }

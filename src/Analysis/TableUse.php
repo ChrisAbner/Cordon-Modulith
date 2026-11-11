@@ -27,14 +27,20 @@ final readonly class TableUse
     /** A class that sets `protected $table = 't'`; only a model counts, which TableMap decides. */
     public const MODEL = 'model';
 
-    /** A class whose table is not a literal (`$table = self::NAME`, getTable()): its table is unknown. */
+    /** A class or trait whose table is not a literal (`$table = self::NAME`, getTable(), `$this->table = ...`, setTable()): its table is unknown. */
     public const DYNAMIC = 'dynamic';
 
+    /** A class or trait with a `$connection`: its table may be in another database, so the name says nothing. */
+    public const CONNECTION = 'connection';
+
+    /** A class that uses a trait: `table` is the trait, `class` the class or trait that uses it. */
+    public const TRAIT_USE = 'trait';
+
     /**
-     * @param  self::CREATE|self::ALTER|self::FOREIGN|self::QUERY|self::MODEL|self::DYNAMIC  $kind
+     * @param  self::CREATE|self::ALTER|self::FOREIGN|self::QUERY|self::MODEL|self::DYNAMIC|self::CONNECTION|self::TRAIT_USE  $kind
      * @param  string  $table  The table; empty for a dynamic one.
-     * @param  ?string  $class  The class that sets its table (MODEL and DYNAMIC).
-     * @param  ?string  $reason  Why the table is unknown (DYNAMIC).
+     * @param  ?string  $class  The class or trait that sets its table (MODEL, DYNAMIC, CONNECTION and TRAIT_USE).
+     * @param  ?string  $reason  Why the table is unknown (DYNAMIC and CONNECTION).
      */
     public function __construct(
         public string $file,

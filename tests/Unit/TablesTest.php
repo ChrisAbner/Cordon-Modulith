@@ -376,6 +376,155 @@ it('does not report a model whose table is dynamic or overridden, and lists it',
         ]);
 });
 
+// default table inference: only when nothing can change the table
+
+/**
+ * Orders creates `orders`; the given Billing files are analysed with the tables rule.
+ *
+ * @param  array<string, string>  $files  Relative to app/Modules/Billing.
+ * @return array{0: list<string>, 1: list<string>} "Class -> table" of each report, and "Class: reason" of each model listed without a table.
+ */
+function inferred_tables(array $files): array
+{
+    $project = ['app/Modules/Orders/Database/Migrations/a.php' => migration("Schema::create('orders', fn () => null);")];
+
+    foreach ($files as $path => $code) {
+        $project['app/Modules/Billing/'.$path] = $code;
+    }
+
+    $root = tables_project($project);
+    $snapshot = tables_analyzer()->snapshot((new NamespaceResolver($root.'/app/Modules', 'App\\Modules'))->resolve());
+    $reported = array_map(fn (Violation $v) => basename((string) $v->file, '.php').' -> '.$v->target, analyse_tables_app(root: $root, hostPaths: [])->warnings);
+    $listed = array_map(fn (TableUse $use) => basename(str_replace('\\', '/', (string) $use->class)).': '.$use->reason, $snapshot->context->tables->dynamic());
+    sort($reported);
+    sort($listed);
+
+    return [$reported, $listed];
+}
+
+function trait_file(string $name, string $body, string $use = ''): string
+{
+    return "<?php\n\nnamespace App\\Modules\\Billing\\Concerns;\n\n{$use}\n\ntrait {$name}\n{\n{$body}\n}\n";
+}
+
+const BILLING_MODELS = 'App\\Modules\\Billing\\Models';
+const BILLING_CONCERNS = 'use App\\Modules\\Billing\\Concerns\\Tabled;';
+
+it('does not infer the default table of a model that uses a trait of the project that declares $table', function () {
+    [$reported, $listed] = inferred_tables([
+        'Concerns/Tabled.php' => trait_file('Tabled', "    protected \$table = 'legacy_orders';"),
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', body: '    use \\App\\Modules\\Billing\\Concerns\\Tabled;'),
+    ]);
+
+    expect($reported)->toBe([])->and($listed)->toBe(['Order: it uses a trait that sets its table']);
+});
+
+it('follows traits that use traits, and the traits of a parent', function () {
+    [$reported] = inferred_tables([
+        'Concerns/Tabled.php' => trait_file('Tabled', "    protected \$table = 'legacy_orders';"),
+        'Concerns/Wrapper.php' => trait_file('Wrapper', '    use Tabled;'),
+        'Models/Base.php' => model(BILLING_MODELS, 'Base', body: '    use \\App\\Modules\\Billing\\Concerns\\Wrapper;'),
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', 'Base', use: ''),
+    ]);
+
+    expect($reported)->toBe([]);
+});
+
+it('does not infer the default table when a trait assigns it', function () {
+    [$reported] = inferred_tables([
+        'Concerns/Tabled.php' => trait_file('Tabled', "    public function initializeTabled(): void\n    {\n        \$this->table = 'legacy_orders';\n    }"),
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', body: '    use \\App\\Modules\\Billing\\Concerns\\Tabled;'),
+    ]);
+
+    expect($reported)->toBe([]);
+});
+
+it('does not infer the default table of a model that assigns it or calls setTable()', function (string $body) {
+    [$reported, $listed] = inferred_tables([
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', body: $body),
+    ]);
+
+    expect($reported)->toBe([])->and($listed)->toBe(['Order: it assigns its table in code']);
+})->with([
+    'the constructor' => ["    public function __construct()\n    {\n        \$this->table = 'legacy_orders';\n    }"],
+    'another method' => ["    public function swap(): void\n    {\n        \$this->table = config('tables.orders');\n    }"],
+    'setTable' => ["    public function swap(): void\n    {\n        \$this->setTable('legacy_orders');\n    }"],
+    'setTable on another receiver' => ["    public static function swap(self \$other): void\n    {\n        \$other->setTable('legacy_orders');\n    }"],
+]);
+
+it('does not infer the default table of a model with a $connection, nor read its literal $table', function (string $body, array $extra) {
+    [$reported, $listed] = inferred_tables([...$extra, 'Models/Order.php' => model(BILLING_MODELS, 'Order', $extra === [] ? 'Model' : 'Base', body: $body, use: $extra === [] ? 'use Illuminate\\Database\\Eloquent\\Model;' : '')]);
+
+    expect($reported)->toBe([]);
+})->with([
+    'its own' => ["    protected \$connection = 'legacy';", []],
+    'its own with a literal table' => ["    protected \$connection = 'legacy';\n    protected \$table = 'orders';", []],
+    'a parent' => ['', ['Models/Base.php' => "<?php\n\nnamespace App\\Modules\\Billing\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\nclass Base extends Model\n{\n    protected \$connection = 'legacy';\n}\n"]],
+    'a trait' => ['    use \\App\\Modules\\Billing\\Concerns\\Tabled;', ['Concerns/Tabled.php' => '<?php
+
+namespace App\\Modules\\Billing\\Concerns;
+
+trait Tabled
+{
+    protected $connection = \'legacy\';
+}
+', 'Models/Base.php' => "<?php\n\nnamespace App\\Modules\\Billing\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\nclass Base extends Model {}\n"]],
+]);
+
+it('lists a model with a $connection without a table', function () {
+    [, $listed] = inferred_tables(['Models/Order.php' => model(BILLING_MODELS, 'Order', body: "    protected \$connection = 'legacy';")]);
+
+    expect($listed)->toBe(['Order: it sets $connection']);
+});
+
+it('keeps inferring the default table of a model that only uses traits from vendor', function () {
+    [$reported, $listed] = inferred_tables([
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', body: '    use HasFactory, SoftDeletes;', use: "use Illuminate\\Database\\Eloquent\\Factories\\HasFactory;\nuse Illuminate\\Database\\Eloquent\\Model;\nuse Illuminate\\Database\\Eloquent\\SoftDeletes;"),
+    ]);
+
+    expect($reported)->toBe(['Order -> orders'])->and($listed)->toBe([]);
+});
+
+it('keeps inferring the default table with a trait of the project that sets no table', function () {
+    [$reported] = inferred_tables([
+        'Concerns/Tabled.php' => trait_file('Tabled', '    public function label(): string
+    {
+        return "x";
+    }'),
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', body: '    use \\App\\Modules\\Billing\\Concerns\\Tabled;'),
+    ]);
+
+    expect($reported)->toBe(['Order -> orders']);
+});
+
+it('reads a join only on the query builder, not on what a terminal call returns', function (string $chain, array $tables) {
+    $file = tables_project(['R.php' => "<?php\n\nuse Illuminate\\Support\\Facades\\DB;\n\n{$chain};\n"]).'/R.php';
+    $uses = array_map(fn (TableUse $use) => $use->table, (new PhpParserExtractor(tables: true))->extract($file)->tables);
+
+    sort($uses);
+    sort($tables);
+
+    expect($uses)->toBe($tables);
+})->with([
+    'get' => ["DB::table('a')->get()->join('orders', ',')", ['a']],
+    'pluck' => ["DB::table('a')->pluck('n')->join('orders', ',')", ['a']],
+    'first' => ["DB::table('a')->first()->join('orders')", ['a']],
+    'all' => ["DB::table('a')->all()->join('orders')", ['a']],
+    'cursor' => ["DB::table('a')->cursor()->join('orders')", ['a']],
+    'lazy' => ["DB::table('a')->lazy()->join('orders')", ['a']],
+    'value' => ["DB::table('a')->value('n')->join('orders')", ['a']],
+    'count' => ["DB::table('a')->count()->join('orders')", ['a']],
+    'sum' => ["DB::table('a')->sum('n')->join('orders')", ['a']],
+    'exists' => ["DB::table('a')->exists()->join('orders')", ['a']],
+    'paginate' => ["DB::table('a')->paginate()->join('orders')", ['a']],
+    'chunk' => ["DB::table('a')->chunk(10, fn () => 1)->join('orders')", ['a']],
+    'each' => ["DB::table('a')->each(fn () => 1)->join('orders')", ['a']],
+    'toArray' => ["DB::table('a')->toArray()->join('orders')", ['a']],
+    'a method nobody knows' => ["DB::table('a')->mystery()->join('orders')", ['a']],
+    'a terminal after builder calls' => ["DB::table('a')->where('x', 1)->orderBy('y')->get()->join('orders')", ['a']],
+    'builder calls keep the builder' => ["DB::table('a')->where('x', 1)->orWhereIn('y', [1])->select('z')->join('orders', 'a', 'b')->orderByDesc('y')->leftJoin('items', 'a', 'b')", ['a', 'items', 'orders']],
+]);
+
 // host
 
 it('makes the host the owner of the tables its migrations create, and reports nothing from or about it', function () {
