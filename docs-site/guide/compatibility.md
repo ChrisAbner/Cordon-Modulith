@@ -21,6 +21,8 @@ From 1.0, the project follows [Semantic Versioning](https://semver.org) for ever
 
 Classes marked `@api`: `Contracts\Rule`, `Analysis\AnalysisContext`, `Analysis\Violation`, `Analysis\Edge`, `Analysis\Reference`, `Analysis\ClassDeclaration`, `Analysis\SymbolTable`, `Analysis\PublicApiPolicy`, `Analysis\DeclaredVisibility`, `Module\Module`, `Module\ModuleMap`, `Rules\Severity`, `Attributes\PublicApi`, `Attributes\Internal` and `Testing\Cordon` (all under `Cordon\`). They are what a [custom rule](./custom-rules) needs. `Laravel\Architecture` is also `@api`: it returns the graph and the module documentation as text, for tools that show them, such as the [Filament plugin](../integrations/filament).
 
+`AnalysisContext::$tables` (the `TableMap` of the `tables` rule) and `AnalysisContext::$externalReferences` (the references to classes no module owns) can be read by a custom rule, but they are **not** part of the 1.0 surface yet: their types are `@internal` and may change in a minor release until their ADRs are accepted ([0026](https://github.com/ChrisAbner/Cordon-Modulith/blob/main/docs/adr/0026-external-packages.md) and [0027](https://github.com/ChrisAbner/Cordon-Modulith/blob/main/docs/adr/0027-tables-rule.md)). Rely on `AnalysisContext::$edges`, `$modules` and the other members listed above.
+
 ## What is never covered
 
 - Classes marked `@internal`: every other class in `src/`. The custom rules guide uses some of them (`Analyzer`, `RuleSet`, `NamespaceResolver`...) to test a rule; that test code may need changes in a minor release until Cordon offers a public test helper.

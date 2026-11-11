@@ -1,16 +1,22 @@
 # Filament
 
+::: warning In development, not on Packagist yet
+The plugin described on this page is not published. `chrisabner/cordon-modulith-filament` cannot be installed with Composer today, and the snippets below show how it is meant to work once it is released. What exists now is the part of Cordon Modulith it relies on: `Cordon\Laravel\Architecture::graph()` and `docs()` (see [compatibility](../guide/compatibility)).
+:::
+
 The Filament plugin shows the modules of your application inside a [Filament](https://filamentphp.com) panel: a table with their namespace, dependencies, violations and owner, the dependency graph, and the card `cordon:docs` writes for each module.
 
 It is a separate package, `chrisabner/cordon-modulith-filament`, so Cordon Modulith itself keeps no dependency on Filament. It needs Cordon Modulith 0.5 or later, Laravel 12 or 13, and Filament 3.2 or later or Filament 4.
 
 ## Installation
 
+Future, not available yet:
+
 ```bash
 composer require chrisabner/cordon-modulith-filament
 ```
 
-Register the plugin in your panel provider:
+Then register the plugin in your panel provider:
 
 ```php
 use ChrisAbner\CordonFilament\CordonPlugin;
