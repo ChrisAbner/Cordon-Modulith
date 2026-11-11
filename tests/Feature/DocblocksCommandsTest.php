@@ -1,5 +1,8 @@
 <?php
 
+use Cordon\Analysis\FileAnalysis;
+use Cordon\Analysis\PhpParserExtractor;
+use Cordon\Contracts\DependencyExtractor;
 use Cordon\Tests\Oracle\Temp;
 use Illuminate\Support\Facades\Artisan;
 
@@ -115,15 +118,15 @@ it('stops before analysing when docblocks is not true or false', function () {
 /**
  * An extractor that counts the files it is asked for. The two subclasses are two extractors as far as the cache fingerprint goes.
  */
-abstract class CountingExtractor implements Cordon\Contracts\DependencyExtractor
+abstract class CountingExtractor implements DependencyExtractor
 {
     public static int $calls = 0;
 
-    public function extract(string $file): Cordon\Analysis\FileAnalysis
+    public function extract(string $file): FileAnalysis
     {
         self::$calls++;
 
-        return (new Cordon\Analysis\PhpParserExtractor)->extract($file);
+        return (new PhpParserExtractor)->extract($file);
     }
 }
 
@@ -135,7 +138,7 @@ it('does not reuse a cache written by another extractor', function () {
     config()->set('cordon.cache', Temp::directory('cordon-cache-').'/cordon.json');
     use_docblocks_app(false);
 
-    app()->bind(Cordon\Contracts\DependencyExtractor::class, FirstCountingExtractor::class);
+    app()->bind(DependencyExtractor::class, FirstCountingExtractor::class);
     Artisan::call('cordon:verify', ['--format' => 'json']);
     $files = CountingExtractor::$calls;
 
@@ -147,7 +150,7 @@ it('does not reuse a cache written by another extractor', function () {
     expect(CountingExtractor::$calls)->toBe($files);
 
     // Another extractor may read the files differently: the cache is not trusted.
-    app()->bind(Cordon\Contracts\DependencyExtractor::class, SecondCountingExtractor::class);
+    app()->bind(DependencyExtractor::class, SecondCountingExtractor::class);
     Artisan::call('cordon:verify', ['--format' => 'json']);
 
     expect(CountingExtractor::$calls)->toBe($files * 2);

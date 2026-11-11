@@ -70,7 +70,7 @@ final readonly class Reference
             $data['sourceClass'] ?? null,
             $data['target'] ?? null,
             $data['line'] ?? null,
-            $data['kind'] ?? null,
+            $data['kind'],
             $data['relation'] ?? null,
             $data['signature'] ?? null,
         );

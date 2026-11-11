@@ -94,14 +94,14 @@ final class GraphExporter
      * of references, their kinds and the violations on it. With $focus, only
      * that module and its neighbours.
      *
-     * @param  list<string>  $modules
-     * @param  list<Edge>  $edges
-     * @param  list<Violation>  $violations
      * The arrows are the raw edges: Orders points at Billing.Invoices when it
      * uses a class of it, while the rules see Billing there. Only the
      * interfaces of an arrow are looked up through the module the source sees
      * ($map, to resolve it: without it the target itself).
      *
+     * @param  list<string>  $modules
+     * @param  list<Edge>  $edges
+     * @param  list<Violation>  $violations
      * @return array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int, interfaces?: list<string>}>}
      */
     public static function model(array $modules, array $edges, array $violations, ?string $focus = null, ?ModuleMap $map = null): array

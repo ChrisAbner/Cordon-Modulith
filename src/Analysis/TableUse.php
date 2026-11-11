@@ -76,7 +76,7 @@ final readonly class TableUse
 
         return new self(
             $file,
-            $data['kind'] ?? null,
+            $data['kind'],
             $data['table'] ?? null,
             $data['line'] ?? null,
             $data['class'] ?? null,
