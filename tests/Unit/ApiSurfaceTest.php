@@ -21,6 +21,7 @@ const PUBLIC_API = [
     'Cordon\\Attributes\\Internal',
     'Cordon\\Attributes\\PublicApi',
     'Cordon\\Contracts\\Rule',
+    'Cordon\\Laravel\\Architecture',
     'Cordon\\Module\\Module',
     'Cordon\\Module\\ModuleMap',
     'Cordon\\Rules\\Severity',

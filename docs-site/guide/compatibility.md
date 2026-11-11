@@ -19,7 +19,7 @@ From 1.0, the project follows [Semantic Versioning](https://semver.org) for ever
 | The inputs of the GitHub Action | [Continuous integration](./ci) |
 | Classes marked `@api` in `src/` | below |
 
-Classes marked `@api`: `Contracts\Rule`, `Analysis\AnalysisContext`, `Analysis\Violation`, `Analysis\Edge`, `Analysis\Reference`, `Analysis\ClassDeclaration`, `Analysis\SymbolTable`, `Analysis\PublicApiPolicy`, `Analysis\DeclaredVisibility`, `Module\Module`, `Module\ModuleMap`, `Rules\Severity`, `Attributes\PublicApi`, `Attributes\Internal` and `Testing\Cordon` (all under `Cordon\`). They are what a [custom rule](./custom-rules) needs.
+Classes marked `@api`: `Contracts\Rule`, `Analysis\AnalysisContext`, `Analysis\Violation`, `Analysis\Edge`, `Analysis\Reference`, `Analysis\ClassDeclaration`, `Analysis\SymbolTable`, `Analysis\PublicApiPolicy`, `Analysis\DeclaredVisibility`, `Module\Module`, `Module\ModuleMap`, `Rules\Severity`, `Attributes\PublicApi`, `Attributes\Internal` and `Testing\Cordon` (all under `Cordon\`). They are what a [custom rule](./custom-rules) needs. `Laravel\Architecture` is also `@api`: it returns the graph and the module documentation as text, for tools that show them, such as the [Filament plugin](../integrations/filament).
 
 ## What is never covered
 
