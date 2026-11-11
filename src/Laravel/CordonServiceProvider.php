@@ -122,18 +122,19 @@ final class CordonServiceProvider extends ServiceProvider
             return null;
         }
 
-        return new CachedExtractor($extractor, new AnalysisCache(Paths::join($basePath, $path), $basePath, AnalysisCache::fingerprint(self::extractorOptions($config))));
+        return new CachedExtractor($extractor, new AnalysisCache(Paths::join($basePath, $path), $basePath, AnalysisCache::fingerprint(self::extractorOptions($config, $extractor))));
     }
 
     /**
      * The settings that change what the extractor returns for a file, and so
-     * must invalidate the cache: one entry here per extractor option.
+     * must invalidate the cache: one entry here per extractor option. The
+     * class of the extractor is one of them, since a project can bind its own.
      *
      * @return array<string, bool|int|string|null>
      */
-    private static function extractorOptions(Repository $config): array
+    private static function extractorOptions(Repository $config, DependencyExtractor $extractor): array
     {
-        return ['docblocks' => self::docblocks($config), 'tables' => self::tables($config)];
+        return ['docblocks' => self::docblocks($config), 'extractor' => $extractor::class, 'tables' => self::tables($config)];
     }
 
     /**
