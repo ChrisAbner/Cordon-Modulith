@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+use InvalidArgumentException;
+
 /**
  * A database table named in an analysed file, read from literals only: a
  * table name in a variable, a constant or a config() call is never guessed.
@@ -68,6 +70,10 @@ final readonly class TableUse
      */
     public static function fromArray(array $data, string $file): self
     {
+        if (! in_array($data['kind'] ?? null, [self::CREATE, self::ALTER, self::FOREIGN, self::QUERY, self::MODEL, self::DYNAMIC, self::CONNECTION, self::TRAIT_USE], true)) {
+            throw new InvalidArgumentException('Unknown kind of table use.');
+        }
+
         return new self(
             $file,
             $data['kind'] ?? null,

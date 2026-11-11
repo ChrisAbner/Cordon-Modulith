@@ -16,18 +16,20 @@ use Cordon\Rules\RuleSet;
 /**
  * An extractor that records the files it is asked for.
  */
-function spy_extractor(): DependencyExtractor
+function spy_extractor(bool $tables = false): DependencyExtractor
 {
-    return new class implements DependencyExtractor
+    return new class($tables) implements DependencyExtractor
     {
         /** @var list<string> */
         public array $calls = [];
+
+        public function __construct(private readonly bool $tables) {}
 
         public function extract(string $file): FileAnalysis
         {
             $this->calls[] = $file;
 
-            return (new PhpParserExtractor)->extract($file);
+            return (new PhpParserExtractor(tables: $this->tables))->extract($file);
         }
     };
 }
@@ -258,6 +260,35 @@ it('extracts a file again when its entry is damaged', function () {
         ->and(render($result))->toBe(render(analyse_uncached($project)));
 });
 
+it('extracts a file again when an entry names a kind of reference or table that does not exist', function (string $part, string $kind) {
+    $project = temp_project('tables-app');
+    $cacheFile = $project.'/cordon.json';
+    analyse_cached($project, $cacheFile, spy_extractor(tables: true));
+
+    $data = json_decode((string) file_get_contents($cacheFile), true);
+    $damaged = [];
+
+    foreach ($data['files'] as $key => $entry) {
+        if ($entry['analysis'][$part] !== []) {
+            $data['files'][$key]['analysis'][$part][0]['kind'] = $kind;
+            $damaged[] = $project.'/'.$key;
+        }
+    }
+
+    expect($damaged)->not->toBeEmpty();
+
+    file_put_contents($cacheFile, json_encode($data));
+
+    [$result, $extractor] = analyse_cached($project, $cacheFile, $spy = spy_extractor(tables: true));
+
+    expect($spy->calls)->toEqualCanonicalizing($damaged)
+        ->and($extractor->warnings())->toBe([])
+        ->and(render($result))->toBe(render(analyse_uncached($project)));
+})->with([
+    'a reference' => ['references', 'bogus'],
+    'a table' => ['tables', 'bogus'],
+]);
+
 it('neither reads nor writes the cache when disabled', function () {
     $project = temp_project('namespace-app');
     $cacheFile = $project.'/cordon.json';
@@ -341,4 +372,4 @@ it('round-trips every analysis of the fixture projects through the cache format'
     }
 
     expect($count)->toBeGreaterThan(0);
-})->with(['namespace-app', 'layered-app']);
+})->with(['namespace-app', 'layered-app', 'listeners-docblocks-app', 'docblocks-app', 'tables-app']);

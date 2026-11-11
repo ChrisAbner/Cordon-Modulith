@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+use InvalidArgumentException;
+
 /**
  * One usage of a class name inside a file (new, static call, type, extends, attribute...).
  *
@@ -59,6 +61,10 @@ final readonly class Reference
      */
     public static function fromArray(array $data, string $sourceFile): self
     {
+        if (! in_array($data['kind'] ?? null, [self::USE, self::LISTENER, self::DOCBLOCK], true)) {
+            throw new InvalidArgumentException('Unknown kind of reference.');
+        }
+
         return new self(
             $sourceFile,
             $data['sourceClass'] ?? null,
