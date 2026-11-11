@@ -36,7 +36,8 @@ final class VerifyCommand extends Command
         {--prune-baseline : Remove baseline entries that no longer match the code, without adding new violations, and exit}
         {--no-baseline : Ignore the baseline file}
         {--fail-on-stale : Fail when baseline entries no longer match the code}
-        {--allow-empty : Pass when no modules are found, for projects that have none yet}';
+        {--allow-empty : Pass when no modules are found, for projects that have none yet}
+        {--no-cache : Neither read nor write the analysis cache (the cache config key), for this run}';
 
     protected $description = 'Verify that modules only depend on each other through their public API';
 
@@ -45,6 +46,10 @@ final class VerifyCommand extends Command
         $format = $this->option('format');
         $format = is_string($format) ? $format : 'text';
         $reporter = $this->reporter($format);
+
+        if ($this->option('no-cache')) {
+            $verifier->withoutCache();
+        }
 
         if ($reporter === null) {
             $this->error(sprintf('Unknown format [%s]. Use text, json, github, gitlab, junit or checkstyle.', $format));
@@ -158,7 +163,7 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
-        foreach ($result->ignoreWarnings as $warning) {
+        foreach ([...$verifier->cacheWarnings(), ...$result->ignoreWarnings] as $warning) {
             if ($format === 'github') {
                 $this->output->writeln('::warning title=Cordon::'.$warning, OutputInterface::OUTPUT_RAW);
             } else {

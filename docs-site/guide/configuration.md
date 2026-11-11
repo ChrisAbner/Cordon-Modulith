@@ -40,6 +40,8 @@ return [
     'exclude' => ['vendor', 'node_modules', 'tests', 'Tests'],
 
     'baseline' => 'cordon-baseline.json',
+
+    'cache' => null,   // 'storage/framework/cache/cordon.json' to reuse the analysis of unchanged files
 ];
 ```
 
@@ -119,6 +121,18 @@ Directory names skipped at any depth inside a module.
 ## baseline
 
 Path of the baseline file, relative to the project root. See [adopting in an existing project](./baseline).
+
+## cache
+
+`null` by default: every run parses every file. Set it to a file path, relative to the project root (or absolute), and Cordon Modulith keeps what it read from each PHP file there, keyed by a hash of the file's content. The next run only parses the files whose content changed. In a Laravel project `storage/framework/cache/cordon.json` is a good place, since that directory is already ignored by git.
+
+```php
+'cache' => 'storage/framework/cache/cordon.json',
+```
+
+The cache never changes a result: the report is the same cold, warm or with `cache` set to `null`. It stores only what was read from each file, not the violations, so changing `depends_on`, the rules or the baseline needs no new cache. It starts from scratch by itself when Cordon Modulith, nikic/php-parser or PHP change version. Deleting the file is always safe, and so is a file that cannot be read or written: `cordon:verify` warns (`Cordon cache at <path> is unreadable; analysing without it.`) and analyses without it.
+
+`cordon:verify --no-cache` neither reads nor writes the cache for one run. See [how much it saves](../faq#how-fast-is-it) and [how to keep it between CI runs](./ci#keeping-the-analysis-cache-between-runs).
 
 ## Using the config outside Laravel
 

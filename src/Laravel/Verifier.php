@@ -6,6 +6,7 @@ namespace Cordon\Laravel;
 
 use Closure;
 use Cordon\Analysis\Analyzer;
+use Cordon\Analysis\CachedExtractor;
 use Cordon\Analysis\Result;
 use Cordon\Analysis\Snapshot;
 use Cordon\Analysis\Violation;
@@ -39,12 +40,14 @@ final class Verifier
 
     /**
      * @param  Analyzer|Closure(): Analyzer  $analyzer  A closure builds it on first use.
+     * @param  ?CachedExtractor  $cache  The extractor of $analyzer when `cache` is set: saved after each snapshot.
      */
     public function __construct(
         private readonly ModuleResolver $resolver,
         private readonly Analyzer|Closure $analyzer,
         private readonly Repository $config,
         private readonly string $basePath,
+        private readonly ?CachedExtractor $cache = null,
     ) {}
 
     public function basePath(): string
@@ -96,7 +99,28 @@ final class Verifier
      */
     public function snapshot(): Snapshot
     {
-        return $this->analyzer()->snapshot($this->modules(), $this->hostPaths());
+        $snapshot = $this->analyzer()->snapshot($this->modules(), $this->hostPaths());
+        $this->cache?->save();
+
+        return $snapshot;
+    }
+
+    /**
+     * Ignore the analysis cache for the rest of the run: it is neither read nor written.
+     */
+    public function withoutCache(): void
+    {
+        $this->cache?->disable();
+    }
+
+    /**
+     * Problems with the analysis cache, such as a file that cannot be read.
+     *
+     * @return list<string>
+     */
+    public function cacheWarnings(): array
+    {
+        return $this->cache?->warnings() ?? [];
     }
 
     /**
@@ -114,7 +138,7 @@ final class Verifier
      */
     public function analyze(): Result
     {
-        return $this->analyzer()->analyze($this->modules(), $this->basePath, $this->hostPaths());
+        return $this->analyzer()->check($this->snapshot(), $this->basePath);
     }
 
     /**

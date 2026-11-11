@@ -8,6 +8,8 @@ No. It is a dev dependency that only runs when you call `cordon:verify`, `cordon
 
 Around 1 ms per file on a typical CI runner (Linux, no Xdebug): about a second for 1,000 files, five for 5,000. The analysis is linear in the number of files.
 
+With the [analysis cache](./guide/configuration#cache) on, a run only parses the files whose content changed. On the synthetic project of the benchmark (1,000 files, 20 modules; `composer bench -- --cache`, PHP 8.4, 2 CPUs, Xdebug off) a run without the cache took about 1.5 s, the first run with an empty cache about 1.6 s (it also writes the file), and a run with a warm cache and no changed files 0.3 s, about five times faster (medians of three runs). The remaining time is building the module graph and running the rules, which are not cached. The cache file was 4.5 MB.
+
 Run it with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower. On Windows the first run can be slower because of cold file reads and antivirus scanning; measured there with Xdebug off, 1,000 synthetic files took 5-7 s and a real 584-file project about 3 s once warm.
 
 ## Does it load or execute my code?

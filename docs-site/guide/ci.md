@@ -104,6 +104,38 @@ Teams that own modules can check only theirs:
 
 `cordon:verify` takes files and directories: `vendor/bin/cordon verify app/Modules/Billing`. The whole project is still analysed, so cycles and the baseline work as usual, but only the violations of those paths are reported, plus the cycles their modules take part in. Relative paths are read from the project root. See [check boundaries before each commit](../recipes/pre-commit).
 
+## Keeping the analysis cache between runs
+
+With [`cache`](./configuration#cache) set in `config/cordon.php`, a run only parses the files that changed since the cache was written, so a pull request that touches a few files is analysed in a fraction of the time. A CI job starts without that file, so save it between runs. The cache is keyed by file content, not by commit, so an older cache is still useful: only the files that differ are parsed again, and the result is the same with or without it.
+
+GitHub Actions, with `'cache' => 'storage/framework/cache/cordon.json'`:
+
+```yaml
+      - uses: actions/cache@v4
+        with:
+          path: storage/framework/cache/cordon.json
+          key: cordon-${{ runner.os }}-${{ github.sha }}
+          restore-keys: cordon-${{ runner.os }}-
+      - run: vendor/bin/cordon verify --format=github
+```
+
+The key is new on every commit, so the job always saves the cache it just updated, and `restore-keys` loads the most recent one. This goes before the step that runs Cordon Modulith, so use it in your own job rather than the reusable action, which has no step for it.
+
+GitLab CI:
+
+```yaml
+# .gitlab-ci.yml
+cordon:
+  script:
+    - vendor/bin/cordon verify --format=gitlab
+  cache:
+    key: cordon-$CI_COMMIT_REF_SLUG
+    paths:
+      - storage/framework/cache/cordon.json
+```
+
+A cache written by another version of PHP, Cordon Modulith or nikic/php-parser is replaced without a message. A file that is damaged makes the run warn and go on without it. `--no-cache` skips it for one run.
+
 ## Keeping the baseline small
 
 `--fail-on-stale` makes a baseline entry that no longer matches the code fail the build, so fixed violations are removed from the baseline in the same pull request (`--prune-baseline`). See [shrinking the baseline](./baseline#shrinking-the-baseline).

@@ -24,6 +24,8 @@ flowchart LR
 3. **DependencyExtractor** (`PhpParserExtractor`) parses each file with nikic/php-parser, runs `NameResolver`, and collects:
    - declarations (class, interface, trait, enum) with `#[PublicApi]` / `#[Internal]`;
    - references: every `Name\FullyQualified` node after name resolution, except function and constant names. Imports alone are not references.
+
+   With the `cache` config key set, `CachedExtractor` wraps it: a file whose `sha1(content)` is in `AnalysisCache` is not parsed again. The cache holds only these `FileAnalysis` results, keyed by path relative to the project root, and is dropped as a whole when its fingerprint (Cordon, php-parser and PHP versions, extractor options) changes. Rules never see the difference.
 4. **Analyzer** maps each reference to a target module (longest namespace prefix) and each file to a source module (longest path prefix). References that cross modules become **edges**, marked as `use` or `listener` ([ADR 0016](adr/0016-listener-edges.md)). References from the code outside the modules (`host.paths`) become host edges ([ADR 0017](adr/0017-host-module.md)).
 5. **Rules** receive an immutable `AnalysisContext` and yield `Violation`s. Each rule runs with the severity of its entry in `rules` (`error`, `warn` or `off`, [ADR 0015](adr/0015-rule-severities.md)).
 6. **Baseline** removes known violations of rules set to `error` (keyed by rule + relative file + target, without line numbers). A `// @cordon-ignore` comment accepts a violation in place.

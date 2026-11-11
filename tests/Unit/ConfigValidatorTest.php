@@ -33,13 +33,13 @@ it('accepts the per-module settings of the fixture app', function () {
 
 it('rejects an unknown top-level key and suggests the closest one', function () {
     expect(config_errors(['rule' => []]))->toBe([
-        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline.',
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
     ]);
 });
 
 it('leaves the suggestion out when no key is close', function () {
     expect(config_errors(['colour' => 'red']))->toBe([
-        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline.',
+        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
     ]);
 });
 
@@ -137,7 +137,21 @@ it('rejects depends_on and public entries that are not names, without crashing (
 
 it('validates the root keys and the rules even without modules (M9)', function () {
     expect(ConfigValidator::errors(['rule' => [], 'rules' => ['cycle' => true], 'modules' => ['Billing' => []]], new ModuleMap([])))->toBe([
-        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline.',
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
         'Unknown rule [cycle] in rules. Did you mean [cycles]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak.',
+    ]);
+});
+
+it('accepts a cache path or null and rejects anything else', function () {
+    expect(config_errors(['cache' => null]))->toBe([])
+        ->and(config_errors(['cache' => 'storage/framework/cache/cordon.json']))->toBe([])
+        ->and(config_errors(['cache' => true]))->toBe(['cache in config/cordon.php must be a file path or null.'])
+        ->and(config_errors(['cache' => '']))->toBe(['cache in config/cordon.php must be a file path or null.'])
+        ->and(config_errors(['cache' => ['a.json']]))->toBe(['cache in config/cordon.php must be a file path or null.']);
+});
+
+it('suggests cache for a misspelled key', function () {
+    expect(config_errors(['cach' => 'a.json']))->toBe([
+        'Unknown key [cach] in config/cordon.php. Did you mean [cache]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
     ]);
 });

@@ -31,4 +31,39 @@ final readonly class Reference
         public bool $relation = false,
         public ?string $signature = null,
     ) {}
+
+    /**
+     * @internal
+     *
+     * @return array{sourceClass: ?string, target: string, line: int, kind: string, relation: bool, signature: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'sourceClass' => $this->sourceClass,
+            'target' => $this->target,
+            'line' => $this->line,
+            'kind' => $this->kind,
+            'relation' => $this->relation,
+            'signature' => $this->signature,
+        ];
+    }
+
+    /**
+     * @internal
+     *
+     * @param  array<array-key, mixed>  $data  What toArray() wrote; anything else throws.
+     */
+    public static function fromArray(array $data, string $sourceFile): self
+    {
+        return new self(
+            $sourceFile,
+            $data['sourceClass'] ?? null,
+            $data['target'] ?? null,
+            $data['line'] ?? null,
+            $data['kind'] ?? null,
+            $data['relation'] ?? null,
+            $data['signature'] ?? null,
+        );
+    }
 }

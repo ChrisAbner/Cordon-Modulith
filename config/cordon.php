@@ -172,4 +172,20 @@ return [
 
     'baseline' => 'cordon-baseline.json',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Analysis cache
+    |--------------------------------------------------------------------------
+    |
+    | A file where Cordon Modulith keeps what it read from each PHP file, keyed
+    | by the file's content, so later runs only parse the files that changed.
+    | The result is the same with or without it. null (the default) turns it
+    | off. In Laravel a good place is 'storage/framework/cache/cordon.json';
+    | a relative path is resolved against the project root. Do not commit it.
+    | Skip it for one run with cordon:verify --no-cache.
+    |
+    */
+
+    'cache' => null,
+
 ];
