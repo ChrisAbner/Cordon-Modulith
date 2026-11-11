@@ -124,7 +124,7 @@ jobs:
 
   # Coverage of the whole package, and mutation testing of the classes whose
   # tests declare mutates(). Thresholds are the measured values, rounded down.
-  quality:
+  coverage:
     name: Coverage and mutation testing
     runs-on: ubuntu-latest
     steps:
