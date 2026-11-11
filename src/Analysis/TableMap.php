@@ -70,6 +70,8 @@ final readonly class TableMap
         $declaring = [];
         /** @var array<string, true> $connections Classes and traits that set a $connection. */
         $connections = [];
+        /** @var array<string, true> $opaque Classes and traits whose table is unknown: a getTable() override, a non-literal $table, an assignment, setTable(), a $table in a trait, a $connection. */
+        $opaque = [];
         /** @var array<string, list<string>> $traits The traits each class or trait uses. */
         $traits = [];
         $owned = [];
@@ -89,6 +91,10 @@ final readonly class TableMap
                 }
 
                 $key = strtolower($use->class);
+
+                if ($use->kind === TableUse::DYNAMIC || $use->kind === TableUse::CONNECTION) {
+                    $opaque[$key] = true;
+                }
 
                 match ($use->kind) {
                     TableUse::CONNECTION => $connections[$key] = true,
@@ -159,7 +165,8 @@ final readonly class TableMap
         foreach ($models as $use) {
             $trace = self::trace($use->class ?? '', $symbols, $traits);
 
-            if ($trace !== null && ! self::any([...$trace['own'], ...$trace['inherited']], $connections)) {
+            // A literal $table is only the table when nothing in the class, its traits or its parents can change it.
+            if ($trace !== null && ! self::any([...$trace['own'], ...$trace['inherited']], $opaque)) {
                 $uses[] = new TableUse($use->file, TableUse::QUERY, $use->table, $use->line, $use->class);
             }
         }

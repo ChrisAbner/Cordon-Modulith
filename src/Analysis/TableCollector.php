@@ -66,7 +66,7 @@ final class TableCollector extends NodeVisitorAbstract
             $node instanceof Node\Expr\MethodCall => $this->methodCall($node),
             $node instanceof Node\Stmt\Class_, $node instanceof Node\Stmt\Trait_ => $this->enterClass($node),
             $node instanceof Node\Stmt\TraitUse => $this->traitUse($node),
-            $node instanceof Node\Expr\Assign => $this->assignment($node),
+            $node instanceof Node\Expr\Assign, $node instanceof Node\Expr\AssignOp => $this->assignment($node),
             default => null,
         };
 
@@ -254,9 +254,9 @@ final class TableCollector extends NodeVisitorAbstract
     }
 
     /**
-     * `$this->table = ...` anywhere in a class or trait: its table is set in code.
+     * `$this->table = ...` (or `??=`) anywhere in a class or trait: its table is set in code.
      */
-    private function assignment(Node\Expr\Assign $assign): void
+    private function assignment(Node\Expr\Assign|Node\Expr\AssignOp $assign): void
     {
         $target = $assign->var;
 

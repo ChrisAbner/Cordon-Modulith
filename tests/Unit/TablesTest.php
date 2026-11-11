@@ -471,6 +471,22 @@ trait Tabled
 ', 'Models/Base.php' => "<?php\n\nnamespace App\\Modules\\Billing\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\nclass Base extends Model {}\n"]],
 ]);
 
+it('does not read a literal $table when something else can change the table', function (string $body, array $extra, string $reason) {
+    [$reported, $listed] = inferred_tables([
+        ...$extra,
+        'Models/Order.php' => model(BILLING_MODELS, 'Order', $extra === [] || isset($extra['Concerns/Tabled.php']) && ! isset($extra['Models/Base.php']) ? 'Model' : 'Base', body: $body, use: 'use Illuminate\\Database\\Eloquent\\Model;'),
+    ]);
+
+    expect($reported)->toBe([])->and($listed)->toBe($reason === '' ? $listed : [$reason])->and(count($listed))->toBeLessThanOrEqual(1);
+})->with([
+    'getTable()' => ["    protected \$table = 'orders';\n    public function getTable(): string\n    {\n        return 'users';\n    }", [], 'Order: it overrides getTable()'],
+    'an assignment' => ["    protected \$table = 'orders';\n    public function swap(): void\n    {\n        \$this->table = 'legacy';\n    }", [], 'Order: it assigns its table in code'],
+    'a coalescing assignment' => ["    protected \$table = 'orders';\n    public function swap(): void\n    {\n        \$this->table ??= 'legacy';\n    }", [], 'Order: it assigns its table in code'],
+    'setTable()' => ["    protected \$table = 'orders';\n    public function swap(): void\n    {\n        \$this->setTable('legacy');\n    }", [], 'Order: it assigns its table in code'],
+    'a trait that assigns it' => ["    use \\App\\Modules\\Billing\\Concerns\\Tabled;\n    protected \$table = 'orders';", ['Concerns/Tabled.php' => trait_file('Tabled', "    public function initializeTabled(): void\n    {\n        \$this->table = 'legacy';\n    }")], 'Order: it uses a trait that sets its table'],
+    'a parent with getTable()' => ["    protected \$table = 'orders';", ['Models/Base.php' => model(BILLING_MODELS, 'Base', body: "    public function getTable(): string\n    {\n        return 'users';\n    }", use: 'use Illuminate\\Database\\Eloquent\\Model;')], 'Base: it overrides getTable()'],
+]);
+
 it('lists a model with a $connection without a table', function () {
     [, $listed] = inferred_tables(['Models/Order.php' => model(BILLING_MODELS, 'Order', body: "    protected \$connection = 'legacy';")]);
 
