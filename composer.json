@@ -1,7 +1,7 @@
 {
     "name": "chrisabner/cordon-modulith",
     "description": "Cordon off your modules: verifiable boundaries between modules in Laravel applications.",
-    "keywords": ["laravel", "modules", "modular-monolith", "architecture", "static-analysis", "boundaries"],
+    "keywords": ["laravel", "modules", "modular-monolith", "modulith", "architecture", "static-analysis", "boundaries", "module-boundaries", "dependency-cycles", "architecture-testing"],
     "license": "MIT",
     "type": "library",
     "homepage": "https://chrisabner.github.io/Cordon-Modulith/",
