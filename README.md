@@ -264,7 +264,7 @@ Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser
 
 What's next:
 
-- Filament plugin with the module graph
+- [Filament plugin](https://chrisabner.github.io/Cordon-Modulith/integrations/filament) with the module graph (in development)
 - 1.0 with a frozen public API and a SemVer policy
 - File-hash cache for large projects
 - C4 diagrams

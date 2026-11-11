@@ -61,6 +61,7 @@ export default defineConfig({
                     { text: 'Pest', link: '/guide/pest' },
                     { text: 'PHPStan', link: '/guide/phpstan' },
                     { text: 'AI coding agents', link: '/guide/ai-agents' },
+                    { text: 'Filament', link: '/integrations/filament' },
                 ],
             },
             {
