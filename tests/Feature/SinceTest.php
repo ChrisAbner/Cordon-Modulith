@@ -441,6 +441,25 @@ describe('cordon verify --since', function () {
         expect($rules(run_cordon(['verify', '--since=base', '--format=json'], $project)))->toBe(['cycles']);
     });
 
+    it('brings up the cycle through the module of a deleted file', function () {
+        $project = git_project();
+        file_put_contents($project.'/app/Modules/Catalog/Support/CallsBilling.php', "<?php\n\nnamespace App\\Modules\\Catalog\\Support;\n\nuse App\\Modules\\Billing\\Events\\InvoicePaid;\n\nfinal class CallsBilling\n{\n    public function make(): object\n    {\n        return new InvoicePaid(1);\n    }\n}\n");
+        file_put_contents($project.'/app/Modules/Catalog/Support/Spare.php', "<?php\n\nnamespace App\\Modules\\Catalog\\Support;\n\nfinal class Spare {}\n");
+        git_in($project, 'add', '-A');
+        git_in($project, 'commit', '-q', '-m', 'cycle');
+        git_in($project, 'tag', '-f', 'base');
+
+        $rules = static fn (array $run): array => array_values(array_unique(array_column(json_decode($run['out'], true)['violations'], 'rule')));
+
+        // Nothing changed in Catalog yet: the cycle in the base commit stays out.
+        expect($rules(run_cordon(['verify', '--since=base', '--format=json'], $project)))->toBe([]);
+
+        // The file is gone from the disk, so it has no real path: its directory still says it was Catalog's.
+        unlink($project.'/app/Modules/Catalog/Support/Spare.php');
+
+        expect($rules(run_cordon(['verify', '--since=base', '--format=json'], $project)))->toBe(['cycles']);
+    });
+
     it('fails with exit code 2 and the message when the reference does not exist or there is no repository', function (bool $repository, string $since) {
         $project = $repository ? git_project() : temp_project('namespace-app');
         $run = run_cordon(['verify', '--since='.$since], $project);
