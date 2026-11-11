@@ -61,8 +61,9 @@ it('exports the module graph as C4-PlantUML, with the edges that have violations
         ->toEndWith("@enduml\n")
         ->toContain('Container_Boundary(app, "Application") {')
         ->toContain('    Component(m0, "Billing", "Module")')
-        ->toContain('Rel(m0, m1, "4")')
-        ->toContain('UpdateRelStyle(m0, m1, $textColor="#d33", $lineColor="#d33")')
+        ->toContain('AddRelTag("violation", $textColor="#d33", $lineColor="#d33")')
+        ->toContain('Rel(m0, m1, "4", $tags="violation")')
+        ->not->toContain('UpdateRelStyle')
         ->toContain('Rel(m1, m0, "1")')
         ->not->toContain('```');
 });

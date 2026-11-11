@@ -229,7 +229,14 @@ final class GraphExporter
         $ids = array_flip($model['modules']);
         [$roots, $children] = self::hierarchy($model['modules']);
         $boundary = 0;
-        $lines = ['@startuml', '!include <C4/C4_Component>', 'LAYOUT_LEFT_RIGHT()', 'Container_Boundary(app, "Application") {'];
+        $lines = ['@startuml', '!include <C4/C4_Component>', 'LAYOUT_LEFT_RIGHT()'];
+
+        // A tag, not UpdateRelStyle: PlantUML ignores a style updated after its relationship, and one updated before it styles every later one.
+        if (array_filter($model['edges'], static fn (array $edge): bool => $edge['violations'] > 0) !== []) {
+            $lines[] = 'AddRelTag("violation", $textColor="#d33", $lineColor="#d33")';
+        }
+
+        $lines[] = 'Container_Boundary(app, "Application") {';
         $component = static function (string $name) use ($modules, $ids): string {
             $description = $modules->get($name)?->metadata['description'] ?? null;
             $description = is_string($description) ? trim($description) : '';
@@ -262,11 +269,7 @@ final class GraphExporter
         foreach ($model['edges'] as $edge) {
             $from = 'm'.$ids[$edge['from']];
             $to = 'm'.$ids[$edge['to']];
-            $lines[] = sprintf('Rel(%s, %s, %s)', $from, $to, self::plantuml(self::label($edge)));
-
-            if ($edge['violations'] > 0) {
-                $lines[] = sprintf('UpdateRelStyle(%s, %s, $textColor="#d33", $lineColor="#d33")', $from, $to);
-            }
+            $lines[] = sprintf('Rel(%s, %s, %s%s)', $from, $to, self::plantuml(self::label($edge)), $edge['violations'] > 0 ? ', $tags="violation"' : '');
         }
 
         $lines[] = '@enduml';
@@ -277,14 +280,15 @@ final class GraphExporter
     /**
      * A PlantUML string literal. PlantUML has no escape for a double quote
      * inside a string, so quotes and percent signs (which start its %chr()
-     * functions) become %chr() calls, a backslash is doubled and a line break
-     * becomes the \n PlantUML draws as one. A "\t" in a text is still drawn
-     * as a tab.
+     * functions) become %chr() calls and a line break becomes the \n PlantUML
+     * draws as one. A backslash is doubled and followed by a zero-width space
+     * (%chr(8203)): drawn alone, the "\t" of "App\tenant" would be a tab.
      */
     private static function plantuml(string $text): string
     {
-        $text = str_replace(['\\', '%'], ['\\\\', '%chr(37)'], $text);
-        $text = str_replace('"', '%chr(34)', $text);
+        // The percent signs first: the functions the other escapes add have some.
+        $text = str_replace('%', '%chr(37)', $text);
+        $text = str_replace(['\\', '"'], ['\\\\%chr(8203)', '%chr(34)'], $text);
 
         return '"'.str_replace(["\r\n", "\r", "\n"], '\\n', $text).'"';
     }

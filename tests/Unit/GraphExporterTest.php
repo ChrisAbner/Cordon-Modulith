@@ -68,13 +68,13 @@ it('draws a C4 relationship per dependency with its number of references, in red
         '@startuml',
         '!include <C4/C4_Component>',
         'LAYOUT_LEFT_RIGHT()',
+        'AddRelTag("violation", $textColor="#d33", $lineColor="#d33")',
         'Container_Boundary(app, "Application") {',
         '    Component(m0, "Billing", "Module")',
         '    Component(m1, "Catalog", "Module")',
         '    Component(m2, "Shared", "Module")',
         '}',
-        'Rel(m0, m1, "4")',
-        'UpdateRelStyle(m0, m1, $textColor="#d33", $lineColor="#d33")',
+        'Rel(m0, m1, "4", $tags="violation")',
         'Rel(m0, m2, "1")',
         'Rel(m1, m0, "2")',
         '@enduml',
@@ -113,9 +113,9 @@ it('escapes quotes, backslashes, percent signs and newlines in a C4 string', fun
     $c4 = GraphExporter::c4($snapshot, []);
 
     expect($c4)
-        ->toContain('Component(m0, "Back\\\\slash", "Module")')
+        ->toContain('Component(m0, "Back\\\\%chr(8203)slash", "Module")')
         ->toContain('Component(m1, "My Module", "Module")')
-        ->toContain('Component(m2, "Say %chr(34)hi%chr(34)", "Module", "Line one\nline %chr(34)two%chr(34) C:\\\\temp 100%chr(37) %chr(37)chr(34)\nlast")');
+        ->toContain('Component(m2, "Say %chr(34)hi%chr(34)", "Module", "Line one\nline %chr(34)two%chr(34) C:\\\\%chr(8203)temp 100%chr(37) %chr(37)chr(34)\nlast")');
     // Nothing but the delimiters is left as a quote, and a statement is one line.
     foreach (explode("\n", $c4) as $line) {
         expect(substr_count($line, '"') % 2)->toBe(0);
@@ -136,6 +136,7 @@ it('draws a nested module inside a C4 boundary of its parent', function () {
         '@startuml',
         '!include <C4/C4_Component>',
         'LAYOUT_LEFT_RIGHT()',
+        'AddRelTag("violation", $textColor="#d33", $lineColor="#d33")',
         'Container_Boundary(app, "Application") {',
         '    Boundary(b0, "Billing") {',
         '        Component(m0, "Billing", "Module")',
@@ -145,8 +146,7 @@ it('draws a nested module inside a C4 boundary of its parent', function () {
         '    Component(m3, "Orders", "Module")',
         '}',
         'Rel(m1, m2, "2")',
-        'Rel(m3, m0, "1")',
-        'UpdateRelStyle(m3, m0, $textColor="#d33", $lineColor="#d33")',
+        'Rel(m3, m0, "1", $tags="violation")',
         '@enduml',
     ]).PHP_EOL);
 });
@@ -174,4 +174,56 @@ it('keeps only a module and its neighbours in C4 with a focus', function () {
         ->not->toContain('"C"')
         ->not->toContain('"D"')
         ->toContain('Rel(m0, m1, "1")');
+});
+
+it('tags only the relationships with violations, whatever their order', function () {
+    $snapshot = c4_snapshot([c4_module('A'), c4_module('B'), c4_module('C')], [['A', 'B'], ['B', 'C'], ['C', 'A']]);
+    $c4 = GraphExporter::c4($snapshot, [c4_violation('A', 'B'), c4_violation('C', 'A')]);
+
+    expect($c4)->toContain("\nRel(m0, m1, \"1\", \$tags=\"violation\")\nRel(m1, m2, \"1\")\nRel(m2, m0, \"1\", \$tags=\"violation\")\n")
+        ->and(substr_count($c4, 'AddRelTag('))->toBe(1)
+        ->and(strpos($c4, 'AddRelTag('))->toBeLessThan((int) strpos($c4, 'Rel(m0'))
+        ->and(str_contains($c4, 'UpdateRelStyle'))->toBeFalse();
+});
+
+it('defines no relationship tag when nothing has violations', function () {
+    $snapshot = c4_snapshot([c4_module('A'), c4_module('B')], [['A', 'B']]);
+
+    expect(GraphExporter::c4($snapshot, []))->not->toContain('AddRelTag')->not->toContain('$tags');
+});
+
+it('never lets a backslash form a sequence PlantUML interprets', function () {
+    $snapshot = c4_snapshot([c4_module('App\\tenant', ['description' => 'Uses App\\tenant and C:\\new\\table, ends with \\'])]);
+
+    expect(GraphExporter::c4($snapshot, []))
+        ->toContain('Component(m0, "App\\\\%chr(8203)tenant", "Module", "Uses App\\\\%chr(8203)tenant and C:\\\\%chr(8203)new\\\\%chr(8203)table, ends with \\\\%chr(8203)")');
+});
+
+it('draws three levels of nesting as boundaries inside boundaries', function () {
+    $snapshot = c4_snapshot([
+        c4_module('Billing'),
+        c4_module('Billing.Invoices', parent: 'Billing'),
+        c4_module('Billing.Invoices.Pdf', parent: 'Billing.Invoices'),
+        c4_module('Billing.Invoices.Mail', parent: 'Billing.Invoices'),
+        c4_module('Billing.Payments', parent: 'Billing'),
+    ], [['Billing.Invoices.Pdf', 'Billing.Invoices.Mail']]);
+
+    expect(GraphExporter::c4($snapshot, []))->toBe(implode(PHP_EOL, [
+        '@startuml',
+        '!include <C4/C4_Component>',
+        'LAYOUT_LEFT_RIGHT()',
+        'Container_Boundary(app, "Application") {',
+        '    Boundary(b0, "Billing") {',
+        '        Component(m0, "Billing", "Module")',
+        '        Boundary(b1, "Billing.Invoices") {',
+        '            Component(m1, "Billing.Invoices", "Module")',
+        '            Component(m2, "Billing.Invoices.Mail", "Module")',
+        '            Component(m3, "Billing.Invoices.Pdf", "Module")',
+        '        }',
+        '        Component(m4, "Billing.Payments", "Module")',
+        '    }',
+        '}',
+        'Rel(m3, m2, "1")',
+        '@enduml',
+    ]).PHP_EOL);
 });
