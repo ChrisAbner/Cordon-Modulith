@@ -214,7 +214,7 @@ Cordon Modulith reports nothing when a name could be something else, so turning 
 - A tag or type that does not parse is skipped, and so is the rest of that tag. Other tags of the same docblock still count. A broken docblock never fails an analysis.
 - Only docblocks (`/** */`) are read, not `//` or `/* */` comments, and a name inside free text (`@deprecated use Foo`) or in a tag that is not listed (`@see`, `@param-out`, `@phpstan-assert`) is not a reference.
 
-A class named in a type and in the code is two references (one of kind `use`, one of kind `docblock`), and `cordon:why` shows which is which. The setting is part of the [analysis cache](#cache) fingerprint, so changing it never reuses a cache written with the other value. The PHPStan rule reads the same key from `config/cordon.php`; to set it in `phpstan.neon` instead, use the `cordon.docblocks` parameter, which takes precedence (see [PHPStan](./phpstan)).
+A class named in a type and in the code is two references (one of kind `use`, one of kind `docblock`). The docblock one is reported at the line of the first use in code, so turning `docblocks` on does not move an existing violation and a `@cordon-ignore` on that line keeps working. A listener's event named in a docblock of that listener counts as the listener's reference, so `listeners.cycles` and `listeners.depends_on` apply to it too. The setting is part of the [analysis cache](#cache) fingerprint, so changing it never reuses a cache written with the other value. The PHPStan rule reads the same key from `config/cordon.php`; to set it in `phpstan.neon` instead, use the `cordon.docblocks` parameter, which takes precedence (see [PHPStan](./phpstan)).
 
 ## Using the config outside Laravel
 

@@ -75,12 +75,13 @@ function phpstan_findings(string $project): array
  * are matched by the file and line of their first reference, as PHPStan reports them.
  *
  * @param  array<string, array<string, mixed>>  $modules
+ * @param  array<string, bool>  $listeners
  * @return list<string>
  */
-function verify_findings(string $project, array $modules, bool $docblocks = false): array
+function verify_findings(string $project, array $modules, bool $docblocks = false, array $listeners = ['cycles' => true]): array
 {
     $map = (new NestedResolver(new NamespaceResolver($project.'/app/Modules', 'App\\Modules'), $modules))->resolve()->configure($modules);
-    $rules = RuleSet::fromConfig([], null, ['cycles' => true]);
+    $rules = RuleSet::fromConfig([], null, $listeners);
     $analyzer = new Analyzer(new PhpParserExtractor(docblocks: $docblocks), new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']), new PublicApiPolicy, $rules, RuleSet::severities([], $rules));
     $snapshot = $analyzer->snapshot($map);
 
@@ -160,6 +161,32 @@ it('takes docblocks from the cordon parameter of the extension too', function ()
 
     expect(phpstan_findings($on))->toBe(verify_findings($on, $modules, docblocks: true))->not->toBe([])
         ->and(phpstan_findings($off))->toBe([]);
+});
+
+it('treats a docblock mention of a listener event like the listener, as cordon:verify does', function (array $listeners) {
+    $modules = ['Billing' => ['depends_on' => []], 'Orders' => ['depends_on' => []]];
+    $on = parity_project('listeners-docblocks-app', $modules, ['docblocks' => true, 'listeners' => $listeners]);
+    $off = parity_project('listeners-docblocks-app', $modules, ['listeners' => $listeners]);
+
+    expect(phpstan_findings($on))->toBe(verify_findings($on, $modules, true, $listeners))
+        ->and(phpstan_findings($on))->toBe(phpstan_findings($off))
+        ->and(verify_findings($on, $modules, true, $listeners))->toBe(verify_findings($off, $modules, false, $listeners));
+})->with([
+    'default listener settings' => [['cycles' => false, 'depends_on' => true]],
+    'listeners do not count for depends_on' => [['cycles' => false, 'depends_on' => false]],
+    'listeners count for cycles' => [['cycles' => true, 'depends_on' => true]],
+    'listeners count for cycles only' => [['cycles' => true, 'depends_on' => false]],
+]);
+
+it('keeps the line of the code reference, and its @cordon-ignore, when the class is also in a docblock', function () {
+    $modules = ['Billing' => ['depends_on' => []]];
+    $on = parity_project('docblock-ignore-app', $modules, ['docblocks' => true]);
+    $findings = phpstan_findings($on);
+
+    expect($findings)->toBe(verify_findings($on, $modules, true))
+        ->and(array_values(array_filter($findings, fn (string $finding) => str_contains($finding, 'Reported.php'))))->each->toContain('Reported.php:14')
+        ->and(array_values(array_filter($findings, fn (string $finding) => str_contains($finding, 'Ignored.php'))))->toBe([])
+        ->and(array_values(array_filter($findings, fn (string $finding) => str_contains($finding, 'DocblockOnly.php'))))->each->toContain('DocblockOnly.php:10');
 });
 
 /**

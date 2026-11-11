@@ -278,7 +278,7 @@ final class ReferenceCollector extends NodeVisitorAbstract
         // rule that keeps the first reference of a module or class reports the line cordon:verify does.
         $references = $this->references;
 
-        foreach ($this->docblocks->references() as $docblock) {
+        foreach ($this->anchored($this->docblocks->references()) as $docblock) {
             $at = count($references);
 
             foreach ($references as $i => $reference) {
@@ -293,6 +293,41 @@ final class ReferenceCollector extends NodeVisitorAbstract
         }
 
         return $references;
+    }
+
+    /**
+     * A docblock reference follows the code it documents, so turning `docblocks` on adds
+     * dependencies without changing the ones already there:
+     * - the event a listener handles, named in a docblock of that listener, is the listener's
+     *   reference too (it does not close cycles or need depends_on when listeners do not count);
+     * - a class that the file also uses in code is reported at the line of its first use in code,
+     *   so a violation does not move and a @cordon-ignore on that line keeps matching.
+     * A class named only in docblocks keeps the line of its docblock.
+     *
+     * @param  list<Reference>  $docblocks
+     * @return list<Reference>
+     */
+    private function anchored(array $docblocks): array
+    {
+        $listened = [];
+        $first = [];
+
+        foreach ($this->references as $reference) {
+            $target = strtolower($reference->target);
+
+            if ($reference->kind === Reference::LISTENER) {
+                $listened[$reference->sourceClass.'|'.$target] = true;
+            }
+
+            $first[$target] = min($first[$target] ?? $reference->line, $reference->line);
+        }
+
+        return array_map(static function (Reference $docblock) use ($listened, $first): Reference {
+            $target = strtolower($docblock->target);
+            $kind = isset($listened[$docblock->sourceClass.'|'.$target]) ? Reference::LISTENER : $docblock->kind;
+
+            return new Reference($docblock->sourceFile, $docblock->sourceClass, $docblock->target, $first[$target] ?? $docblock->line, $kind, $docblock->relation, $docblock->signature);
+        }, $docblocks);
     }
 
     private function currentClass(): ?string

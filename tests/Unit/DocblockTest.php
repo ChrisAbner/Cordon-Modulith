@@ -414,3 +414,79 @@ it('keeps the kind and the line of a docblock reference in the cache format', fu
     'the docblock fixture' => fn () => fixture_path('edge-cases/Docblocks.php'),
     'a module class' => fn () => fixture_path('docblocks-app/app/Modules/Billing/Services/Invoicer.php'),
 ]);
+
+/**
+ * Analyse a copy of $fixture with the given rules, listener switches and layers.
+ *
+ * @param  array<string, mixed>  $modules
+ * @param  array<array-key, mixed>  $rules
+ * @param  array<string, bool>  $listeners
+ * @param  list<list<string>>  $layers
+ */
+function analyse_project_with_docblocks(string $root, array $modules, bool $docblocks, array $rules = [], array $listeners = [], array $layers = []): Result
+{
+    $built = RuleSet::fromConfig($rules, null, $listeners, $layers);
+    $analyzer = new Analyzer(new PhpParserExtractor(docblocks: $docblocks), new FileCollector, new PublicApiPolicy, $built, RuleSet::severities($rules, $built));
+
+    return $analyzer->analyze((new NamespaceResolver($root.'/app/Modules', 'App\\Modules'))->resolve()->configure($modules), $root);
+}
+
+/**
+ * "rule file:line message" of each violation and warning, sorted.
+ *
+ * @return list<string>
+ */
+function located_findings(Result $result): array
+{
+    $found = array_map(fn ($violation) => $violation->rule.' '.($violation->file === null ? '-' : basename($violation->file).':'.$violation->line).' '.$violation->message, [...$result->violations, ...$result->warnings]);
+    sort($found);
+
+    return $found;
+}
+
+it('treats a docblock mention of the event a listener handles like the listener reference', function (array $listeners) {
+    $project = temp_project('listeners-docblocks-app');
+    $modules = ['Billing' => ['depends_on' => []], 'Orders' => ['depends_on' => []]];
+    $rules = ['unused_dependency' => 'error'];
+    $layers = [['Orders'], ['Billing']];
+
+    $off = located_findings(analyse_project_with_docblocks($project, $modules, false, $rules, $listeners, $layers));
+    $on = located_findings(analyse_project_with_docblocks($project, $modules, true, $rules, $listeners, $layers));
+
+    expect($on)->toBe($off)
+        ->and(array_values(array_filter($on, fn (string $finding) => str_starts_with($finding, 'cycles') || str_starts_with($finding, 'layers'))))->toBe(array_values(array_filter($off, fn (string $finding) => str_starts_with($finding, 'cycles') || str_starts_with($finding, 'layers'))));
+})->with([
+    'default listener settings' => [[]],
+    'listeners count for depends_on only' => [['cycles' => false, 'depends_on' => true]],
+    'listeners count for cycles only' => [['cycles' => true, 'depends_on' => false]],
+    'listeners count for everything' => [['cycles' => true, 'depends_on' => true]],
+    'listeners count for nothing' => [['cycles' => false, 'depends_on' => false]],
+]);
+
+it('does not drop the docblock mention of an event in a class that does not listen to it', function () {
+    $code = "<?php\nnamespace App\\Modules\\Billing\\Services;\n\nfinal class Reporter\n{\n    /** @param \\App\\Modules\\Orders\\Events\\OrderPlaced \$event */\n    public function report(\$event): void {}\n}\n";
+
+    expect(docblock_code_targets($code))->toBe(['App\\Modules\\Orders\\Events\\OrderPlaced' => [6]]);
+});
+
+it('keeps the line of the first reference in code when the class is also named in a docblock', function () {
+    $project = temp_project('docblock-ignore-app');
+    $modules = ['Billing' => ['depends_on' => []]];
+    $off = analyse_project_with_docblocks($project, $modules, false);
+    $on = analyse_project_with_docblocks($project, $modules, true);
+
+    $withoutDocblockOnly = fn (array $found): array => array_values(array_filter($found, fn (string $finding) => ! str_contains($finding, 'DocblockOnly.php')));
+
+    expect($withoutDocblockOnly(located_findings($on)))->toBe(located_findings($off))
+        ->and(array_values(array_filter(located_findings($on), fn (string $finding) => str_contains($finding, 'Reported.php:'))))->each->toContain('Reported.php:14')
+        ->and($on->ignored)->toBe(2)
+        ->and($on->ignoreWarnings)->toBe([])
+        ->and(array_filter(located_findings($on), fn (string $finding) => str_contains($finding, 'Ignored.php')))->toBe([]);
+});
+
+it('reports a class named only in a docblock at the docblock line', function () {
+    $project = temp_project('docblock-ignore-app');
+    $found = located_findings(analyse_project_with_docblocks($project, ['Billing' => ['depends_on' => []]], true));
+
+    expect(array_values(array_filter($found, fn (string $finding) => str_contains($finding, 'DocblockOnly.php'))))->each->toContain('DocblockOnly.php:10');
+});
