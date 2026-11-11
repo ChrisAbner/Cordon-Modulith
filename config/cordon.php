@@ -176,10 +176,16 @@ return [
     | of a module inside these directories still belong to their module.
     | Set paths to [] to leave this code unchecked.
     |
+    | tests: folders with the tests of this code, relative to the project root,
+    |        for cordon:affected --tests (['tests/Feature']). A change in the
+    |        code outside the modules affects only itself, and it has no test
+    |        folder unless you list one.
+    |
     */
 
     'host' => [
         'paths' => ['app', 'routes', 'database'],
+        // 'tests' => ['tests/Feature'],
     ],
 
     /*

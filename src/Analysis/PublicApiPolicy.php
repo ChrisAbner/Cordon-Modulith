@@ -10,9 +10,12 @@ use Cordon\Module\ModuleMap;
 /**
  * Decides whether a class belongs to its module's public API.
  *
- * Precedence: #[Internal] > #[PublicApi] > open module > public namespaces
- * (global config, matched at any depth; module "public" list, anchored at the
- * module root) > internal by default.
+ * Precedence: a consumer nested in the module (it sees all of it) >
+ * #[Internal] > #[PublicApi] > open module > public namespaces (global
+ * config, matched at any depth; module "public" list, anchored at the module
+ * root) > internal by default. For a class of a nested module seen from
+ * outside its parent, the open setting and the public list of the parent
+ * decide instead of the nested module's own.
  *
  * Who asks matters for nested modules. A nested module may use any class of its
  * ancestors, internal ones included. Billing.Invoices exists only inside
