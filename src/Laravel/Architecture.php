@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel;
 
-use Cordon\Documentation\DocumentationGenerator;
-use Cordon\Documentation\EventInventory;
+use Cordon\Analysis\Analyzer;
 use Cordon\Documentation\GraphExporter;
 use Cordon\Support\ConfigValidator;
 use Illuminate\Container\Container;
@@ -49,22 +48,15 @@ final class Architecture
 
     /**
      * The Markdown files cordon:docs writes, by file name: README.md,
-     * modules/<Module>.md and events.md. Nothing is written to disk, and the
+     * modules/<Module>.md and events.md, exactly as the command writes them: nothing
+     * is written to disk, the code outside the modules is not analysed, and the
      * violations are the ones in the code, whatever the baseline says.
      *
      * @return array<string, string>
      */
     public static function docs(): array
     {
-        $verifier = self::verifier();
-        $snapshot = $verifier->snapshot();
-
-        return (new DocumentationGenerator)->generate(
-            $snapshot,
-            $verifier->check($snapshot, baseline: false)->violations,
-            EventInventory::build($snapshot),
-            $verifier->basePath(),
-        );
+        return ModuleDocs::files(self::verifier(), Container::getInstance()->make(Analyzer::class));
     }
 
     private static function verifier(): Verifier

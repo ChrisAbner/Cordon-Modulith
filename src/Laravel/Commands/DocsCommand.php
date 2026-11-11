@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Cordon\Laravel\Commands;
 
 use Cordon\Analysis\Analyzer;
-use Cordon\Documentation\DocumentationGenerator;
-use Cordon\Documentation\EventInventory;
+use Cordon\Laravel\ModuleDocs;
 use Cordon\Laravel\Verifier;
 use Cordon\Laravel\XdebugWarning;
 use Cordon\Support\Paths;
@@ -39,9 +38,7 @@ final class DocsCommand extends Command
         $output = $this->option('output');
         $directory = Paths::join($verifier->basePath(), is_string($output) && $output !== '' ? $output : 'docs/architecture');
 
-        $snapshot = $analyzer->snapshot($modules);
-        $result = $analyzer->check($snapshot, $verifier->basePath());
-        $files = (new DocumentationGenerator)->generate($snapshot, $result->violations, EventInventory::build($snapshot), $verifier->basePath());
+        $files = ModuleDocs::files($verifier, $analyzer);
 
         foreach ($files as $name => $contents) {
             $path = $directory.DIRECTORY_SEPARATOR.$name;
