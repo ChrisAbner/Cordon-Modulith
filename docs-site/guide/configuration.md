@@ -88,11 +88,14 @@ A module can contain modules of its own, as in Spring Modulith 1.3. List their f
 What changes for the rules:
 
 - **Outside the parent a child does not exist.** `Orders` sees `Billing` and its public API only. A class such as `Billing\Invoices\Contracts\InvoiceReader` is internal to `Orders` (relative to `Billing` it is `Invoices\Contracts\InvoiceReader`, and the public namespaces do not reach into a nested module) unless the public list of `Billing` names it (`'public' => ['Invoices\\Contracts']`), the class has `#[PublicApi]`, or `Billing` is open. `Orders` lists `Billing` in `depends_on`, never `Billing.Invoices`, which is a configuration error.
-- **Inside the parent the public API of each child applies.** `Billing` and its children, and the children between them, may only use each other's public API (`Contracts`, `#[PublicApi]`, the child's own `public` and `open`).
+- **Inside the parent the public API of each child applies.** `Billing` using its children, and the children between them, may only use each other's public API (`Contracts`, `#[PublicApi]`, the child's own `public` and `open`).
+- **A child may use anything of its ancestors.** `Billing.Invoices` can use an internal class of `Billing`, such as `Billing\Services\Money`, even one marked `#[Internal]`: the child belongs to the parent. The other way round, the parent using an internal class of a child, is still reported.
 - **`depends_on` of a child** names its siblings (`Billing.Payments`) and the modules outside `Billing`. A parent uses its children, and a child its parent, without declaring it. `unused_dependency` and `layers` look at the same visible modules.
 - **Cycles** are found between full names (`Billing.Invoices -> Billing.Payments -> Billing.Invoices`). A child using its parent is containment, not a dependency, so it never closes a cycle with the parent using the child.
 - `public_api_leak` checks every viewpoint: a public class of a child that exposes an internal one is reported whether it is public to its siblings or to the whole app through `Billing`'s public list.
 - `host_access` treats the code outside the modules like any other module outside the parent.
+
+`cordon:verify --module Billing` (and `violationsOf('Billing')` in the Pest helper) keeps the violations of `Billing.Invoices` and the other children too, since from outside they are part of `Billing`. `--module Billing.Invoices` keeps only its own.
 
 A project without `nested` behaves as before.
 

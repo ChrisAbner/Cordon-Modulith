@@ -16,10 +16,24 @@ use Cordon\Rules\CycleRule;
 final class ModuleFilter
 {
     /**
+     * From outside a module its nested modules are part of it, so selecting
+     * Billing keeps the violations of Billing.Invoices too.
+     *
      * @param  list<string>  $modules
      */
     public static function apply(Result $result, array $modules): Result
     {
+        foreach ($result->modules as $module) {
+            foreach ($modules as $name) {
+                $selected = $result->modules->get($name);
+
+                if ($selected !== null && $module->isNestedIn($selected)) {
+                    $modules[] = $module->name;
+                }
+            }
+        }
+
+        $modules = array_values(array_unique($modules));
         $involved = static fn (Violation $violation): bool => self::involvesAny($violation, $modules);
 
         return new Result(

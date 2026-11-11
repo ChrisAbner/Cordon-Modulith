@@ -14,7 +14,8 @@ use Cordon\Module\ModuleMap;
  * (global config, matched at any depth; module "public" list, anchored at the
  * module root) > internal by default.
  *
- * Who asks matters for nested modules: Billing.Invoices exists only inside
+ * Who asks matters for nested modules. A nested module may use any class of its
+ * ancestors, internal ones included. Billing.Invoices exists only inside
  * Billing, so the modules inside Billing see its public API, while any other
  * consumer sees its classes as classes of Billing, public only when #[PublicApi]
  * or the public list of Billing says so.
@@ -64,6 +65,11 @@ final readonly class PublicApiPolicy
      */
     private function decide(string $fqcn, Module $module, ?ClassDeclaration $declaration, ?Module $consumer): array
     {
+        // A nested module sees everything of its ancestors, internal classes included.
+        if ($consumer !== null && $consumer->isNestedIn($module)) {
+            return [true, sprintf('the consumer [%s] is nested in module [%s], which exposes all of it to its nested modules', $consumer->name, $module->name)];
+        }
+
         if ($declaration?->visibility === DeclaredVisibility::Internal) {
             return [false, 'it is marked #[Internal]'];
         }

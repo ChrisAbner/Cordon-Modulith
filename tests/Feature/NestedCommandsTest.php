@@ -76,3 +76,18 @@ it('sees a nested module through its parent in why and impact', function () {
 
     expect(Artisan::output())->toContain('Orders');
 });
+
+it('keeps the violations of the nested modules with --module of their parent', function () {
+    use_nested_app();
+
+    expect(Artisan::call('cordon:verify', ['--module' => ['Billing'], '--format' => 'json']))->toBe(1);
+    $sources = array_values(array_unique(array_column(json_decode(Artisan::output(), true)['violations'], 'source_module')));
+
+    sort($sources);
+
+    expect($sources)->toBe(['Billing', 'Billing.Invoices']);
+
+    Artisan::call('cordon:verify', ['--module' => ['Billing.Invoices'], '--format' => 'json']);
+
+    expect(array_unique(array_column(json_decode(Artisan::output(), true)['violations'], 'source_module')))->toBe(['Billing.Invoices']);
+});

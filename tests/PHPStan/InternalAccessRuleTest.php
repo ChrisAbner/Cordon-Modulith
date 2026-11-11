@@ -41,6 +41,19 @@ final class InternalAccessRuleTest extends RuleTestCase
         ]);
     }
 
+    public function test_a_nested_module_may_use_the_internals_of_its_parent_but_not_the_other_way_round(): void
+    {
+        $this->app = __DIR__.'/../Fixtures/nested-app';
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Invoices/Services/InvoiceTotals.php'], []);
+        $this->analyse([$this->app.'/app/Modules/Billing/Services/ReportBuilder.php'], [
+            ['Module [Billing] uses App\Modules\Billing\Invoices\Models\Invoice, which is internal to module [Billing.Invoices].', 9, self::TIP],
+        ]);
+        $this->analyse([$this->app.'/app/Modules/Billing/Invoices/Services/InvoiceService.php'], [
+            ['Module [Billing.Invoices] uses App\Modules\Billing\Payments\Models\Payment, which is internal to module [Billing.Payments].', 14, self::TIP],
+        ]);
+    }
+
     public function test_it_honours_cordon_ignore_comments(): void
     {
         $this->app = __DIR__.'/../Fixtures/ignore-app';

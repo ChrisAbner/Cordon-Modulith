@@ -4,6 +4,7 @@ use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\ClassDeclaration;
 use Cordon\Analysis\DeclaredVisibility;
 use Cordon\Analysis\FileCollector;
+use Cordon\Analysis\ModuleFilter;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Result;
@@ -207,7 +208,7 @@ it('does not change the policy for modules that are not nested', function () {
     $policy = new PublicApiPolicy;
     $class = 'App\\Modules\\Billing\\Contracts\\BillingGateway';
 
-    foreach ([null, $modules->get('Orders'), Module::host(), $modules->get('Billing.Invoices')] as $consumer) {
+    foreach ([null, $modules->get('Orders'), Module::host()] as $consumer) {
         expect($policy->isPublic($class, $modules->get('Billing'), null, $consumer))->toBeTrue()
             ->and($policy->isPublic('App\\Modules\\Billing\\Services\\BillingService', $modules->get('Billing'), null, $consumer))->toBeFalse();
     }
@@ -224,6 +225,28 @@ it('applies the public API of a nested module between siblings, parent and child
         'Orders -> Billing.Invoices OrderService.php App\\Modules\\Billing\\Invoices\\Contracts\\InvoiceReader',
         'Orders -> Billing.Payments OrderService.php App\\Modules\\Billing\\Payments\\Models\\Payment',
     ]);
+});
+
+it('lets a nested module use any class of its parent, internal ones included', function () {
+    $modules = nested_modules();
+    $policy = new PublicApiPolicy([], $modules);
+    $money = 'App\\Modules\\Billing\\Services\\Money';
+    $billing = $modules->get('Billing');
+
+    expect($policy->isPublic($money, $billing, null, $modules->get('Billing.Invoices')))->toBeTrue()
+        ->and($policy->isPublic($money, $billing, new ClassDeclaration($money, '/f', 1, DeclaredVisibility::Internal), $modules->get('Billing.Payments')))->toBeTrue()
+        ->and($policy->isPublic($money, $billing, null, $modules->get('Orders')))->toBeFalse()
+        ->and($policy->isPublic('App\\Modules\\Billing\\Invoices\\Models\\Invoice', $modules->get('Billing.Invoices'), null, $billing))->toBeFalse();
+});
+
+it('does not report a nested module using an internal class of its parent, but still the other directions', function () {
+    $result = analyse_nested_app(rules: ['public_api_leak' => 'off']);
+    $internal = nested_findings($result->violations, 'internal_access');
+
+    expect(array_filter($internal, fn (string $finding) => str_contains($finding, 'InvoiceTotals')))->toBe([])
+        // parent -> child and sibling -> sibling internals are still violations
+        ->and($internal)->toContain('Billing -> Billing.Invoices ReportBuilder.php App\\Modules\\Billing\\Invoices\\Models\\Invoice')
+        ->and($internal)->toContain('Billing.Invoices -> Billing.Payments InvoiceService.php App\\Modules\\Billing\\Payments\\Models\\Payment');
 });
 
 it('exposes a nested class to the outside through the public list of the parent', function () {
@@ -384,6 +407,21 @@ it('keys the baseline entries with the full name of the nested module', function
     [$new] = $baseline->filter($result->violations, $result->basePath);
 
     expect($new)->toBe([]);
+});
+
+it('keeps the violations of the nested modules when selecting their parent with --module', function () {
+    $result = analyse_nested_app(rules: ['public_api_leak' => 'off']);
+    $sources = function (Result $r) {
+        $names = array_values(array_unique(array_map(fn (Violation $v) => (string) $v->sourceModule, $r->violations)));
+        sort($names);
+
+        return $names;
+    };
+
+    expect($sources(ModuleFilter::apply($result, ['Billing'])))->toBe(['Billing', 'Billing.Invoices'])
+        ->and($sources(ModuleFilter::apply($result, ['Billing.Invoices'])))->toBe(['Billing.Invoices'])
+        ->and($sources(ModuleFilter::apply($result, ['Orders'])))->toBe(['Orders'])
+        ->and(ModuleFilter::apply($result, ['Billing'])->checkedModules)->toBe(['Billing', 'Billing.Invoices', 'Billing.Payments']);
 });
 
 it('gives a project without nested the same result as before', function () {
