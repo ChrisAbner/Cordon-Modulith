@@ -107,13 +107,14 @@ final class AnalysisCache
      */
     public function save(): void
     {
-        $entries = $this->entries();
+        // Files are extracted in the order the analyzer visits them (modules, then host paths) and stored sorted.
+        ksort($this->used);
+        $stored = $this->entries();
+        ksort($stored);
 
-        if (! $this->replace && ! $this->changed && array_keys($entries) === array_keys($this->used)) {
+        if (! $this->replace && ! $this->changed && array_keys($stored) === array_keys($this->used)) {
             return;
         }
-
-        ksort($this->used);
 
         try {
             $json = json_encode(['version' => self::VERSION, 'fingerprint' => $this->fingerprint, 'files' => $this->used], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

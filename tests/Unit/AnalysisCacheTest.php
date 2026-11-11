@@ -35,14 +35,16 @@ function spy_extractor(): DependencyExtractor
 /**
  * Analyse $project through a cache file, as cordon:verify does: the cache is saved afterwards.
  *
+ * @param  list<string>  $hostPaths
  * @return array{0: Result, 1: CachedExtractor}
  */
-function analyse_cached(string $project, string $cacheFile, DependencyExtractor $spy, ?string $fingerprint = null): array
+function analyse_cached(string $project, string $cacheFile, DependencyExtractor $spy, ?string $fingerprint = null, array $hostPaths = []): array
 {
     $extractor = new CachedExtractor($spy, new AnalysisCache($cacheFile, $project, $fingerprint ?? AnalysisCache::fingerprint()));
     $result = analyzer_with($extractor)->analyze(
         (new NamespaceResolver($project.'/app/Modules', 'App\\Modules'))->resolve()->configure(['Shared' => ['open' => true]]),
         $project,
+        $hostPaths,
     );
     $extractor->save();
 
@@ -290,6 +292,24 @@ it('does not rewrite a cache that nothing changed', function () {
     clearstatcache();
 
     expect(filemtime($cacheFile))->toBe(1_000_000);
+});
+
+it('does not rewrite a cache that nothing changed when host files are analysed too', function () {
+    $project = temp_project('namespace-app');
+    $cacheFile = $project.'/storage/cordon.json';
+    // Sorts before app/Modules/..., but the analyzer extracts the module files first.
+    mkdir($project.'/app/Http');
+    file_put_contents($project.'/app/Http/Controller.php', "<?php\n\nnamespace App\\Http;\n\nnew \\App\\Modules\\Billing\\Services\\CheckoutService;\n");
+    analyse_cached($project, $cacheFile, spy_extractor(), hostPaths: [$project.'/app']);
+    touch($cacheFile, 1_000_000);
+
+    [, $extractor] = analyse_cached($project, $cacheFile, $spy = spy_extractor(), hostPaths: [$project.'/app']);
+    clearstatcache();
+
+    expect($spy->calls)->toBe([])
+        ->and(cached_files($cacheFile))->toContain('app/Http/Controller.php')
+        ->and(filemtime($cacheFile))->toBe(1_000_000)
+        ->and($extractor->warnings())->toBe([]);
 });
 
 it('writes the cache atomically and leaves no temporary file', function () {
