@@ -7,6 +7,7 @@ namespace Cordon\Documentation;
 use Cordon\Analysis\Edge;
 use Cordon\Analysis\Reference;
 use Cordon\Analysis\Violation;
+use Cordon\Module\ModuleMap;
 
 /**
  * The module graph, for cordon:graph (Mermaid, DOT, JSON: labels count
@@ -96,15 +97,20 @@ final class GraphExporter
      * @param  list<string>  $modules
      * @param  list<Edge>  $edges
      * @param  list<Violation>  $violations
+     * The arrows are the raw edges: Orders points at Billing.Invoices when it
+     * uses a class of it, while the rules see Billing there. Only the
+     * interfaces of an arrow are looked up through the module the source sees
+     * ($map, to resolve it: without it the target itself).
+     *
      * @return array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int, interfaces?: list<string>}>}
      */
-    public static function model(array $modules, array $edges, array $violations, ?string $focus = null): array
+    public static function model(array $modules, array $edges, array $violations, ?string $focus = null, ?ModuleMap $map = null): array
     {
         $pairs = [];
 
         foreach ($edges as $edge) {
             $key = $edge->from->name.'|'.$edge->to->name;
-            $pairs[$key] ??= ['from' => $edge->from->name, 'to' => $edge->to->name, 'references' => 0, 'kinds' => [], 'violations' => 0, 'interfaces' => self::declaredInterfaces($edge)];
+            $pairs[$key] ??= ['from' => $edge->from->name, 'to' => $edge->to->name, 'references' => 0, 'kinds' => [], 'violations' => 0, 'interfaces' => self::declaredInterfaces($edge, $map)];
             $pairs[$key]['references']++;
             $pairs[$key]['kinds'][$edge->reference->kind] = true;
         }
@@ -217,33 +223,26 @@ final class GraphExporter
 
     /**
      * The named interfaces ("Catalog::Pricing") the source module lists for
-     * the target of an edge, when it does not also list the whole module.
-     * Outside a parent a nested module is seen as the parent, so its parent's
-     * entries are looked up too.
+     * the target of an edge, when it does not also list the whole module. The
+     * target is the module the source sees, as in the rules: outside a parent
+     * a nested module is the parent, so the parent's entries apply, and
+     * inside it the entries of the nested module itself do.
      *
      * @return list<string>
      */
-    private static function declaredInterfaces(Edge $edge): array
+    private static function declaredInterfaces(Edge $edge, ?ModuleMap $map): array
     {
         if ($edge->from->dependsOn === null) {
             return [];
         }
 
-        $parts = explode('.', $edge->to->name);
+        $name = $map?->visible($edge->to, $edge->from)->name ?? $edge->to->name;
 
-        for ($length = count($parts); $length >= 1; $length--) {
-            $name = implode('.', array_slice($parts, 0, $length));
-
-            if ($edge->from->declaresWhole($name)) {
-                return [];
-            }
-
-            if (($interfaces = $edge->from->declaredInterfaces($name)) !== []) {
-                return array_map(static fn (string $interface): string => $name.'::'.$interface, $interfaces);
-            }
+        if ($edge->from->declaresWhole($name)) {
+            return [];
         }
 
-        return [];
+        return array_map(static fn (string $interface): string => $name.'::'.$interface, $edge->from->declaredInterfaces($name));
     }
 
     /**

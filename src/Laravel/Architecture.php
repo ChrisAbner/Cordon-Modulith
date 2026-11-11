@@ -43,6 +43,7 @@ final class Architecture
             $snapshot->context->edges,
             $verifier->check($snapshot)->violations,
             $module,
+            $verifier->modules(),
         ));
     }
 

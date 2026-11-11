@@ -78,4 +78,6 @@ php artisan cordon:graph --module=Billing # Billing and its neighbours only
 
 Each arrow is a dependency labelled with its number of references, the same number in the three formats. Dependencies with violations (after the baseline) are red, and a dependency made only of listeners is dotted in Mermaid and dashed in DOT. The JSON lists `modules`, and per dependency `from`, `to`, `references`, `kinds` (`use`, `listener`, and `docblock` with [`docblocks`](./configuration#docblocks) on) and `violations`.
 
+The graph draws the edges as they are in the code, so with [nested modules](./configuration#nested-modules) `Orders` points at `Billing.Invoices` when it uses a class of it, while the rules (and `cordon:impact` and `cordon:affected`) see `Billing` there. The interfaces on an arrow (`Billing::Api`) are the ones the rules apply to it: a dependency between two nested modules of the same parent ignores the interfaces declared on the parent.
+
 The diagrams of `cordon:docs` differ on purpose: their labels count the classes used, as the tables next to them list, and only `internal_access` makes an arrow red.

@@ -407,6 +407,27 @@ it('leaves the arrows of whole-module dependencies as they were', function () {
         ->and(GraphExporter::flowchart($model))->toContain('-->|'.$model['edges'][0]['references'].'|');
 });
 
+it('labels an arrow with the interfaces the rules apply: a sibling edge ignores the ones declared on the parent', function () {
+    $config = [
+        'Billing' => ['nested' => ['Invoices', 'Payments'], 'public' => ['Contracts', 'Invoices\\Contracts', 'Payments\\Contracts'], 'interfaces' => ['Api' => ['Contracts\\BillingGateway']]],
+        'Billing.Invoices' => ['depends_on' => ['Billing::Api']],
+        'Orders' => ['depends_on' => ['Billing::Api']],
+    ];
+    $modules = (new NestedResolver(new NamespaceResolver(fixture_path('nested-app/app/Modules'), 'App\\Modules'), $config))->resolve()->configure($config);
+    $built = RuleSet::fromConfig([]);
+    $edges = (new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $built))->snapshot($modules)->context->edges;
+    $model = GraphExporter::model($modules->names(), $edges, [], null, $modules);
+    $labels = [];
+
+    foreach ($model['edges'] as $edge) {
+        $labels[$edge['from'].' -> '.$edge['to']] = $edge['interfaces'] ?? null;
+    }
+
+    // Invoices uses its sibling Payments: Billing::Api says nothing about it. Orders sees Billing.Payments as Billing.
+    expect($labels['Billing.Invoices -> Billing.Payments'])->toBeNull()
+        ->and($labels['Orders -> Billing.Payments'])->toBe(['Billing::Api']);
+});
+
 it('keeps Module free of interfaces by default', function () {
     expect(Module::make('Billing', 'App\\Billing', '/p')->interfaces)->toBe([])
         ->and(Module::make('Billing', 'App\\Billing', '/p')->withConfig(['interfaces' => ['A' => ['X'], 'B' => [3, 'Y\\*'], 'C' => 'no', 4 => ['Z']]])->interfaces)->toBe(['A' => ['X'], 'B' => ['Y\\*'], '4' => ['Z']]);
