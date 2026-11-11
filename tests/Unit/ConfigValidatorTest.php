@@ -45,7 +45,7 @@ it('leaves the suggestion out when no key is close', function () {
 
 it('rejects an unknown module key', function () {
     expect(config_errors(['modules' => ['Billing' => ['depend_on' => ['Catalog']]]]))->toBe([
-        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, metadata.',
+        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, metadata.',
     ]);
 });
 

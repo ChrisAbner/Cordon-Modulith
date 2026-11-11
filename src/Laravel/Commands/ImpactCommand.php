@@ -35,8 +35,12 @@ final class ImpactCommand extends Command
 
         $dependents = [];
 
-        foreach ($verifier->snapshot()->context->edges as $edge) {
-            $dependents[$edge->to->name][$edge->from->name] = true;
+        $snapshot = $verifier->snapshot();
+
+        foreach ($snapshot->context->edges as $edge) {
+            if (! $edge->from->isNestedIn($edge->to)) {
+                $dependents[$snapshot->context->modules->visible($edge->to, $edge->from)->name][$edge->from->name] = true;
+            }
         }
 
         // Breadth first from the module, along "is depended on by".

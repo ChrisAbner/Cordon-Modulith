@@ -36,7 +36,7 @@
         "psr-4": {
             "Cordon\\Tests\\": "tests/"
         },
-        "classmap": ["tests/Fixtures/namespace-app/app"]
+        "classmap": ["tests/Fixtures/namespace-app/app", "tests/Fixtures/nested-app/app"]
     },
     "bin": ["bin/cordon"],
     "extra": {

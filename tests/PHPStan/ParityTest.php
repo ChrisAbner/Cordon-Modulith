@@ -7,6 +7,7 @@ use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Violation;
 use Cordon\Laravel\ResolverFactory;
 use Cordon\Resolvers\NamespaceResolver;
+use Cordon\Resolvers\NestedResolver;
 use Cordon\Rules\RuleSet;
 use Cordon\Tests\Oracle\Temp;
 use Illuminate\Config\Repository;
@@ -75,9 +76,9 @@ function phpstan_findings(string $project): array
  */
 function verify_findings(string $project, array $modules): array
 {
-    $map = (new NamespaceResolver($project.'/app/Modules', 'App\\Modules'))->resolve()->configure($modules);
+    $map = (new NestedResolver(new NamespaceResolver($project.'/app/Modules', 'App\\Modules'), $modules))->resolve()->configure($modules);
     $rules = RuleSet::fromConfig([], null, ['cycles' => true]);
-    $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']), new PublicApiPolicy, $rules);
+    $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']), new PublicApiPolicy, $rules, RuleSet::severities([], $rules));
     $snapshot = $analyzer->snapshot($map);
 
     $first = [];
@@ -111,9 +112,9 @@ function verify_findings(string $project, array $modules): array
 function parity_target(string $message): string
 {
     return match (true) {
-        (bool) preg_match('/^Module \[\w+\] uses (\S+), which/', $message, $m) => $m[1],
-        (bool) preg_match('/^Module \[\w+\] depends on module \[(\w+)\]/', $message, $m) => $m[1],
-        (bool) preg_match('/^Module (\w+) depends on (\w+), which closes/', $message, $m) => $m[1].' -> '.$m[2],
+        (bool) preg_match('/^Module \[[\w.]+\] uses (\S+), which/', $message, $m) => $m[1],
+        (bool) preg_match('/^Module \[[\w.]+\] depends on module \[([\w.]+)\]/', $message, $m) => $m[1],
+        (bool) preg_match('/^Module ([\w.]+) depends on ([\w.]+), which closes/', $message, $m) => $m[1].' -> '.$m[2],
         default => $message,
     };
 }
@@ -125,6 +126,7 @@ it('reports in PHPStan what cordon:verify reports', function (string $fixture, a
 })->with([
     'namespace app' => ['namespace-app', ['Shared' => ['open' => true], 'Catalog' => ['depends_on' => []]]],
     'listeners app' => ['listeners-app', ['Billing' => ['depends_on' => []]]],
+    'nested app' => ['nested-app', ['Billing' => ['nested' => ['Invoices', 'Payments']], 'Orders' => ['depends_on' => []], 'Billing.Invoices' => ['depends_on' => []]]],
 ]);
 
 /**

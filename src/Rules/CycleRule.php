@@ -55,7 +55,12 @@ final class CycleRule implements Rule
                 continue;
             }
 
-            $targets[$edge->from->name][$edge->to->name] = true;
+            // A nested module's use of its parent is containment, not a dependency; a parent's use of its children is one.
+            if ($edge->from->isNestedIn($edge->to)) {
+                continue;
+            }
+
+            $targets[$edge->from->name][$context->modules->visible($edge->to, $edge->from)->name] = true;
         }
 
         $graph = [];

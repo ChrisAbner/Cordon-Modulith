@@ -65,9 +65,36 @@ Per-module settings, keyed by module name as shown by `cordon:modules`:
 | `public` | Extra public namespaces or classes, relative to the module namespace. |
 | `open` | Every class of the module is public. |
 | `strict` | `true` keeps the module's violations out of the baseline: they always fail, and `--generate-baseline` does not record them. For a module that is clean and must stay clean. |
+| `nested` | Modules inside this one: a list of folders directly under the module (`['Invoices', 'Payments']`), or `true` for every folder that is not a public namespace. See [nested modules](#nested-modules). |
 | `metadata` | Free-form information about the module: `cordon:docs` shows its `description` and `owner`. |
 
 In `depends_on`, `Module::Interface` is reserved for named interfaces in a later version.
+
+## Nested modules
+
+A module can contain modules of its own, as in Spring Modulith 1.3. List their folders in `nested`:
+
+```php
+'modules' => [
+    'Billing' => ['nested' => ['Invoices', 'Payments']],   // or true: every folder that is not Contracts, Events, Data...
+    'Billing.Payments' => ['depends_on' => []],
+    'Billing.Invoices' => ['depends_on' => ['Billing.Payments']],
+    'Orders' => ['depends_on' => ['Billing']],
+],
+```
+
+`app/Modules/Billing/Invoices` becomes the module `Billing.Invoices` (the dot separates it from its parent), with the namespace `App\Modules\Billing\Invoices`. Its settings go under that full name, and so do its entries in the baseline, the reports and `cordon:modules`, which lists it under `Billing`. A nested module can have nested modules too. With the nwidart and InterNACHI resolvers the folders are those of the namespace root (`app/` and `src/`). A folder with a dot in its name cannot be nested: `nested` rejects it, and `nested => true` leaves it out.
+
+What changes for the rules:
+
+- **Outside the parent a child does not exist.** `Orders` sees `Billing` and its public API only. A class such as `Billing\Invoices\Contracts\InvoiceReader` is internal to `Orders` (relative to `Billing` it is `Invoices\Contracts\InvoiceReader`, and the public namespaces do not reach into a nested module) unless the public list of `Billing` names it (`'public' => ['Invoices\\Contracts']`), the class has `#[PublicApi]`, or `Billing` is open. `Orders` lists `Billing` in `depends_on`, never `Billing.Invoices`, which is a configuration error.
+- **Inside the parent the public API of each child applies.** `Billing` and its children, and the children between them, may only use each other's public API (`Contracts`, `#[PublicApi]`, the child's own `public` and `open`).
+- **`depends_on` of a child** names its siblings (`Billing.Payments`) and the modules outside `Billing`. A parent uses its children, and a child its parent, without declaring it. `unused_dependency` and `layers` look at the same visible modules.
+- **Cycles** are found between full names (`Billing.Invoices -> Billing.Payments -> Billing.Invoices`). A child using its parent is containment, not a dependency, so it never closes a cycle with the parent using the child.
+- `public_api_leak` checks every viewpoint: a public class of a child that exposes an internal one is reported whether it is public to its siblings or to the whole app through `Billing`'s public list.
+- `host_access` treats the code outside the modules like any other module outside the parent.
+
+A project without `nested` behaves as before.
 
 ## rules
 
@@ -109,7 +136,7 @@ How a listener's reference to another module's event counts. See [what counts as
 `cordon:verify` checks the whole file before it analyses anything. Unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rules stop it with exit code `2`, and name the closest valid key:
 
 ```text
-Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, metadata.
+Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, metadata.
 ```
 
 `cordon:modules` shows the same messages as warnings, and the PHPStan rule reports them once as `cordon.configuration`.

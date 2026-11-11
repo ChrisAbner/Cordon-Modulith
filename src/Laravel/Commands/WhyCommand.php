@@ -44,7 +44,7 @@ final class WhyCommand extends Command
         $references = [];
 
         foreach ($snapshot->context->edges as $edge) {
-            if ($edge->from->name === $from->name && $edge->to->name === $to->name) {
+            if ($edge->from->name === $from->name && $snapshot->context->modules->visible($edge->to, $edge->from)->name === $to->name) {
                 $references[] = [
                     'file' => Paths::relative($verifier->basePath(), $edge->reference->sourceFile),
                     'line' => $edge->reference->line,

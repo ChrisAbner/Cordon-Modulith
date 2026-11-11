@@ -63,6 +63,11 @@ return [
     |             dependency is reported. Omit it to leave dependencies open.
     | public:     extra namespaces or classes (relative) exposed as public API.
     | open:       every class is public (useful for a shared kernel module).
+    | nested:     modules inside this one: folders directly under it
+    |             (['Invoices', 'Payments']) or true for every folder that is not
+    |             a public namespace. They are named Parent.Child (Billing.Invoices)
+    |             and configured under that name; outside the parent only its
+    |             public API exists.
     | metadata:   free-form information about the module (owner, description...).
     |             Cordon does not read it yet; the key is reserved for it.
     |

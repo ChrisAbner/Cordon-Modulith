@@ -92,7 +92,7 @@ final class InternalAccessRule implements Rule
                 continue;
             }
 
-            if ($this->context->policy()->isPublic($target, $to, $this->context->declaration($target))) {
+            if ($this->context->policy()->isPublic($target, $to, $this->context->declaration($target), $from)) {
                 continue;
             }
 

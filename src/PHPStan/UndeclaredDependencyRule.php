@@ -61,12 +61,19 @@ final class UndeclaredDependencyRule implements Rule
         $violations = [];
 
         foreach ($collector->references() as $reference) {
-            $to = $this->context->modules()->forClass($reference->target);
+            $target = $this->context->modules()->forClass($reference->target);
+
+            if ($target === null || $target->name === $from->name) {
+                continue;
+            }
+
+            // A nested module exists only inside its parent: from outside, the dependency is on the parent.
+            $to = $this->context->modules()->visible($target, $from);
 
             // One violation per file and module, like cordon:verify, so the baseline keys match.
-            if ($to === null
-                || $to->name === $from->name
-                || in_array($to->name, $from->dependsOn, true)
+            if (in_array($to->name, $from->dependsOn, true)
+                || $to->isNestedIn($from)
+                || $from->isNestedIn($to)
                 || isset($violations[$to->name])
                 || ($reference->kind === Reference::LISTENER && ! $countListeners)) {
                 continue;

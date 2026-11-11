@@ -13,6 +13,9 @@ use Cordon\Module\ModuleMap;
  */
 final readonly class AnalysisContext
 {
+    /** The policy, aware of these modules: it needs them to tell what a nested module exposes. */
+    public PublicApiPolicy $policy;
+
     /**
      * @param  list<Edge>  $edges  Cross-module references only.
      * @param  array<string, string>  $parseErrors  Files that could not be parsed (file => message): their references are missing from $edges.
@@ -22,10 +25,12 @@ final readonly class AnalysisContext
     public function __construct(
         public ModuleMap $modules,
         public SymbolTable $symbols,
-        public PublicApiPolicy $policy,
+        PublicApiPolicy $policy,
         public array $edges,
         public array $parseErrors = [],
         public array $hostEdges = [],
         public array $signatures = [],
-    ) {}
+    ) {
+        $this->policy = $policy->withModules($modules);
+    }
 }

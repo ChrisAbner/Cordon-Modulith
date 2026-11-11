@@ -14,6 +14,7 @@ final readonly class Module
      * @param  list<string>  $publicApi  Extra namespaces or classes, relative to the module namespace, exposed as public API.
      * @param  array<array-key, mixed>  $metadata  Free-form information from config/cordon.php (description, owner...).
      * @param  bool  $strict  Its violations never enter the baseline: a clean module stays clean.
+     * @param  string|null  $parent  The name of the module this one is nested in; null for a top-level module. A nested module is named "Parent.Child".
      */
     public function __construct(
         public string $name,
@@ -24,6 +25,7 @@ final readonly class Module
         public bool $open = false,
         public array $metadata = [],
         public bool $strict = false,
+        public ?string $parent = null,
     ) {}
 
     /** The name of the code outside the modules (host.paths in config/cordon.php). */
@@ -38,9 +40,17 @@ final readonly class Module
         return new self(self::HOST, '', '');
     }
 
-    public static function make(string $name, string $namespace, string $path): self
+    public static function make(string $name, string $namespace, string $path, ?string $parent = null): self
     {
-        return new self($name, trim($namespace, '\\'), rtrim($path, '/\\'));
+        return new self($name, trim($namespace, '\\'), rtrim($path, '/\\'), parent: $parent);
+    }
+
+    /**
+     * Whether this module is nested, at any depth, in $other ("Billing.Invoices" is nested in "Billing").
+     */
+    public function isNestedIn(self $other): bool
+    {
+        return $this->parent !== null && str_starts_with($this->name, $other->name.'.');
     }
 
     public function ownsClass(string $fqcn): bool
@@ -90,6 +100,7 @@ final readonly class Module
             (bool) ($config['open'] ?? $this->open),
             is_array($config['metadata'] ?? null) ? $config['metadata'] : $this->metadata,
             is_bool($config['strict'] ?? null) ? $config['strict'] : $this->strict,
+            $this->parent,
         );
     }
 }

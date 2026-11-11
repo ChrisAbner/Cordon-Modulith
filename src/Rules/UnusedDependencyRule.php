@@ -35,7 +35,7 @@ final class UnusedDependencyRule implements Rule
 
         foreach ($context->edges as $edge) {
             if (! $edge->isListener() || $this->countListeners) {
-                $used[$edge->from->name][$edge->to->name] = true;
+                $used[$edge->from->name][$context->modules->visible($edge->to, $edge->from)->name] = true;
             }
         }
 
@@ -64,7 +64,7 @@ final class UnusedDependencyRule implements Rule
     private function hasParseErrors(Module $module, AnalysisContext $context): bool
     {
         foreach (array_keys($context->parseErrors) as $file) {
-            if ($module->ownsPath($file)) {
+            if ($module->ownsPath($file) && $context->modules->forPath($file)?->name === $module->name) {
                 return true;
             }
         }

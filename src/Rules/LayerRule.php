@@ -46,12 +46,14 @@ final class LayerRule implements Rule
         $reported = [];
 
         foreach ($context->edges as $edge) {
+            $target = $context->modules->visible($edge->to, $edge->from);
             $from = $this->layerOf[$edge->from->name] ?? null;
-            $to = $this->layerOf[$edge->to->name] ?? null;
-            $target = $edge->reference->target;
-            $key = $edge->reference->sourceFile.'|'.strtolower($target);
+            $to = $this->layerOf[$target->name] ?? null;
+            $class = $edge->reference->target;
+            $key = $edge->reference->sourceFile.'|'.strtolower($class);
 
-            if ($from === null || $to === null || $to >= $from || isset($reported[$key]) || ($edge->isListener() && ! $this->countListeners)) {
+            if ($from === null || $to === null || $to >= $from || isset($reported[$key]) || ($edge->isListener() && ! $this->countListeners)
+                || $edge->from->isNestedIn($target) || $target->isNestedIn($edge->from)) {
                 continue;
             }
 
@@ -59,12 +61,12 @@ final class LayerRule implements Rule
 
             yield new Violation(
                 self::ID,
-                sprintf('Module [%s] (layer %d) depends on [%s] (layer %d) through %s; a layer may only depend on the layers below it.', $edge->from->name, $from, $edge->to->name, $to, $target),
+                sprintf('Module [%s] (layer %d) depends on [%s] (layer %d) through %s; a layer may only depend on the layers below it.', $edge->from->name, $from, $target->name, $to, $class),
                 $edge->reference->sourceFile,
                 $edge->reference->line,
                 $edge->from->name,
-                $edge->to->name,
-                $target,
+                $target->name,
+                $class,
             );
         }
     }

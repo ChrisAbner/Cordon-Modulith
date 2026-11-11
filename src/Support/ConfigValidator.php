@@ -21,7 +21,7 @@ final class ConfigValidator
 
     private const HOST_KEYS = ['paths'];
 
-    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'metadata'];
+    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'metadata'];
 
     private const LISTENER_KEYS = ['cycles', 'depends_on'];
 
@@ -167,6 +167,8 @@ final class ConfigValidator
                 $errors[] = sprintf('Module [%s] depends on [%s]: the Module::Interface syntax is reserved for named interfaces in a later version.', $name, $dependency);
             } elseif (! $modules->has($dependency)) {
                 $errors[] = sprintf('Module [%s] declares a dependency on unknown module [%s].', $name, $dependency).self::didYouMean($dependency, $modules->names());
+            } elseif (($hidden = self::hiddenBehind($modules, $name, $dependency)) !== null) {
+                $errors[] = sprintf('Module [%s] depends on [%s], which is nested in [%s] and so invisible outside it. Depend on [%s] instead.', $name, $dependency, $hidden, $hidden);
             }
         }
 
@@ -186,7 +188,75 @@ final class ConfigValidator
             $errors[] = sprintf('Module [%s]: metadata must be an array.', $name);
         }
 
+        if (array_key_exists('nested', $settings)) {
+            array_push($errors, ...self::nestedErrors($name, $settings['nested'], $modules));
+        }
+
         return $errors;
+    }
+
+    /**
+     * The module that hides $dependency from $name: the one $dependency is
+     * nested in that does not contain $name. Null when $name can see it.
+     */
+    private static function hiddenBehind(ModuleMap $modules, string $name, string $dependency): ?string
+    {
+        $consumer = $modules->get($name);
+        $target = $modules->get($dependency);
+
+        if ($consumer === null || $target === null) {
+            return null;
+        }
+
+        $visible = $modules->visible($target, $consumer);
+
+        return $visible->name === $target->name ? null : $visible->name;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function nestedErrors(string $name, mixed $nested, ModuleMap $modules): array
+    {
+        if (is_bool($nested)) {
+            return [];
+        }
+
+        if (! is_array($nested) || ! array_is_list($nested) || array_filter($nested, static fn (mixed $folder): bool => ! is_string($folder)) !== []) {
+            return [sprintf('Module [%s]: nested must be true or a list of folder names.', $name)];
+        }
+
+        $errors = [];
+
+        foreach ($nested as $folder) {
+            if (str_contains($folder, '.')) {
+                $errors[] = sprintf('Module [%s]: nested folder [%s] contains a dot, which separates the parent from the child in names such as %s.Invoices. Rename the folder.', $name, $folder, $name);
+            } elseif (! $modules->has($name.'.'.$folder)) {
+                $errors[] = sprintf('Module [%s]: nested lists [%s], but the module has no such folder.', $name, $folder).self::didYouMean($folder, self::folders($modules->get($name)));
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * The sub-directories of a module, to suggest the folder a nested entry misspells.
+     *
+     * @return list<string>
+     */
+    private static function folders(?Module $module): array
+    {
+        if ($module === null) {
+            return [];
+        }
+
+        $names = [];
+
+        foreach ([$module->path, ...array_map(static fn (string $directory): string => Paths::join($module->path, $directory), ['src', 'app'])] as $directory) {
+            array_push($names, ...array_map('basename', Paths::childDirectories($directory)));
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**

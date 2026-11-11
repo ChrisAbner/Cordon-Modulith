@@ -84,6 +84,33 @@ final class CycleRuleTest extends RuleTestCase
         $this->analyse($this->moduleFiles(), []);
     }
 
+    public function test_it_names_a_cycle_between_nested_modules_with_their_full_names(): void
+    {
+        $this->useApp(fixture: 'nested-app', modules: "'Billing' => ['nested' => ['Invoices', 'Payments']]");
+        file_put_contents($this->app.'/app/Modules/Billing/Payments/Services/Callback.php', "<?php\n\nnamespace App\\Modules\\Billing\\Payments\\Services;\n\nuse App\\Modules\\Billing\\Invoices\\Contracts\\InvoiceReader;\n\nfinal class Callback\n{\n    public function __construct(InvoiceReader \$reader) {}\n}\n");
+
+        // PHPStan orders the errors of two files differently across versions: the baseline leaves one.
+        file_put_contents($this->app.'/cordon-baseline.json', json_encode(['version' => 2, 'violations' => [
+            ['rule' => 'cycles', 'file' => null, 'target' => 'Billing.Payments -> Billing.Invoices', 'count' => 1],
+        ]]));
+
+        $this->analyse($this->moduleFiles(), [
+            ['Module Billing.Invoices depends on Billing.Payments, which closes the dependency cycle Billing.Invoices -> Billing.Payments -> Billing.Invoices. Break it by inverting one dependency, for example with an event or a contract.', 12, self::TIP],
+        ]);
+    }
+
+    public function test_a_parent_without_files_of_its_own_does_not_leave_the_graph_incomplete(): void
+    {
+        $this->useApp(fixture: 'nested-app', modules: "'Billing' => ['nested' => ['Invoices', 'Payments']]");
+        $parentFiles = array_filter($this->moduleFiles(), fn (string $file) => preg_match('#/Billing/(Services|Contracts)/#', $file) === 1);
+
+        foreach ($parentFiles as $file) {
+            unlink($file);
+        }
+
+        $this->analyse($this->moduleFiles(), []);
+    }
+
     private function context(): CordonContext
     {
         return $this->context ??= new CordonContext($this->createReflectionProvider(), (string) realpath($this->app));
@@ -92,18 +119,19 @@ final class CycleRuleTest extends RuleTestCase
     /**
      * A copy of the namespace app with its own config/cordon.php.
      */
-    private function useApp(string $extra = ''): void
+    private function useApp(string $extra = '', string $fixture = 'namespace-app', string $modules = "'Shared' => ['open' => true]"): void
     {
+        $source = __DIR__.'/../Fixtures/'.$fixture;
         $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4)));
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
         mkdir($directory);
 
         foreach ($files as $file) {
-            $target = $directory.substr($file->getPathname(), strlen(self::APP));
+            $target = $directory.substr($file->getPathname(), strlen($source));
             $file->isDir() ? mkdir($target) : copy($file->getPathname(), $target);
         }
 
-        file_put_contents($directory.'/config/cordon.php', "<?php\n\nreturn ['modules' => ['Shared' => ['open' => true]]".($extra !== '' ? ", {$extra}" : '')."];\n");
+        file_put_contents($directory.'/config/cordon.php', "<?php\n\nreturn ['modules' => [{$modules}]".($extra !== '' ? ", {$extra}" : '')."];\n");
 
         $this->app = $directory;
         $this->context = null;

@@ -57,12 +57,7 @@ final class GraphExporter
     public static function mermaid(array $nodes, array $dependencies, array $marked, ?string $highlight = null): array
     {
         $ids = array_flip($nodes);
-        $lines = ['flowchart LR'];
-
-        foreach ($nodes as $index => $node) {
-            $lines[] = sprintf('    m%d["%s"]', $index, str_replace('"', '#quot;', $node));
-        }
-
+        $lines = ['flowchart LR', ...self::mermaidNodes($nodes)];
         $red = [];
         $link = 0;
 
@@ -159,12 +154,7 @@ final class GraphExporter
     public static function flowchart(array $model): string
     {
         $ids = array_flip($model['modules']);
-        $lines = ['flowchart LR'];
-
-        foreach ($model['modules'] as $index => $module) {
-            $lines[] = sprintf('    m%d["%s"]', $index, str_replace('"', '#quot;', $module));
-        }
-
+        $lines = ['flowchart LR', ...self::mermaidNodes($model['modules'])];
         $red = [];
 
         foreach ($model['edges'] as $link => $edge) {
@@ -188,11 +178,7 @@ final class GraphExporter
      */
     public static function dot(array $model): string
     {
-        $lines = ['digraph cordon {', '    rankdir=LR;', '    node [shape=box];'];
-
-        foreach ($model['modules'] as $module) {
-            $lines[] = sprintf('    "%s";', addslashes($module));
-        }
+        $lines = ['digraph cordon {', '    rankdir=LR;', '    node [shape=box];', ...self::dotNodes($model['modules'])];
 
         foreach ($model['edges'] as $edge) {
             $attributes = [sprintf('label="%d"', $edge['references'])];
@@ -211,5 +197,111 @@ final class GraphExporter
         $lines[] = '}';
 
         return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    /**
+     * The nodes of a Mermaid flowchart. A nested module (Billing.Invoices)
+     * is drawn inside a subgraph of its parent, next to the parent's own node.
+     *
+     * @param  list<string>  $nodes
+     * @return list<string>
+     */
+    private static function mermaidNodes(array $nodes): array
+    {
+        $ids = array_flip($nodes);
+        [$roots, $children] = self::hierarchy($nodes);
+        $subgraph = 0;
+        $lines = [];
+        $draw = function (string $node, string $indent) use (&$draw, &$lines, &$subgraph, $ids, $children): void {
+            $line = sprintf('m%d["%s"]', $ids[$node], str_replace('"', '#quot;', $node));
+
+            if (! isset($children[$node])) {
+                $lines[] = $indent.$line;
+
+                return;
+            }
+
+            $lines[] = sprintf('%ssubgraph s%d["%s"]', $indent, $subgraph++, str_replace('"', '#quot;', $node));
+            $lines[] = $indent.'    '.$line;
+
+            foreach ($children[$node] as $child) {
+                $draw($child, $indent.'    ');
+            }
+
+            $lines[] = $indent.'end';
+        };
+
+        foreach ($roots as $root) {
+            $draw($root, '    ');
+        }
+
+        return $lines;
+    }
+
+    /**
+     * The nodes of a DOT graph, a nested module inside a cluster of its parent.
+     *
+     * @param  list<string>  $nodes
+     * @return list<string>
+     */
+    private static function dotNodes(array $nodes): array
+    {
+        [$roots, $children] = self::hierarchy($nodes);
+        $lines = [];
+        $draw = function (string $node, string $indent) use (&$draw, &$lines, $children): void {
+            if (! isset($children[$node])) {
+                $lines[] = sprintf('%s"%s";', $indent, addslashes($node));
+
+                return;
+            }
+
+            $lines[] = sprintf('%ssubgraph "cluster_%s" {', $indent, addslashes($node));
+            $lines[] = sprintf('%s    label="%s";', $indent, addslashes($node));
+            $lines[] = sprintf('%s    "%s";', $indent, addslashes($node));
+
+            foreach ($children[$node] as $child) {
+                $draw($child, $indent.'    ');
+            }
+
+            $lines[] = $indent.'}';
+        };
+
+        foreach ($roots as $root) {
+            $draw($root, '    ');
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Which of the nodes are nested in another: a name whose longest prefix
+     * before a dot is itself a node is that node's child.
+     *
+     * @param  list<string>  $nodes
+     * @return array{0: list<string>, 1: array<string, list<string>>} The top-level nodes, and the children of each parent.
+     */
+    private static function hierarchy(array $nodes): array
+    {
+        $known = array_flip($nodes);
+        $roots = [];
+        $children = [];
+
+        foreach ($nodes as $node) {
+            $parent = null;
+            $parts = explode('.', $node);
+
+            for ($length = count($parts) - 1; $length >= 1 && $parent === null; $length--) {
+                $prefix = implode('.', array_slice($parts, 0, $length));
+                $parent = isset($known[$prefix]) ? $prefix : null;
+            }
+
+            if ($parent === null) {
+                $roots[] = $node;
+            } else {
+                $children[$parent][] = $node;
+            }
+        }
+
+        return [$roots, $children];
     }
 }

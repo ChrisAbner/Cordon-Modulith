@@ -40,7 +40,7 @@ final class HostAccessRule implements Rule
             $target = $edge->reference->target;
             $key = $edge->reference->sourceFile.'|'.$target;
 
-            if (isset($reported[$key]) || $context->policy->isPublic($target, $edge->to, $context->symbols->get($target))) {
+            if (isset($reported[$key]) || $context->policy->isPublic($target, $edge->to, $context->symbols->get($target), $edge->from)) {
                 continue;
             }
 

@@ -170,7 +170,18 @@ final class CordonContext
             $scope->trackDirectoryDependency($module->path, '*.php');
         }
 
-        return is_dir($module->path) && (new FileCollector($this->exclude))->collect($module->path) !== [];
+        if (! is_dir($module->path)) {
+            return false;
+        }
+
+        // The files of a nested module are its own, not its parent's.
+        foreach ((new FileCollector($this->exclude))->collect($module->path) as $file) {
+            if ($this->modules->forPath($file)?->name === $module->name) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function isExcluded(Module $module, string $file): bool
@@ -275,7 +286,7 @@ final class CordonContext
         $this->modules = $resolved->configure((array) $config->get('cordon.modules', []));
         array_push($this->pendingErrors, ...ConfigValidator::errors($this->config, $resolved));
 
-        $this->policy = new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', [])));
+        $this->policy = (new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))))->withModules($this->modules);
         $this->exclude = self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']));
         $this->baseline = $this->loadBaseline($config->get('cordon.baseline', 'cordon-baseline.json'));
         $this->trackedFiles = [

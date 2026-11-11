@@ -152,7 +152,7 @@ final class DocumentationGenerator
             '',
             '## Uses',
             '',
-            ...$this->classTable($outgoing, $snapshot, 'Does not use other modules.'),
+            ...$this->classTable($outgoing, $snapshot, 'Does not use other modules.', null, $module),
             '',
             '## Used by',
             '',
@@ -229,9 +229,11 @@ final class DocumentationGenerator
 
     /**
      * @param  array<string, array<string, true>>  $byModule  module => class => true
+     * @param  Module|null  $owner  The module that owns the classes, when they all belong to one.
+     * @param  Module|null  $consumer  The module that uses the classes, when it is only one.
      * @return list<string>
      */
-    private function classTable(array $byModule, Snapshot $snapshot, string $empty, ?Module $owner = null): array
+    private function classTable(array $byModule, Snapshot $snapshot, string $empty, ?Module $owner = null, ?Module $consumer = null): array
     {
         if ($byModule === []) {
             return [$empty];
@@ -245,7 +247,7 @@ final class DocumentationGenerator
 
             foreach (array_keys($classes) as $class) {
                 $public = $target === null
-                    || $snapshot->context->policy->isPublic($class, $target, $snapshot->context->symbols->get($class));
+                    || $snapshot->context->policy->isPublic($class, $target, $snapshot->context->symbols->get($class), $consumer ?? $snapshot->context->modules->get($module));
 
                 $names[] = '`'.($target === null ? $class : $target->relativeName($class)).'`'.($public ? '' : ' (internal)');
             }
@@ -412,7 +414,7 @@ final class DocumentationGenerator
 
         foreach ($snapshot->analyses as $analysis) {
             foreach ($analysis->declarations as $declaration) {
-                if ($module->ownsClass($declaration->fqcn)) {
+                if ($module->ownsClass($declaration->fqcn) && $snapshot->context->modules->forClass($declaration->fqcn)?->name === $module->name) {
                     $byRole[$this->role($module, $declaration, $symbols)][] = $module->relativeName($declaration->fqcn);
                 }
             }

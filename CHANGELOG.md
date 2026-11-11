@@ -5,6 +5,7 @@ All notable changes to Cordon Modulith are documented here. The project follows 
 ## [Unreleased]
 
 ### Added
+- Modules nested inside a module, as in Spring Modulith 1.3: `nested => ['Invoices', 'Payments']` (or `true`) in the settings of a module turns those folders into the modules `Billing.Invoices` and `Billing.Payments`. Outside `Billing` they do not exist (only what `Billing` exposes is public), inside it their public API applies, a child lists its siblings in `depends_on`, and cycles, the baseline, the reports, `cordon:modules` and `cordon:graph` use the full names. A project without `nested` is unchanged. See the [configuration](https://chrisabner.github.io/Cordon-Modulith/guide/configuration#nested-modules) guide.
 - `cache` config key (`null` by default): a file where Cordon Modulith keeps the analysis of each PHP file, keyed by a hash of its content, so a later run only parses the files that changed. The report is the same cold, warm or without it. `cordon:verify --no-cache` skips it for one run, and a cache that cannot be read or written is reported as a warning and ignored. See the [configuration](https://chrisabner.github.io/Cordon-Modulith/guide/configuration#cache) and [CI](https://chrisabner.github.io/Cordon-Modulith/guide/ci#keeping-the-analysis-cache-between-runs) guides.
 
 ## [0.4.0] - 2026-11-11

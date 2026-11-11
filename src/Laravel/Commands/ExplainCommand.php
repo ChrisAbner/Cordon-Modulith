@@ -75,6 +75,15 @@ final class ExplainCommand extends Command
             'used_by' => $usedBy,
         ];
 
+        // A nested module exists only inside its parent: the status above is the one outside it.
+        $parent = $verifier->modules()->parentOf($module);
+
+        if ($parent !== null) {
+            $report['inside'] = $parent->name;
+            $report['public_inside'] = $policy->isPublic($declaration->fqcn, $module, $declaration, $parent);
+            $report['reason_inside'] = $policy->reason($declaration->fqcn, $module, $declaration, $parent);
+        }
+
         if ($this->option('format') === 'json') {
             $this->json($report);
 
@@ -84,6 +93,10 @@ final class ExplainCommand extends Command
         $this->line($report['class']);
         $this->line('  Module:  '.$report['module']);
         $this->line(sprintf('  Status:  %s: %s', $public ? 'public' : 'internal', $report['reason']));
+
+        if ($parent !== null) {
+            $this->line(sprintf('  Inside %s:  %s: %s', $parent->name, $report['public_inside'] ? 'public' : 'internal', $report['reason_inside']));
+        }
         $this->line('  Used by:'.($usedBy === [] ? ' no other module' : ''));
 
         foreach ($usedBy as $use) {
