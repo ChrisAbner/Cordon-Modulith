@@ -50,25 +50,38 @@ final class AnalysisCache
     ) {}
 
     /**
-     * What makes every cached analysis stale at once: the Cordon and php-parser
-     * versions, the PHP version and the options that change what the extractor
-     * returns. A new extractor option is added to $extractorOptions where the
+     * What makes every cached analysis stale at once: the versions of Cordon,
+     * php-parser, phpdoc-parser (docblocks) and illuminate/support (its
+     * inflector names the tables of a model), the PHP version and the options
+     * that change what the extractor returns. A new extractor option is added to $extractorOptions where the
      * extractor is built (CordonServiceProvider), and nowhere else.
      *
      * @param  array<string, bool|int|string|null>  $extractorOptions
-     * @param  ?array{cordon: string, parser: string, php: string}  $versions  Only tests pass them.
+     * @param  ?array{cordon: string, parser: string, phpdoc: string, php: string, support: string}  $versions  Only tests pass them.
      */
     public static function fingerprint(array $extractorOptions = [], ?array $versions = null): string
     {
-        $versions ??= [
-            'cordon' => self::installed('chrisabner/cordon-modulith'),
-            'parser' => self::installed('nikic/php-parser'),
-            'php' => PHP_VERSION,
-        ];
+        $versions ??= self::installedVersions();
 
         ksort($extractorOptions);
 
-        return sha1($versions['cordon'].'|'.$versions['parser'].'|'.$versions['php'].'|'.json_encode($extractorOptions));
+        return sha1($versions['cordon'].'|'.$versions['parser'].'|'.$versions['phpdoc'].'|'.$versions['support'].'|'.$versions['php'].'|'.json_encode($extractorOptions));
+    }
+
+    /**
+     * The versions the fingerprint is built from.
+     *
+     * @return array{cordon: string, parser: string, phpdoc: string, php: string, support: string}
+     */
+    public static function installedVersions(): array
+    {
+        return [
+            'cordon' => self::installed('chrisabner/cordon-modulith'),
+            'parser' => self::installed('nikic/php-parser'),
+            'phpdoc' => self::installed('phpstan/phpdoc-parser'),
+            'php' => PHP_VERSION,
+            'support' => self::installed('illuminate/support'),
+        ];
     }
 
     /**

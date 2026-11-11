@@ -1,5 +1,6 @@
 <?php
 
+use Composer\InstalledVersions;
 use Cordon\Analysis\AnalysisCache;
 use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\CachedExtractor;
@@ -193,7 +194,7 @@ it('does not trust the cache after the fingerprint changes', function () {
 });
 
 it('builds the fingerprint from the versions and the extractor options', function () {
-    $versions = ['cordon' => '0.5.0', 'parser' => '5.3.0', 'php' => '8.4.1'];
+    $versions = ['cordon' => '0.5.0', 'parser' => '5.3.0', 'phpdoc' => '2.0.1', 'php' => '8.4.1', 'support' => '12.0.0'];
     $base = AnalysisCache::fingerprint(['docblocks' => false], $versions);
 
     expect(AnalysisCache::fingerprint(['docblocks' => false], $versions))->toBe($base)
@@ -201,8 +202,19 @@ it('builds the fingerprint from the versions and the extractor options', functio
         ->and(AnalysisCache::fingerprint(['docblocks' => false], [...$versions, 'cordon' => '0.5.1']))->not->toBe($base)
         ->and(AnalysisCache::fingerprint(['docblocks' => false], [...$versions, 'parser' => '5.4.0']))->not->toBe($base)
         ->and(AnalysisCache::fingerprint(['docblocks' => false], [...$versions, 'php' => '8.5.0']))->not->toBe($base)
+        ->and(AnalysisCache::fingerprint(['docblocks' => false], [...$versions, 'phpdoc' => '2.1.0']))->not->toBe($base)
+        ->and(AnalysisCache::fingerprint(['docblocks' => false], [...$versions, 'support' => '12.1.0']))->not->toBe($base)
         ->and(AnalysisCache::fingerprint(['a' => 1, 'b' => 2], $versions))->toBe(AnalysisCache::fingerprint(['b' => 2, 'a' => 1], $versions))
         ->and(AnalysisCache::fingerprint())->toBe(AnalysisCache::fingerprint([], null));
+});
+
+it('puts the installed phpdoc-parser and illuminate/support in the fingerprint', function () {
+    $installed = AnalysisCache::installedVersions();
+
+    expect(array_keys($installed))->toEqualCanonicalizing(['cordon', 'parser', 'phpdoc', 'php', 'support'])
+        ->and($installed['phpdoc'])->toContain((string) InstalledVersions::getReference('phpstan/phpdoc-parser'))
+        ->and($installed['support'])->toContain((string) InstalledVersions::getReference('illuminate/support'))
+        ->and(AnalysisCache::fingerprint(['tables' => true]))->toBe(AnalysisCache::fingerprint(['tables' => true], $installed));
 });
 
 it('analyses without the cache and warns when it cannot be used', function (string $case) {
