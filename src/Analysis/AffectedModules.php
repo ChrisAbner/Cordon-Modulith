@@ -13,9 +13,12 @@ use Cordon\Module\ModuleMap;
  *
  * A module that contains a changed nested module is affected too, since it is
  * what the outside sees, so whatever depends on the parent is. A change in a
- * parent also affects its nested modules, which may use its internals. The
- * code outside the modules (host) is affected when its own files change, and
- * nothing depends on it.
+ * parent also affects its nested modules, which may use its internals, and so
+ * does a parent that is affected because it depends on a change. A parent
+ * reached only because a nested module changed does not: its own code did not
+ * change, and its other nested modules are affected only when they depend on
+ * the one that did. The code outside the modules (host) is affected when its
+ * own files change, and nothing depends on it.
  *
  * @internal
  */
@@ -42,11 +45,15 @@ final class AffectedModules
 
         $affected = [];
         $queue = [];
-        $add = static function (string $name, string $reason, ?string $through) use (&$affected, &$queue): void {
-            if (! isset($affected[$name])) {
-                $affected[$name] = ['module' => $name, 'reason' => $reason, 'through' => $through];
-                $queue[] = $name;
+        $add = static function (string $name, string $reason, ?string $through) use (&$affected, &$queue): bool {
+            if (isset($affected[$name])) {
+                return false;
             }
+
+            $affected[$name] = ['module' => $name, 'reason' => $reason, 'through' => $through];
+            $queue[] = $name;
+
+            return true;
         };
 
         foreach ($changed as $name) {
@@ -68,7 +75,12 @@ final class AffectedModules
             }
 
             foreach ($graph->direct($name) as $dependent) {
-                $add($dependent, self::DEPENDS_ON, $name);
+                if ($add($dependent, self::DEPENDS_ON, $name)) {
+                    // What depends on a module may be its nested modules too: they use its internals.
+                    foreach (self::descendants($modules, $dependent) as $nested) {
+                        $add($nested, self::NESTED, $dependent);
+                    }
+                }
             }
         }
 

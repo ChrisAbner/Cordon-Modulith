@@ -211,6 +211,34 @@ describe('cordon affected', function () {
             ->and($report['affected'])->toContain(['module' => 'Billing.Payments', 'reason' => 'nested', 'through' => 'Billing']);
     });
 
+    it('lists the nested modules of a module that is affected only because it depends on a change', function () {
+        $project = git_project('nested-app');
+        file_put_contents($project.'/app/Modules/Billing/Services/OrderWatcher.php', "<?php\n\nnamespace App\\Modules\\Billing\\Services;\n\nuse App\\Modules\\Orders\\Contracts\\OrderPlaced;\n\nfinal class OrderWatcher\n{\n    public function watch(OrderPlaced \$event): void {}\n}\n");
+        git_in($project, 'add', '-A');
+        git_in($project, 'commit', '-q', '-m', 'watcher');
+        git_in($project, 'tag', '-f', 'base');
+        change($project, 'app/Modules/Orders/Contracts/OrderPlaced.php');
+
+        $report = affected_report($project, '--tests');
+
+        expect($report['changed'])->toBe(['Orders'])
+            ->and($report['affected'])->toBe([
+                ['module' => 'Orders', 'reason' => 'changed', 'through' => null],
+                ['module' => 'Billing', 'reason' => 'depends_on', 'through' => 'Orders'],
+                ['module' => 'Billing.Invoices', 'reason' => 'nested', 'through' => 'Billing'],
+                ['module' => 'Billing.Payments', 'reason' => 'nested', 'through' => 'Billing'],
+            ]);
+    });
+
+    it('does not list the siblings of a nested module that changed, only its parent', function () {
+        $project = git_project('nested-app');
+        change($project, 'app/Modules/Billing/Payments/Models/Payment.php');
+
+        $names = affected_names(affected_report($project));
+
+        expect($names)->toContain('Billing.Payments', 'Billing', 'Orders');
+    });
+
     it('gives the same list with the analysis cache, cold or warm, and without it', function () {
         $project = git_project();
         file_put_contents($project.'/config/cordon.php', "<?php return ['modules' => ['Shared' => ['open' => true]], 'cache' => 'storage/cordon.cache'];");
