@@ -211,6 +211,17 @@ describe('cordon affected', function () {
             ->and($report['affected'])->toContain(['module' => 'Billing.Payments', 'reason' => 'nested', 'through' => 'Billing']);
     });
 
+    it('starts the JSON report with its format version', function () {
+        $project = git_project();
+        change($project, 'app/Modules/Catalog/Support/PriceFormatter.php');
+
+        $report = affected_report($project, '--tests');
+
+        expect(array_keys($report))->toBe(['version', 'since', 'changed', 'affected', 'tests'])
+            ->and($report['version'])->toBe(1)
+            ->and($report['since'])->toBe('base');
+    });
+
     it('lists the nested modules of a module that is affected only because it depends on a change', function () {
         $project = git_project('nested-app');
         file_put_contents($project.'/app/Modules/Billing/Services/OrderWatcher.php', "<?php\n\nnamespace App\\Modules\\Billing\\Services;\n\nuse App\\Modules\\Orders\\Contracts\\OrderPlaced;\n\nfinal class OrderWatcher\n{\n    public function watch(OrderPlaced \$event): void {}\n}\n");

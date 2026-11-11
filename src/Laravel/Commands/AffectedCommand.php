@@ -20,6 +20,9 @@ final class AffectedCommand extends Command
 {
     use ExploresModules;
 
+    /** The version of the JSON report, which only grows with a change that is not additive. */
+    private const REPORT_VERSION = 1;
+
     protected $signature = 'cordon:affected
         {--since= : The git reference to compare with, such as main or origin/main}
         {--format=text : Output format: text or json}
@@ -71,7 +74,7 @@ final class AffectedCommand extends Command
         $tests = $this->option('tests') ? $this->testFolders($verifier, array_column($affected, 'module')) : null;
 
         if ($this->option('format') === 'json') {
-            $this->json(['since' => $since, 'changed' => $changed, 'affected' => $affected] + ($tests === null ? [] : ['tests' => $tests]));
+            $this->json(['version' => self::REPORT_VERSION, 'since' => $since, 'changed' => $changed, 'affected' => $affected] + ($tests === null ? [] : ['tests' => $tests]));
 
             return self::SUCCESS;
         }
