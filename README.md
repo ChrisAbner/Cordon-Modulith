@@ -5,6 +5,7 @@
 [![Downloads](https://img.shields.io/packagist/dt/chrisabner/cordon-modulith.svg)](https://packagist.org/packages/chrisabner/cordon-modulith)
 [![PHP](https://img.shields.io/packagist/dependency-v/chrisabner/cordon-modulith/php.svg)](composer.json)
 [![License](https://img.shields.io/github/license/ChrisAbner/Cordon-Modulith.svg)](LICENSE.md)
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/ChrisAbner/badge.svg)](https://hub.xerj.org/contributors/ChrisAbner)
 
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
