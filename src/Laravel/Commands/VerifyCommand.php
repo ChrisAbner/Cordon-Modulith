@@ -17,8 +17,10 @@ use Cordon\Reporters\GitlabReporter;
 use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\JunitReporter;
 use Cordon\Reporters\TextReporter;
+use Cordon\Support\GitChanges;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
+use RuntimeException;
 use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -31,6 +33,7 @@ final class VerifyCommand extends Command
         {paths?* : Only report the violations of these files or directories; the whole project is still analysed}
         {--format=text : Output format: text, json, github, gitlab, junit or checkstyle}
         {--module=* : Only report the violations of this module (repeatable)}
+        {--since= : Only report the violations of the files that changed since this git reference, as if they were the paths}
         {--fail-on-parse-error : Fail when a file cannot be parsed, since its references are not checked}
         {--generate-baseline : Record every current violation in the baseline file and exit}
         {--prune-baseline : Remove baseline entries that no longer match the code, without adding new violations, and exit}
@@ -132,6 +135,27 @@ final class VerifyCommand extends Command
             $this->error('Paths cannot be combined with --generate-baseline or --prune-baseline: the baseline must cover every module.');
 
             return self::INVALID;
+        }
+
+        // The changed files are the paths. With none changed nothing is reported,
+        // which is not the same as no paths (the whole project).
+        $since = $this->option('since');
+        $since = is_string($since) && $since !== '' ? $since : null;
+
+        if ($since !== null) {
+            if ($paths !== []) {
+                return $this->failWith('The --since option cannot be combined with paths: --since is the list of changed files.', $format);
+            }
+
+            if ($this->option('generate-baseline') || $this->option('prune-baseline')) {
+                return $this->failWith('The --since option cannot be combined with --generate-baseline or --prune-baseline: the baseline must cover every module.', $format);
+            }
+
+            try {
+                $paths = $this->changedPaths($verifier->basePath(), $since);
+            } catch (RuntimeException $exception) {
+                return $this->failWith($exception->getMessage(), $format);
+            }
         }
 
         if ($this->option('fail-on-stale') && $this->option('no-baseline')) {
@@ -246,7 +270,7 @@ final class VerifyCommand extends Command
             $result = ModuleFilter::apply($result, $only);
         }
 
-        if ($paths !== []) {
+        if ($since !== null || $paths !== []) {
             $result = ModuleFilter::applyPaths($result, $paths);
         }
 
@@ -270,6 +294,50 @@ final class VerifyCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * An error on stderr (or a GitHub annotation), so that the report on stdout stays a report.
+     */
+    private function failWith(string $message, string $format): int
+    {
+        if ($format === 'github') {
+            $this->output->writeln('::error title=Cordon::'.$message, OutputInterface::OUTPUT_RAW);
+        } else {
+            $this->output->getErrorStyle()->writeln('<error>'.$message.'</error>');
+        }
+
+        return self::INVALID;
+    }
+
+    /**
+     * The PHP files that changed since a git reference, as the absolute paths
+     * ModuleFilter::applyPaths takes. A deleted file has no real path: the one of
+     * its nearest existing directory plus the rest, so it still matches its module.
+     *
+     * @return list<string>
+     */
+    private function changedPaths(string $basePath, string $since): array
+    {
+        $paths = [];
+
+        foreach (GitChanges::changedFiles($basePath, $since) as $file) {
+            if (! str_ends_with(strtolower($file), '.php')) {
+                continue;
+            }
+
+            $path = Paths::join($basePath, $file);
+            $rest = '';
+
+            while (($real = realpath($path)) === false && ($parent = dirname($path)) !== $path) {
+                $rest = DIRECTORY_SEPARATOR.basename($path).$rest;
+                $path = $parent;
+            }
+
+            $paths[] = ($real === false ? $path : $real).$rest;
+        }
+
+        return $paths;
     }
 
     /**

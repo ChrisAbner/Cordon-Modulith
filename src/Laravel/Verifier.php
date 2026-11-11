@@ -12,6 +12,7 @@ use Cordon\Analysis\Snapshot;
 use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
+use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Support\ConfigValidator;
 use Cordon\Support\HostPaths;
@@ -71,6 +72,32 @@ final class Verifier
     public function hostPaths(): array
     {
         return HostPaths::absolute((array) $this->config->get('cordon', []), $this->basePath);
+    }
+
+    /**
+     * The directories of the code outside the modules (host.paths), whether they exist or not:
+     * a directory that was deleted still holds changes.
+     *
+     * @return list<string>
+     */
+    public function hostDirectories(): array
+    {
+        return array_map(fn (string $path): string => Paths::join($this->basePath, $path), HostPaths::configured((array) $this->config->get('cordon', [])));
+    }
+
+    /**
+     * The test folders configured for a module (its `tests` setting), or for
+     * the code outside the modules (`host.tests`) when $module is Module::HOST.
+     * Null when the setting is not there: the convention applies.
+     *
+     * @return list<string>|null
+     */
+    public function configuredTests(string $module): ?array
+    {
+        $settings = $module === Module::HOST ? $this->config->get('cordon.host') : $this->moduleConfig()[$module] ?? null;
+        $tests = is_array($settings) ? $settings['tests'] ?? null : null;
+
+        return HostPaths::valid($tests) ? $tests : null;
     }
 
     /**

@@ -73,6 +73,9 @@ return [
     |             class names, a trailing * for a namespace or prefix). Another module
     |             then lists 'Catalog::Pricing' in depends_on to use only that part;
     |             'Catalog' and 'Catalog::*' still mean the whole public API.
+    | tests:      folders with the module's tests, relative to the project root,
+    |             for cordon:affected --tests (['tests/Unit/Pricing']). Without it:
+    |             tests/<Module> and the tests folder inside the module.
     | metadata:   free-form information about the module (owner, description...).
     |             Cordon does not read it yet; the key is reserved for it.
     |

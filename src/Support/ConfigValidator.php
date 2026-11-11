@@ -19,9 +19,9 @@ final class ConfigValidator
 {
     private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'layers', 'rules', 'listeners', 'exclude', 'baseline', 'cache', 'docblocks'];
 
-    private const HOST_KEYS = ['paths'];
+    private const HOST_KEYS = ['paths', 'tests'];
 
-    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'interfaces', 'metadata'];
+    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'interfaces', 'tests', 'metadata'];
 
     private const LISTENER_KEYS = ['cycles', 'depends_on'];
 
@@ -76,6 +76,10 @@ final class ConfigValidator
 
             if (array_key_exists('paths', $config['host']) && ! HostPaths::valid($config['host']['paths'])) {
                 $errors[] = 'host.paths must be a list of directories, relative to the project root.';
+            }
+
+            if (array_key_exists('tests', $config['host']) && ! HostPaths::valid($config['host']['tests'])) {
+                $errors[] = 'host.tests must be a list of directories, relative to the project root.';
             }
         }
 
@@ -201,6 +205,10 @@ final class ConfigValidator
 
         if (array_key_exists('interfaces', $settings)) {
             array_push($errors, ...self::interfaceErrors($name, $settings['interfaces']));
+        }
+
+        if (array_key_exists('tests', $settings) && ! HostPaths::valid($settings['tests'])) {
+            $errors[] = sprintf('Module [%s]: tests must be a list of directories, relative to the project root.', $name);
         }
 
         return $errors;

@@ -45,7 +45,7 @@ it('leaves the suggestion out when no key is close', function () {
 
 it('rejects an unknown module key', function () {
     expect(config_errors(['modules' => ['Billing' => ['depend_on' => ['Catalog']]]]))->toBe([
-        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, metadata.',
+        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, tests, metadata.',
     ]);
 });
 
@@ -97,9 +97,10 @@ it('validates the host settings', function (mixed $host, string $error) {
     expect(config_errors(['host' => $host]))->toContain($error);
 })->with([
     'not an array' => ['app', 'host in config/cordon.php must be an array.'],
-    'an unknown key' => [['path' => ['app']], 'Unknown key [path] in host. Did you mean [paths]? Valid keys: paths.'],
+    'an unknown key' => [['path' => ['app']], 'Unknown key [path] in host. Did you mean [paths]? Valid keys: paths, tests.'],
     'paths not a list of strings' => [['paths' => 'app'], 'host.paths must be a list of directories, relative to the project root.'],
     'a path that is not a string' => [['paths' => ['app', 3]], 'host.paths must be a list of directories, relative to the project root.'],
+    'tests not a list of strings' => [['tests' => 'tests/Feature'], 'host.tests must be a list of directories, relative to the project root.'],
 ]);
 
 it('reserves the module name host while the code outside the modules is checked', function () {
@@ -121,6 +122,13 @@ it('validates the layers', function (mixed $layers, string $error) {
 
 it('accepts layers that cover some of the modules', function () {
     expect(config_errors(['layers' => [['Billing'], ['Shared']]]))->toBe([]);
+});
+
+it('requires tests to be a list of folders', function () {
+    expect(config_errors(['modules' => ['Billing' => ['tests' => 'tests/Billing']]]))->toBe(['Module [Billing]: tests must be a list of directories, relative to the project root.'])
+        ->and(config_errors(['modules' => ['Billing' => ['tests' => ['tests/Billing', 'tests/Unit']]]]))->toBe([])
+        ->and(config_errors(['modules' => ['Billing' => ['tests' => []]]]))->toBe([])
+        ->and(config_errors(['host' => ['tests' => ['tests/Feature']]]))->toBe([]);
 });
 
 it('requires strict to be true or false', function () {

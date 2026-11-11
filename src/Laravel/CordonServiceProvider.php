@@ -13,6 +13,7 @@ use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Contracts\Rule;
+use Cordon\Laravel\Commands\AffectedCommand;
 use Cordon\Laravel\Commands\DocsCommand;
 use Cordon\Laravel\Commands\ExplainCommand;
 use Cordon\Laravel\Commands\GraphCommand;
@@ -60,6 +61,7 @@ final class CordonServiceProvider extends ServiceProvider
             WhyCommand::class,
             ImpactCommand::class,
             GraphCommand::class,
+            AffectedCommand::class,
         ]);
     }
 

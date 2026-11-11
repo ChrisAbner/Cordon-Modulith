@@ -47,6 +47,22 @@ Modules that depend on Shared:
 
 The modules that depend on it, directly or through others, nearest first: the ones to retest when it changes.
 
+## What did this branch change?
+
+```bash
+php artisan cordon:affected --since=origin/main
+```
+
+```text
+Modules affected by the changes since origin/main:
+  Catalog  changed
+  Billing  depends on Catalog
+```
+
+The modules with changed files since a git reference, and the ones that depend on them (the graph of `cordon:impact`). With `--tests` it prints the test folders of those modules, one per line, to pass to Pest. See [run only the tests the change can affect](../recipes/affected-tests). `cordon:verify --since=origin/main` checks the files that changed, as `cordon:verify <paths>` does.
+
+A change in a nested module affects its parent too, which is the module the outside sees, and whatever depends on it. A change in a parent affects its nested modules. A change in the code outside the modules (`host`) affects only `host`: nothing depends on it.
+
 ## The whole graph
 
 ```bash

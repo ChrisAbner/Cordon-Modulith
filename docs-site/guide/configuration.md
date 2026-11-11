@@ -69,6 +69,7 @@ Per-module settings, keyed by module name as shown by `cordon:modules`:
 | `strict` | `true` keeps the module's violations out of the baseline: they always fail, and `--generate-baseline` does not record them. For a module that is clean and must stay clean. |
 | `interfaces` | Named subsets of the public API that other modules can depend on: `'Pricing' => ['Contracts\\PriceList', 'Data\\Price*']`. See [named interfaces](#named-interfaces). |
 | `nested` | Modules inside this one: a list of folders directly under the module (`['Invoices', 'Payments']`), or `true` for every folder that is not a public namespace. See [nested modules](#nested-modules). |
+| `tests` | The folders with the tests of the module, relative to the project root, for `cordon:affected --tests`: `['tests/Unit/Pricing']`. Without it, `tests/<Module>` and the `tests` folder inside the module. `[]` means none. |
 | `metadata` | Free-form information about the module: `cordon:docs` shows its `description` and `owner`. |
 
 In `depends_on`, `Catalog::Pricing` limits a module to a [named interface](#named-interfaces) of `Catalog`.
@@ -156,6 +157,8 @@ The code outside the modules, which [`host_access`](./rules#host-access) checks.
 |---|---|---|
 | `paths` | `['app', 'routes', 'database']` | Directories relative to the project root. Files of a module inside them (such as `app/Modules`) still belong to their module. `[]` leaves that code unchecked. |
 
+| `tests` | none | The folders with the tests of the code outside the modules, for `cordon:affected --tests`. A change in `host` affects only `host`, and by default it has no test folder. |
+
 While `paths` is set, no module may be named `host`.
 
 ## listeners
@@ -172,7 +175,7 @@ How a listener's reference to another module's event counts. See [what counts as
 `cordon:verify` checks the whole file before it analyses anything. Unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rules stop it with exit code `2`, and name the closest valid key:
 
 ```text
-Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, metadata.
+Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, tests, metadata.
 ```
 
 `cordon:modules` shows the same messages as warnings, and the PHPStan rule reports them once as `cordon.configuration`.

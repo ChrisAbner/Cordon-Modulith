@@ -79,6 +79,7 @@ export default defineConfig({
                     { text: 'Break a cycle with an event', link: '/recipes/break-a-cycle' },
                     { text: 'Replace a cross-module Eloquent relation', link: '/recipes/cross-module-relations' },
                     { text: 'Check boundaries before each commit', link: '/recipes/pre-commit' },
+                    { text: 'Run only the affected tests', link: '/recipes/affected-tests' },
                 ],
             },
             {

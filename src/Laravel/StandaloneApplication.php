@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cordon\Laravel;
 
 use Composer\InstalledVersions;
+use Cordon\Laravel\Commands\AffectedCommand;
 use Cordon\Laravel\Commands\DocsCommand;
 use Cordon\Laravel\Commands\ExplainCommand;
 use Cordon\Laravel\Commands\GraphCommand;
@@ -42,6 +43,7 @@ final class StandaloneApplication
         'why' => WhyCommand::class,
         'impact' => ImpactCommand::class,
         'graph' => GraphCommand::class,
+        'affected' => AffectedCommand::class,
     ];
 
     public static function run(string $basePath, ?InputInterface $input = null, ?OutputInterface $output = null): int

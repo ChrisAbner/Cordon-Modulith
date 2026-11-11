@@ -102,7 +102,7 @@ final class InternalAccessRuleTest extends RuleTestCase
             $this->app.'/app/Modules/Billing/Services/CheckoutService.php',
             $this->app.'/app/Modules/Billing/Services/InvoiceRenderer.php',
         ], [
-            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, metadata.', 1, self::CONFIG_TIP],
+            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, tests, metadata.', 1, self::CONFIG_TIP],
             ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
             ['Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog].', 10, self::TIP],
         ]);
