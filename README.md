@@ -9,7 +9,7 @@
 
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
-> **Status: 0.3 (alpha).** The public API may change before 1.0. [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
+> **Status: 0.4 (alpha).** The public API may change before 1.0; see [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility). [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
 
 Modular monoliths in Laravel usually rely on nwidart/laravel-modules, InterNACHI/modular or a hand-made `app/Modules` folder. All of them organise code, but none of them stops the `Billing` module from reaching into `Catalog`'s models. Six months later the "modules" are just folders.
 
@@ -130,9 +130,9 @@ return [
     ],
 
     'rules' => [
-        'internal_access' => true,
-        'undeclared_dependency' => true,
-        'cycles' => true,
+        'internal_access' => 'error',          // error, warn or off
+        'undeclared_dependency' => 'error',
+        'cycles' => 'error',
     ],
 
     'exclude' => ['vendor', 'node_modules', 'tests', 'Tests'],
@@ -155,11 +155,17 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 
 ## Rules
 
-| Rule | Reports |
-|---|---|
-| `internal_access` | A module using a class that is not part of another module's public API. One report per file and target class. |
-| `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
-| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. |
+| Rule | Reports | Default |
+|---|---|---|
+| `internal_access` | A module using a class that is not part of another module's public API. One report per file and target class. | error |
+| `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. | error |
+| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. | error |
+| `unused_dependency` | A `depends_on` entry the module never uses. One report per module and unused entry. | warn |
+| `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's public API. One report per file and target class. | warn |
+| `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
+| `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
+
+`warn` rules are reported but do not fail the build, and the others are `error`. Set any rule to `error`, `warn` or `off` under `rules` in the config (a custom rule goes there too).
 
 You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
 
@@ -176,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: ChrisAbner/Cordon-Modulith@v0.3.1
+      - uses: ChrisAbner/Cordon-Modulith@v0.4.0
 ```
 
 The action runs `vendor/bin/cordon verify`, which does not boot your application, so the job needs no `.env`, database or `APP_KEY`. Or add `vendor/bin/cordon verify --format=github` (or `php artisan cordon:verify --format=github`) to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
@@ -209,7 +215,7 @@ The analysis runs once per test process and honours the baseline, like `cordon:v
 
 ## PHPStan
 
-Cordon Modulith ships a PHPStan rule that reports `internal_access` in your editor. A fresh Laravel app doesn't ship PHPStan, so install it first with `composer require --dev phpstan/phpstan` (Larastan already brings it). With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically: `composer config allow-plugins.phpstan/extension-installer true && composer require --dev phpstan/extension-installer`. Otherwise include the extension by hand in a minimal `phpstan.neon`:
+Cordon Modulith ships PHPStan rules for `internal_access`, `undeclared_dependency` and `cycles`, so PHPStan and your editor report what `cordon:verify` reports. A fresh Laravel app doesn't ship PHPStan, so install it first with `composer require --dev phpstan/phpstan` (Larastan already brings it). With [phpstan/extension-installer](https://github.com/phpstan/extension-installer) the rule is enabled automatically: `composer config allow-plugins.phpstan/extension-installer true && composer require --dev phpstan/extension-installer`. Otherwise include the extension by hand in a minimal `phpstan.neon`:
 
 ```neon
 # phpstan.neon
@@ -224,7 +230,7 @@ parameters:
 
 List the folders your modules live in: `app` for `app/Modules`, `Modules` for nwidart/laravel-modules, `app-modules` for InterNACHI/modular. PHPStan stops if a listed path doesn't exist.
 
-The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Dependency cycles and `depends_on` are only checked by `cordon:verify`.
+The rule reads `config/cordon.php` without booting Laravel, so keep that file a plain array. Set `parameters.cordon.basePath` if PHPStan does not run from the project root. Cycles need every module in `paths`; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
 ## Living documentation
 
@@ -252,7 +258,7 @@ Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources 
 
 Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md), and [docs/adr](docs/adr) for the design decisions behind it.
 
-**Known limitations in 0.1:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) is not analysed. When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
+**Known limitations:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) may only use the public API of the modules, a warning by default (`host_access`). When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
 ## Roadmap
 

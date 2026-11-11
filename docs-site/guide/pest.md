@@ -24,6 +24,20 @@ Module [Billing] does not respect its boundaries (4 violations):
   - [cycles] Module Catalog depends on Billing, which closes the dependency cycle Catalog -> Billing -> Catalog. ...
 ```
 
+## One test for every module
+
+```bash
+php artisan vendor:publish --tag=cordon-tests
+```
+
+writes `tests/Feature/ModuleBoundariesTest.php`:
+
+```php
+it('keeps every module within its boundaries', fn () => Cordon::assertBoundaries());
+```
+
+Unlike `each->toRespectBoundaries()`, which stops at the first module that fails, `Cordon::assertBoundaries()` lists every module that crosses its boundaries in one failure. It also fails, as `cordon:verify` does, when `config/cordon.php` has errors, when a `@cordon-ignore` comment is invalid, or when no module is found, so an empty project or a misconfigured resolver never passes in silence. Like `cordon:verify` without `--fail-on-parse-error`, a file that does not parse is skipped and does not fail the test. A dependency cycle is listed under each module that takes part in it.
+
 ## Setup
 
 A fresh Laravel app with Pest has no binding between your tests and the framework, so the expectation fails with "needs a booted Laravel application". Install Pest with its Laravel plugin and initialise it:

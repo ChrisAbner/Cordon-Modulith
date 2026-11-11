@@ -11,10 +11,17 @@ use Cordon\Contracts\Rule;
 /**
  * When a module declares depends_on, it may only depend on the listed modules.
  * Modules without a depends_on declaration are not checked.
+ *
+ * @internal
  */
 final class UndeclaredDependencyRule implements Rule
 {
     public const ID = 'undeclared_dependency';
+
+    /**
+     * @param  bool  $countListeners  Whether listening to another module's event needs a depends_on entry.
+     */
+    public function __construct(private readonly bool $countListeners = true) {}
 
     public function id(): string
     {
@@ -28,7 +35,7 @@ final class UndeclaredDependencyRule implements Rule
         foreach ($context->edges as $edge) {
             $declared = $edge->from->dependsOn;
 
-            if ($declared === null || in_array($edge->to->name, $declared, true)) {
+            if ($declared === null || in_array($edge->to->name, $declared, true) || ($edge->isListener() && ! $this->countListeners)) {
                 continue;
             }
 

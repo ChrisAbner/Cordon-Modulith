@@ -12,6 +12,9 @@ use Cordon\Laravel\XdebugWarning;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 
+/**
+ * @internal
+ */
 final class DocsCommand extends Command
 {
     protected $signature = 'cordon:docs

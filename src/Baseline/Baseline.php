@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cordon\Baseline;
 
 use Cordon\Analysis\Violation;
+use Cordon\Module\ModuleMap;
 use Cordon\Rules\CycleRule;
 use Cordon\Support\Paths;
 use RuntimeException;
@@ -12,6 +13,8 @@ use RuntimeException;
 /**
  * Known violations that are tolerated, so existing projects can adopt Cordon
  * and only fail on new violations.
+ *
+ * @internal
  */
 final readonly class Baseline
 {
@@ -62,7 +65,7 @@ final readonly class Baseline
 
     public static function load(string $file): self
     {
-        $contents = @file_get_contents($file);
+        $contents = is_file($file) && is_readable($file) ? file_get_contents($file) : false;
 
         if ($contents === false) {
             throw new RuntimeException(sprintf('Unable to read the Cordon baseline [%s].', $file));
@@ -98,7 +101,7 @@ final readonly class Baseline
 
         if ($outdatedCycles > 0) {
             $warnings[] = sprintf(
-                'The baseline has %d cycles %s from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so %s no longer %s. Regenerate the baseline with php artisan cordon:verify --generate-baseline.',
+                'The baseline has %d cycles %s from Cordon 0.1, which reported one violation per cycle. Cycles are now reported per dependency, so %s no longer %s. Regenerate the baseline with cordon:verify --generate-baseline (or vendor/bin/cordon verify --generate-baseline).',
                 $outdatedCycles,
                 $outdatedCycles === 1 ? 'entry' : 'entries',
                 $outdatedCycles === 1 ? 'that entry' : 'those entries',
@@ -126,7 +129,7 @@ final readonly class Baseline
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
         );
 
-        if (@file_put_contents($file, $json.PHP_EOL) === false) {
+        if (! is_dir(dirname($file)) || @file_put_contents($file, $json.PHP_EOL) === false) {
             throw new RuntimeException(sprintf('Unable to write the Cordon baseline [%s].', $file));
         }
     }
@@ -144,13 +147,33 @@ final readonly class Baseline
      */
     public function staleEntries(array $violations, ?string $basePath = null): int
     {
-        $found = $this->occurrences($violations, $basePath);
+        return count($this->staleDetails($violations, $basePath));
+    }
 
-        return count(array_filter(
-            $this->entries,
-            static fn (array $entry, string $key): bool => ($found[$key] ?? 0) < $entry['count'],
-            ARRAY_FILTER_USE_BOTH,
-        ));
+    /**
+     * The entries that record more occurrences than $violations contain, with both counts.
+     *
+     * @param  list<Violation>  $violations
+     * @return list<array{rule: string, file: string|null, target: string|null, expected: int, found: int}>
+     */
+    public function staleDetails(array $violations, ?string $basePath = null): array
+    {
+        $found = $this->occurrences($violations, $basePath);
+        $stale = [];
+
+        foreach ($this->entries as $key => $entry) {
+            if (($found[$key] ?? 0) < $entry['count']) {
+                $stale[] = [
+                    'rule' => $entry['rule'],
+                    'file' => $entry['file'],
+                    'target' => $entry['target'],
+                    'expected' => $entry['count'],
+                    'found' => $found[$key] ?? 0,
+                ];
+            }
+        }
+
+        return $stale;
     }
 
     /**
@@ -195,9 +218,10 @@ final readonly class Baseline
 
     /**
      * @param  list<Violation>  $violations
+     * @param  ?ModuleMap  $modules  When given, the violations of strict modules are never suppressed.
      * @return array{0: list<Violation>, 1: int} Remaining violations and the number suppressed.
      */
-    public function filter(array $violations, ?string $basePath = null): array
+    public function filter(array $violations, ?string $basePath = null, ?ModuleMap $modules = null): array
     {
         $remaining = array_map(static fn (array $entry): int => $entry['count'], $this->entries);
         $kept = [];
@@ -205,6 +229,12 @@ final readonly class Baseline
 
         foreach ($violations as $violation) {
             $key = $violation->baselineKey($basePath);
+
+            if ($modules !== null && self::isStrict($violation, $modules)) {
+                $kept[] = $violation;
+
+                continue;
+            }
 
             if (($remaining[$key] ?? 0) > 0) {
                 $remaining[$key]--;
@@ -217,5 +247,22 @@ final readonly class Baseline
         }
 
         return [$kept, $suppressed];
+    }
+
+    /**
+     * Whether a violation belongs to a strict module: its source, or either
+     * end of a dependency of a cycle (so a cycle through it stays reported).
+     */
+    public static function isStrict(Violation $violation, ModuleMap $modules): bool
+    {
+        $ends = $violation->rule === CycleRule::ID ? [$violation->sourceModule, $violation->targetModule] : [$violation->sourceModule];
+
+        foreach ($ends as $name) {
+            if ($name !== null && $modules->get($name)?->strict === true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

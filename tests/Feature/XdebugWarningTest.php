@@ -1,6 +1,7 @@
 <?php
 
 use Cordon\Laravel\XdebugWarning;
+use Cordon\Tests\Oracle\Temp;
 use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\StreamOutput;
@@ -100,7 +101,7 @@ it('does not warn when Xdebug is off', function () {
 it('warns on stderr when generating the documentation', function () {
     app()->instance(XdebugWarning::class, new XdebugWarning(true, 'develop'));
     [$output, $stdout, $stderr] = split_output();
-    $directory = sys_get_temp_dir().'/cordon-docs-xdebug-'.uniqid();
+    $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-docs-xdebug-'.uniqid());
 
     Artisan::call('cordon:docs', ['--output' => $directory], $output);
 

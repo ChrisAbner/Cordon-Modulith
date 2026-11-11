@@ -9,6 +9,8 @@ use Cordon\Analysis\FileAnalysis;
 /**
  * Reads one PHP file and returns the classes it declares and the classes it references.
  * Implementations must never load or execute the analysed code.
+ *
+ * @internal
  */
 interface DependencyExtractor
 {

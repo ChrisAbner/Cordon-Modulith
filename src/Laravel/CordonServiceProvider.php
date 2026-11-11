@@ -12,13 +12,20 @@ use Cordon\Contracts\DependencyExtractor;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Contracts\Rule;
 use Cordon\Laravel\Commands\DocsCommand;
+use Cordon\Laravel\Commands\ExplainCommand;
+use Cordon\Laravel\Commands\GraphCommand;
+use Cordon\Laravel\Commands\ImpactCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
+use Cordon\Laravel\Commands\WhyCommand;
 use Cordon\Rules\RuleSet;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 
+/**
+ * @internal
+ */
 final class CordonServiceProvider extends ServiceProvider
 {
     public function register(): void
@@ -38,10 +45,18 @@ final class CordonServiceProvider extends ServiceProvider
             __DIR__.'/../../config/cordon.php' => $this->app->configPath('cordon.php'),
         ], 'cordon-config');
 
+        $this->publishes([
+            __DIR__.'/../../stubs/ModuleBoundariesTest.php' => $this->app->basePath('tests/Feature/ModuleBoundariesTest.php'),
+        ], 'cordon-tests');
+
         $this->commands([
             VerifyCommand::class,
             ModulesCommand::class,
             DocsCommand::class,
+            ExplainCommand::class,
+            WhyCommand::class,
+            ImpactCommand::class,
+            GraphCommand::class,
         ]);
     }
 
@@ -61,18 +76,23 @@ final class CordonServiceProvider extends ServiceProvider
         $container->bind(Analyzer::class, function ($app): Analyzer {
             /** @var Repository $config */
             $config = $app->make(Repository::class);
+            $rulesConfig = (array) $config->get('cordon.rules', []);
+            [$rules, $severities] = RuleSet::build($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []), (array) $config->get('cordon.layers', []));
 
             return new Analyzer(
                 $app->make(DependencyExtractor::class),
                 new FileCollector(self::strings($config->get('cordon.exclude', ['vendor', 'node_modules']))),
                 new PublicApiPolicy(self::strings($config->get('cordon.public_namespaces', []))),
-                RuleSet::fromConfig((array) $config->get('cordon.rules', []), fn (string $class): Rule => $app->make($class)),
+                $rules,
+                $severities,
             );
         });
 
+        // The analyzer is built on first use, after cordon:verify has checked the
+        // config: building it from a broken rules config would throw first.
         $container->bind(Verifier::class, fn ($app): Verifier => new Verifier(
             $app->make(ModuleResolver::class),
-            $app->make(Analyzer::class),
+            fn (): Analyzer => $app->make(Analyzer::class),
             $app->make(Repository::class),
             $basePath,
         ));

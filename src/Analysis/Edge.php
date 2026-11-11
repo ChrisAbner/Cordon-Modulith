@@ -8,6 +8,8 @@ use Cordon\Module\Module;
 
 /**
  * A reference that crosses a module boundary.
+ *
+ * @api
  */
 final readonly class Edge
 {
@@ -16,4 +18,12 @@ final readonly class Edge
         public Module $to,
         public Reference $reference,
     ) {}
+
+    /**
+     * The source module listens to an event of the target module, rather than using it.
+     */
+    public function isListener(): bool
+    {
+        return $this->reference->kind === Reference::LISTENER;
+    }
 }

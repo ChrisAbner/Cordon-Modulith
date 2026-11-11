@@ -10,6 +10,8 @@ use PHPUnit\Framework\Assert;
 
 /**
  * Implementation of the Pest expectation toRespectBoundaries().
+ *
+ * @internal
  */
 final class BoundaryExpectation
 {
@@ -17,6 +19,12 @@ final class BoundaryExpectation
     {
         if (! is_string($module)) {
             Assert::fail(sprintf('toRespectBoundaries() expects a module name, got %s.', get_debug_type($module)));
+        }
+
+        // Like cordon:verify, a broken config fails instead of changing what is
+        // checked: with depend_on instead of depends_on the module would pass.
+        if (($errors = Cordon::configurationErrors()) !== []) {
+            Assert::fail(implode(PHP_EOL, ['config/cordon.php has errors:', ...array_map(fn (string $error): string => '  - '.$error, $errors)]));
         }
 
         $modules = Cordon::modules();
@@ -27,6 +35,10 @@ final class BoundaryExpectation
                 $module,
                 $modules === [] ? '(none)' : implode(', ', $modules),
             ));
+        }
+
+        if (($errors = Cordon::result()->ignoreErrors) !== []) {
+            Assert::fail(implode(PHP_EOL, ['Invalid @cordon-ignore comments:', ...array_map(fn (string $error): string => '  - '.$error, $errors)]));
         }
 
         $violations = Cordon::violationsOf($module);
@@ -40,7 +52,7 @@ final class BoundaryExpectation
     /**
      * @param  list<Violation>  $violations
      */
-    private static function message(string $module, array $violations, ?string $basePath): string
+    public static function message(string $module, array $violations, ?string $basePath): string
     {
         $lines = [sprintf(
             'Module [%s] does not respect its boundaries (%d %s):',

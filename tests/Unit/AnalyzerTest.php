@@ -1,6 +1,7 @@
 <?php
 
 use Cordon\Analysis\Violation;
+use Cordon\Rules\Severity;
 use Cordon\Support\Paths;
 
 it('reports internal access across modules', function () {
@@ -48,7 +49,8 @@ it('ignores namespaced function calls', function () {
 });
 
 it('detects dependency cycles between modules', function () {
-    $cycles = violations_for(analyse_namespace_app(), 'cycles');
+    // The fixture's only cycle closes through a listener, which counts with listeners.cycles.
+    $cycles = violations_for(analyse_namespace_app(listeners: ['cycles' => true]), 'cycles');
 
     expect(array_map(fn (Violation $violation) => $violation->target, $cycles))->toBe(['Billing -> Catalog', 'Catalog -> Billing'])
         ->and($cycles[0]->message)->toContain('Billing -> Catalog -> Billing');
@@ -80,7 +82,25 @@ it('skips excluded directories such as tests', function () {
 it('reports the expected totals for the fixture app', function () {
     $result = analyse_namespace_app();
 
-    expect($result->violations)->toHaveCount(4)
+    // Billing <-> Catalog closes only through Catalog's listener of InvoicePaid, which is not a cycle by default.
+    expect($result->violations)->toHaveCount(2)
         ->and(count($result->modules))->toBe(3)
         ->and($result->parseErrors)->toBeEmpty();
+});
+
+it('keeps the violations of a rule in warn apart from the errors', function () {
+    $result = analyse_namespace_app(rules: ['cycles' => 'warn'], listeners: ['cycles' => true]);
+
+    expect(violations_for($result, 'cycles'))->toBe([])
+        ->and($result->warnings)->not->toBe([])
+        ->and(array_unique(array_map(fn (Violation $warning) => $warning->rule, $result->warnings)))->toBe(['cycles'])
+        ->and(array_unique(array_map(fn (Violation $warning) => $warning->severity, $result->warnings), SORT_REGULAR))->toBe([Severity::Warn]);
+});
+
+it('has no violations when every finding is a warning', function () {
+    $result = analyse_namespace_app(rules: ['internal_access' => 'warn', 'undeclared_dependency' => 'warn', 'cycles' => 'warn']);
+
+    expect($result->hasViolations())->toBeFalse()
+        ->and($result->violations)->toBe([])
+        ->and($result->warnings)->not->toBe([]);
 });

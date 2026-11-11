@@ -7,6 +7,8 @@ namespace Cordon\Analysis;
 /**
  * Everything extracted from the modules before rules run: the rule context,
  * the per-file analyses and the files that could not be parsed.
+ *
+ * @internal
  */
 final readonly class Snapshot
 {

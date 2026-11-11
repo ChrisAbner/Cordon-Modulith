@@ -13,6 +13,8 @@ use PhpParser\ParserFactory;
 
 /**
  * Static extractor based on nikic/php-parser: the analysed code is never loaded.
+ *
+ * @internal
  */
 final class PhpParserExtractor implements DependencyExtractor
 {
@@ -44,6 +46,6 @@ final class PhpParserExtractor implements DependencyExtractor
         $traverser->addVisitor($collector);
         $traverser->traverse($ast);
 
-        return new FileAnalysis($file, $collector->declarations(), $collector->references());
+        return new FileAnalysis($file, $collector->declarations(), $collector->references(), ignores: IgnoreDirectives::parse($code));
     }
 }

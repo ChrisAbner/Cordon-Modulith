@@ -12,6 +12,8 @@ use Cordon\Support\Paths;
 /**
  * Every direct sub-directory of $path is a module named after it, under $namespace.
  * Example: app/Modules/Billing => App\Modules\Billing.
+ *
+ * @internal
  */
 final readonly class NamespaceResolver implements ModuleResolver
 {

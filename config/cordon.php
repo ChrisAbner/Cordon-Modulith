@@ -63,6 +63,11 @@ return [
     |             dependency is reported. Omit it to leave dependencies open.
     | public:     extra namespaces or classes (relative) exposed as public API.
     | open:       every class is public (useful for a shared kernel module).
+    | metadata:   free-form information about the module (owner, description...).
+    |             Cordon does not read it yet; the key is reserved for it.
+    |
+    | Unknown keys and modules are configuration errors: cordon:verify stops
+    | before analysing, so a typo such as depend_on cannot leave a module open.
     |
     */
 
@@ -79,16 +84,77 @@ return [
     | Rules
     |--------------------------------------------------------------------------
     |
-    | Switch built-in rules on or off, and add your own: class names that
-    | implement Cordon\Contracts\Rule (see docs/custom-rules.md).
+    | The severity of each rule: "error" fails cordon:verify, "warn" reports
+    | without failing (handy while a rule is being adopted), "off" skips it.
+    | true and false still work as error and off.
+    |
+    | Add your own rules: class names that implement Cordon\Contracts\Rule
+    | (see docs/custom-rules.md), listed as values, or as keys with a severity.
     |
     */
 
     'rules' => [
-        'internal_access' => true,
-        'undeclared_dependency' => true,
-        'cycles' => true,
+        'internal_access' => 'error',
+        'undeclared_dependency' => 'error',
+        'cycles' => 'error',
+        'unused_dependency' => 'warn',
+        'host_access' => 'warn',
+        'layers' => 'error',
+        'public_api_leak' => 'warn',
         // App\Architecture\MyRule::class,
+        // App\Architecture\OtherRule::class => 'warn',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Layers
+    |--------------------------------------------------------------------------
+    |
+    | A shorthand for depends_on in large projects: layers from the top down,
+    | each a list of module names. A module may depend on its own layer and
+    | the layers below, never above. Modules left out are not checked.
+    |
+    */
+
+    'layers' => [
+        // ['Orders', 'Billing'],
+        // ['Catalog'],
+        // ['Shared'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Code outside the modules
+    |--------------------------------------------------------------------------
+    |
+    | Directories, relative to the project root, of the code that is not in a
+    | module: controllers in app/Http, Filament resources, routes, migrations.
+    | It may only use the public API of the modules (rule host_access); files
+    | of a module inside these directories still belong to their module.
+    | Set paths to [] to leave this code unchecked.
+    |
+    */
+
+    'host' => [
+        'paths' => ['app', 'routes', 'database'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Event listeners
+    |--------------------------------------------------------------------------
+    |
+    | A listener's reference to another module's event (handle(OrderPlaced $e)
+    | with the event under an Events namespace, and failed() in that class;
+    | the $listen map of an EventServiceProvider; Event::listen) counts as a
+    | dependency for depends_on, but does not close a dependency cycle: the
+    | module that publishes an event does not depend on who listens to it.
+    |
+    */
+
+    'listeners' => [
+        'cycles' => false,
+        'depends_on' => true,
     ],
 
     /*

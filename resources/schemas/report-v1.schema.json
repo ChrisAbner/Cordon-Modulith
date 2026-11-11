@@ -1,0 +1,66 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Cordon Modulith report, version 1 (cordon:verify --format=json)",
+    "description": "Adding an optional field keeps version 1, so every object accepts fields this schema does not list. Removing or renaming a field means a new version.",
+    "type": "object",
+    "additionalProperties": true,
+    "required": ["version", "summary", "violations", "warnings", "parse_errors"],
+    "properties": {
+        "version": {
+            "const": 1
+        },
+        "summary": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["modules", "files", "cross_module_references", "violations", "warnings", "suppressed", "parse_errors"],
+            "properties": {
+                "modules": { "type": "integer", "minimum": 0 },
+                "files": { "type": "integer", "minimum": 0 },
+                "cross_module_references": { "type": "integer", "minimum": 0 },
+                "violations": { "type": "integer", "minimum": 0, "description": "Violations of rules set to error, after the baseline. Any makes cordon:verify fail." },
+                "warnings": { "type": "integer", "minimum": 0, "description": "Violations of rules set to warn. They never fail." },
+                "suppressed": { "type": "integer", "minimum": 0, "description": "Violations hidden by the baseline." },
+                "ignored": { "type": "integer", "minimum": 0, "description": "Violations accepted in place by a @cordon-ignore comment. Optional: added in 0.4." },
+                "parse_errors": { "type": "integer", "minimum": 0 }
+            }
+        },
+        "violations": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/violation" }
+        },
+        "warnings": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/violation" }
+        },
+        "parse_errors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": ["file", "error"],
+                "properties": {
+                    "file": { "type": ["string", "null"], "description": "Relative to the project root." },
+                    "error": { "type": "string" }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "violation": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["rule", "severity", "message", "file", "line", "source_module", "target_module", "target"],
+            "properties": {
+                "rule": { "type": "string", "description": "Rule id: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, or a custom rule's id." },
+                "severity": { "enum": ["error", "warn"] },
+                "message": { "type": "string" },
+                "file": { "type": ["string", "null"], "description": "Relative to the project root (with ../ for a file outside it); null for violations about modules, such as cycles." },
+                "line": { "type": ["integer", "null"], "minimum": 1 },
+                "source_module": { "type": ["string", "null"] },
+                "target_module": { "type": ["string", "null"] },
+                "target": { "type": ["string", "null"], "description": "The class used, or the dependency for cycles (\"A -> B\")." },
+                "docs_url": { "type": ["string", "null"], "description": "The documentation of the rule; null for custom rules. Added in 0.4." }
+            }
+        }
+    }
+}

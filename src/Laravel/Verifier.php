@@ -4,25 +4,45 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel;
 
+use Closure;
 use Cordon\Analysis\Analyzer;
 use Cordon\Analysis\Result;
+use Cordon\Analysis\Snapshot;
+use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Module\ModuleMap;
+use Cordon\Support\ConfigValidator;
+use Cordon\Support\HostPaths;
 use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
+use InvalidArgumentException;
 
 /**
  * The verification flow shared by cordon:verify and the Pest expectation:
  * resolve and configure modules, analyse them and apply the baseline.
+ *
+ * @internal
  */
 final class Verifier
 {
+    private ?ModuleMap $resolved = null;
+
     private ?ModuleMap $modules = null;
 
+    /** The loaded baseline: unset until first read, null when there is no file. */
+    private ?Baseline $baseline = null;
+
+    private bool $baselineLoaded = false;
+
+    private ?Analyzer $builtAnalyzer = null;
+
+    /**
+     * @param  Analyzer|Closure(): Analyzer  $analyzer  A closure builds it on first use.
+     */
     public function __construct(
         private readonly ModuleResolver $resolver,
-        private readonly Analyzer $analyzer,
+        private readonly Analyzer|Closure $analyzer,
         private readonly Repository $config,
         private readonly string $basePath,
     ) {}
@@ -37,17 +57,56 @@ final class Verifier
      */
     public function modules(): ModuleMap
     {
-        return $this->modules ??= $this->resolver->resolve()->configure($this->moduleConfig());
+        return $this->modules ??= $this->resolvedModules()->configure($this->moduleConfig());
     }
 
     /**
-     * Problems in the per-module config, such as unknown module names.
+     * The existing directories of the code outside the modules (host.paths).
      *
      * @return list<string>
      */
-    public function configurationWarnings(): array
+    public function hostPaths(): array
     {
-        return $this->resolver->resolve()->configurationWarnings($this->moduleConfig());
+        return HostPaths::absolute((array) $this->config->get('cordon', []), $this->basePath);
+    }
+
+    /**
+     * Problems in config/cordon.php, such as unknown keys or module names.
+     *
+     * @return list<string>
+     */
+    public function configurationErrors(): array
+    {
+        $errors = ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
+
+        // Building the rules is the only check of custom rule ids (two rules with one id).
+        if ($errors === []) {
+            try {
+                $this->analyzer();
+            } catch (InvalidArgumentException $exception) {
+                $errors[] = $exception->getMessage();
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * The modules' declarations and cross-module references, without running the rules.
+     */
+    public function snapshot(): Snapshot
+    {
+        return $this->analyzer()->snapshot($this->modules(), $this->hostPaths());
+    }
+
+    /**
+     * The violations of a snapshot, with the baseline applied unless $baseline is false.
+     */
+    public function check(Snapshot $snapshot, bool $baseline = true): Result
+    {
+        $result = $this->analyzer()->check($snapshot, $this->basePath);
+
+        return $baseline ? $this->applyBaseline($result) : $result;
     }
 
     /**
@@ -55,7 +114,7 @@ final class Verifier
      */
     public function analyze(): Result
     {
-        return $this->analyzer->analyze($this->modules(), $this->basePath);
+        return $this->analyzer()->analyze($this->modules(), $this->basePath, $this->hostPaths());
     }
 
     /**
@@ -93,7 +152,17 @@ final class Verifier
      */
     public function staleBaselineEntries(Result $result): int
     {
-        return $this->baseline()?->staleEntries($result->violations, $this->basePath) ?? 0;
+        return $this->baseline()?->staleEntries($this->found($result), $this->basePath) ?? 0;
+    }
+
+    /**
+     * The stale baseline entries, with the occurrences each records and the ones $result contains.
+     *
+     * @return list<array{rule: string, file: string|null, target: string|null, expected: int, found: int}>
+     */
+    public function staleBaselineDetails(Result $result): array
+    {
+        return $this->baseline()?->staleDetails($this->found($result), $this->basePath) ?? [];
     }
 
     /**
@@ -105,12 +174,13 @@ final class Verifier
     public function pruneBaseline(Result $result): array
     {
         $baseline = $this->baseline() ?? Baseline::empty();
-        $pruned = $baseline->prune($result->violations, $this->basePath);
+        $pruned = $baseline->prune($this->found($result), $this->basePath);
         $pruned->save($this->baselineFile());
+        $this->baseline = $pruned;
 
         [$new] = $pruned->filter($result->violations, $this->basePath);
 
-        return [$baseline->staleEntries($result->violations, $this->basePath), $pruned->count(), count($new)];
+        return [$baseline->staleEntries($this->found($result), $this->basePath), $pruned->count(), count($new)];
     }
 
     public function baselineFile(): string
@@ -120,11 +190,40 @@ final class Verifier
         return Paths::join($this->basePath, is_string($file) && $file !== '' ? $file : 'cordon-baseline.json');
     }
 
+    /**
+     * Every violation still in the code, warnings included: moving a rule to
+     * warn does not fix its violations, so their baseline entries still match.
+     *
+     * @return list<Violation>
+     */
+    private function found(Result $result): array
+    {
+        return [...$result->violations, ...$result->warnings];
+    }
+
+    private function analyzer(): Analyzer
+    {
+        return $this->builtAnalyzer ??= $this->analyzer instanceof Closure ? ($this->analyzer)() : $this->analyzer;
+    }
+
+    /**
+     * Modules as the resolver found them, before the per-module settings.
+     * Resolvers scan the disk, so this runs once per Verifier.
+     */
+    private function resolvedModules(): ModuleMap
+    {
+        return $this->resolved ??= $this->resolver->resolve();
+    }
+
     private function baseline(): ?Baseline
     {
-        $file = $this->baselineFile();
+        if (! $this->baselineLoaded) {
+            $file = $this->baselineFile();
+            $this->baseline = is_file($file) ? Baseline::load($file) : null;
+            $this->baselineLoaded = true;
+        }
 
-        return is_file($file) ? Baseline::load($file) : null;
+        return $this->baseline;
     }
 
     /**

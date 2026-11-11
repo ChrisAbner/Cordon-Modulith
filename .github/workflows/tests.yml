@@ -13,6 +13,7 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
         laravel: ['12.*', '13.*']
+        dependencies: ['highest']
         exclude:
           # Laravel 13 requires PHP 8.3.
           - php: '8.2'
@@ -22,8 +23,13 @@ jobs:
             testbench: '10.*'
           - laravel: '13.*'
             testbench: '11.*'
+          # The lowest version of every dependency, so the minimums in composer.json stay honest.
+          - php: '8.2'
+            laravel: '12.*'
+            testbench: '10.*'
+            dependencies: 'lowest'
 
-    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} (${{ matrix.dependencies }})
 
     steps:
       - uses: actions/checkout@v7
@@ -36,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/console:${{ matrix.laravel }}" "illuminate/contracts:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
-          composer update --prefer-dist --no-interaction
+          composer update --prefer-dist --no-interaction ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
 
       - name: Tests
         run: vendor/bin/pest
@@ -73,3 +79,69 @@ jobs:
 
       - name: 1,000 files in less than 10 seconds
         run: composer bench
+
+  # The suite cannot test the lowest nikic/php-parser composer.json allows: its dev
+  # dependencies require a newer one. This installs Cordon alone, at its minimums.
+  parser-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install the lowest dependencies, without require-dev
+        run: |
+          php -r '$j = json_decode(file_get_contents("composer.json"), true); unset($j["require-dev"], $j["autoload-dev"]); file_put_contents("composer.json", json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
+          composer update --prefer-dist --prefer-lowest --no-interaction
+
+      - name: The lowest php-parser analyses modern PHP
+        run: php tests/parser-floor.php
+
+      - name: The position matrix passes on the lowest php-parser
+        run: php tests/Oracle/check-matrix.php
+
+  # Runs the declaration cells of the position matrix in PHP and compares
+  # what reflection sees with what the matrix expects Cordon to find.
+  reflection-oracle:
+    name: Reflection oracle / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - run: php tests/Oracle/reflection.php
+
+  # Coverage of the whole package, and mutation testing of the classes whose
+  # tests declare mutates(). Thresholds are the measured values, rounded down.
+  coverage:
+    name: Coverage and mutation testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+
+      - run: composer update --prefer-dist --no-interaction
+
+      - name: Oracles (calibration and reflection)
+        run: composer oracle
+
+      - name: Coverage (at least 95%)
+        run: composer coverage
+
+      - name: Mutation testing (at least 88%)
+        run: composer mutate

@@ -4,7 +4,7 @@ This file is for AI agents (and agent swarms) working on the Cordon Modulith cod
 
 ## Project in one paragraph
 
-Cordon Modulith is a Laravel dev-dependency that verifies boundaries between modules. It statically parses PHP files (nikic/php-parser, never loading code), maps class references to modules, and runs rules (`internal_access`, `undeclared_dependency`, `cycles`). Entry points: `php artisan cordon:verify` (and `cordon:docs`), `vendor/bin/cordon` (the same commands without booting Laravel, `StandaloneApplication`), the Pest expectation `toRespectBoundaries()` and the PHPStan rule. Pipeline: `ModuleResolver` → `FileCollector` → `DependencyExtractor` → `Analyzer` (cross-module edges) → `Rule`s → `Baseline` → `Reporter`.
+Cordon Modulith is a Laravel dev-dependency that verifies boundaries between modules. It statically parses PHP files (nikic/php-parser, never loading code), maps class references to modules, and runs rules (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, each `error`, `warn` or `off`). Entry points: `php artisan cordon:verify` (and `cordon:docs`), `vendor/bin/cordon` (the same commands without booting Laravel, `StandaloneApplication`), the Pest expectation `toRespectBoundaries()` and the PHPStan rule. Pipeline: `ModuleResolver` → `FileCollector` → `DependencyExtractor` → `Analyzer` (cross-module edges) → `Rule`s → `Baseline` → `Reporter`.
 
 ## Hard rules
 

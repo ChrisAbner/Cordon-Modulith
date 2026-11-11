@@ -1,0 +1,11 @@
+{
+    "generator": "e89d20fe6624245843a520f384fd328760fb573c",
+    "cells": 1818,
+    "php": "8.4.27",
+    "php_parser": "v5.9.0",
+    "mutations": {
+        "case-sensitive-modules": 234,
+        "skip-attributes": 162,
+        "skip-property-hooks": 54
+    }
+}

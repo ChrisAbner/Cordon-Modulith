@@ -11,6 +11,17 @@ use Cordon\Module\Module;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
 
+mutates(PublicApiPolicy::class);
+
+// A notice in the policy, such as reading the visibility of a declaration that is not there, fails the test.
+beforeEach(function () {
+    set_error_handler(static function (int $level, string $message, string $path, int $line): never {
+        throw new ErrorException($message, 0, $level, $path, $line);
+    });
+});
+
+afterEach(fn () => restore_error_handler());
+
 function billing_module(array $publicApi = []): Module
 {
     return new Module('Billing', 'Modules\Billing', '/tmp/Billing', null, $publicApi);
@@ -99,4 +110,59 @@ it('reports a lowercase reference to another module but not to its public namesp
     );
 
     expect($targets)->toEqualCanonicalizing(['app\modules\catalog\Models\Product']);
+});
+
+it('exposes the default public namespaces', function (string $namespace) {
+    expect((new PublicApiPolicy)->isPublic("Modules\\Billing\\{$namespace}\\Thing", billing_module()))->toBeTrue();
+})->with(['Contracts', 'Events', 'Data', 'Enums', 'Exceptions']);
+
+it('accepts entries and prefixes written with surrounding backslashes', function () {
+    $module = billing_module(['\\Api\\']);
+
+    expect((new PublicApiPolicy(['\\Http\\Resources\\']))->isPublic('Modules\Billing\Http\Resources\InvoiceResource', billing_module()))->toBeTrue()
+        ->and((new PublicApiPolicy([]))->isPublic('Modules\Billing\Api\V1\Thing', $module))->toBeTrue()
+        ->and((new PublicApiPolicy([]))->isPublic('Modules\Billing\Api', $module))->toBeTrue();
+});
+
+it('matches a per-module prefix by whole segments', function () {
+    $policy = new PublicApiPolicy([]);
+    $module = billing_module(['Api']);
+
+    expect($policy->isPublic('Modules\Billing\ApiHelpers\Thing', $module))->toBeFalse()
+        ->and($policy->isPublic('Modules\Billing\Apis', $module))->toBeFalse();
+});
+
+it('ignores empty entries', function (string $entry) {
+    $module = billing_module([$entry]);
+    $policy = new PublicApiPolicy([$entry]);
+
+    expect($policy->isPublic('Modules\Billing\Thing', $module))->toBeFalse()
+        ->and($policy->isPublic('Modules\Billing\Invoices\Thing', $module))->toBeFalse();
+})->with(['empty' => '', 'a backslash' => '\\']);
+
+it('says why a class is public or internal', function (string $fqcn, Module $module, ?DeclaredVisibility $visibility, string $reason) {
+    $declaration = $visibility === null ? null : new ClassDeclaration($fqcn, 'Thing.php', 1, $visibility);
+
+    expect((new PublicApiPolicy)->reason($fqcn, $module, $declaration))->toBe($reason);
+})->with([
+    'marked internal' => ['Modules\Billing\Contracts\Thing', new Module('Billing', 'Modules\Billing', '/tmp/Billing', open: true), DeclaredVisibility::Internal, 'it is marked #[Internal]'],
+    'marked public' => ['Modules\Billing\Services\Thing', new Module('Billing', 'Modules\Billing', '/tmp/Billing'), DeclaredVisibility::PublicApi, 'it is marked #[PublicApi]'],
+    'an open module' => ['Modules\Billing\Services\Thing', new Module('Billing', 'Modules\Billing', '/tmp/Billing', open: true), DeclaredVisibility::Unspecified, 'its module [Billing] is open'],
+    'a public namespace' => ['Modules\Billing\Invoices\Contracts\Thing', new Module('Billing', 'Modules\Billing', '/tmp/Billing'), null, 'it is under the public namespace [Contracts]'],
+    'a listed prefix' => ['Modules\Billing\Api\Thing', new Module('Billing', 'Modules\Billing', '/tmp/Billing', null, ['\\Api\\']), null, 'config/cordon.php lists [Api] in the public of module [Billing]'],
+    'nothing' => ['Modules\Billing\Services\Thing', new Module('Billing', 'Modules\Billing', '/tmp/Billing'), null, 'it is not in a public namespace, not marked #[PublicApi], and its module is not open'],
+]);
+
+it('names the public namespace without the backslashes of the entry', function () {
+    expect((new PublicApiPolicy(['\\Http\\Resources\\']))->reason('Modules\Billing\Http\Resources\Thing', billing_module()))->toBe('it is under the public namespace [Http\Resources]');
+});
+
+it('lets a marked class win over an open module and a public namespace', function () {
+    $open = new Module('Billing', 'Modules\\Billing', '/tmp/Billing', open: true);
+    $internal = new ClassDeclaration('Modules\\Billing\\Contracts\\Thing', 'Thing.php', 1, DeclaredVisibility::Internal);
+    $public = new ClassDeclaration('Modules\\Billing\\Services\\Thing', 'Thing.php', 1, DeclaredVisibility::PublicApi);
+
+    expect((new PublicApiPolicy)->isPublic('Modules\\Billing\\Contracts\\Thing', $open, $internal))->toBeFalse()
+        ->and((new PublicApiPolicy([]))->isPublic('Modules\\Billing\\Services\\Thing', billing_module(), $public))->toBeTrue()
+        ->and((new PublicApiPolicy)->isPublic('Modules\\Billing\\Services\\Thing', $open))->toBeTrue();
 });

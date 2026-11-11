@@ -16,10 +16,11 @@
         "illuminate/container": "^12.0|^13.0",
         "illuminate/contracts": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
-        "nikic/php-parser": "^5.0",
+        "nikic/php-parser": "^5.3",
         "vlucas/phpdotenv": "^5.6.1"
     },
     "require-dev": {
+        "justinrainbow/json-schema": "^6.0",
         "larastan/larastan": "^3.0",
         "laravel/pint": "^1.18",
         "orchestra/testbench": "^10.0|^11.0",
@@ -53,7 +54,10 @@
         "analyse": "phpstan analyse",
         "format": "pint",
         "check": ["pint --test", "phpstan analyse", "pest"],
-        "bench": "php tests/Benchmark/run.php 1000 20 10"
+        "bench": "php tests/Benchmark/run.php 1000 20 10",
+        "coverage": "@php -d pcov.enabled=1 vendor/bin/pest --coverage --min=95",
+        "mutate": "@php -d pcov.enabled=1 vendor/bin/pest --mutate --min=88",
+        "oracle": ["pest --group=oracle", "php tests/Oracle/check-matrix.php"]
     },
     "config": {
         "sort-packages": true,

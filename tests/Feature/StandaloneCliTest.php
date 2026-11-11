@@ -18,27 +18,6 @@ function run_cordon(array $arguments, string $cwd): array
     return ['code' => (int) $process->getExitCode(), 'out' => $process->getOutput(), 'err' => $process->getErrorOutput()];
 }
 
-/**
- * A copy of a fixture project in a temporary directory, so commands can write to it.
- */
-function temp_project(?string $fixture = null): string
-{
-    $directory = sys_get_temp_dir().'/cordon-cli-'.getmypid().'-'.bin2hex(random_bytes(4));
-    mkdir($directory);
-
-    if ($fixture !== null) {
-        $source = fixture_path($fixture);
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
-
-        foreach ($files as $file) {
-            $target = $directory.substr($file->getPathname(), strlen($source));
-            $file->isDir() ? mkdir($target) : copy($file->getPathname(), $target);
-        }
-    }
-
-    return $directory;
-}
-
 it('verifies a project without artisan, .env or APP_KEY', function () {
     $project = fixture_path('namespace-app');
 
@@ -48,7 +27,7 @@ it('verifies a project without artisan, .env or APP_KEY', function () {
     $run = run_cordon(['verify', '--format=json'], $project);
 
     expect($run['code'])->toBe(1)
-        ->and(json_decode($run['out'], true)['summary']['violations'] ?? null)->toBe(4);
+        ->and(json_decode($run['out'], true)['summary']['violations'] ?? null)->toBe(2);
 });
 
 it('reads the project config, like cordon:verify', function () {
@@ -58,7 +37,7 @@ it('reads the project config, like cordon:verify', function () {
 
     $run = run_cordon(['verify', '--format=json'], $project);
 
-    expect(json_decode($run['out'], true)['summary']['violations'] ?? 0)->toBeGreaterThan(4);
+    expect(json_decode($run['out'], true)['summary']['violations'] ?? 0)->toBeGreaterThan(2);
 });
 
 it('prints GitHub annotations', function () {
@@ -78,6 +57,27 @@ it('generates and applies a baseline', function () {
 
     expect($run['code'])->toBe(0)
         ->and($run['out'])->toContain('suppressed by the baseline');
+});
+
+it('fails on stale baseline entries with --fail-on-stale', function () {
+    $project = temp_project('namespace-app');
+    expect(run_cordon(['verify', '--generate-baseline'], $project)['code'])->toBe(0);
+
+    $baseline = json_decode((string) file_get_contents($project.'/cordon-baseline.json'), true);
+    $baseline['violations'][] = ['rule' => 'internal_access', 'file' => 'app/Modules/Billing/Gone.php', 'target' => 'App\\Modules\\Catalog\\Models\\Product', 'count' => 1];
+    file_put_contents($project.'/cordon-baseline.json', json_encode($baseline));
+
+    $run = run_cordon(['verify', '--fail-on-stale'], $project);
+
+    expect($run['code'])->toBe(1)
+        ->and($run['out'].$run['err'])->toContain('Run vendor/bin/cordon verify --prune-baseline', '[internal_access] app/Modules/Billing/Gone.php');
+});
+
+it('limits the report to the given paths, relative to the project root', function () {
+    $run = run_cordon(['verify', 'app/Modules/Billing/Services/CheckoutService.php', '--format=json'], temp_project('namespace-app'));
+
+    expect($run['code'])->toBe(1)
+        ->and(array_column(json_decode($run['out'], true)['violations'], 'target'))->toBe(['App\\Modules\\Catalog\\Models\\Product']);
 });
 
 it('lists the detected modules', function () {
@@ -127,4 +127,61 @@ it('warns on stderr when the project config cannot be evaluated', function () {
 
 it('accepts the artisan command names too', function () {
     expect(run_cordon(['cordon:modules'], fixture_path('namespace-app'))['code'])->toBe(0);
+});
+
+it('writes the errors of the explore commands to stderr, so JSON output stays JSON', function () {
+    $project = temp_project('namespace-app');
+    $run = run_cordon(['why', 'Biling', 'Catalog', '--format=json'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toBe('')
+        ->and($run['err'])->toContain('Unknown module [Biling].');
+});
+
+it('warns about the code outside the modules, unless host.paths is empty', function () {
+    $project = temp_project('host-app');
+    $report = json_decode(run_cordon(['verify', '--format=json'], $project)['out'], true);
+
+    expect(array_count_values(array_column($report['warnings'], 'rule')))->toBe(['host_access' => 4])
+        ->and(run_cordon(['modules'], $project)['out'])->toContain('Code outside the modules (host): app, routes, database');
+
+    mkdir($project.'/config');
+    file_put_contents($project.'/config/cordon.php', "<?php return ['host' => ['paths' => []]];");
+
+    expect(json_decode(run_cordon(['verify', '--format=json'], $project)['out'], true)['warnings'])->toBe([])
+        ->and(run_cordon(['modules'], $project)['out'])->not->toContain('Code outside the modules');
+});
+
+it('reports what @cordon-ignore accepted, and the comments that no longer match', function () {
+    $project = temp_project('ignore-app');
+    $json = run_cordon(['verify', '--format=json'], $project);
+    $text = run_cordon(['verify'], $project);
+
+    expect($json['code'])->toBe(1)
+        ->and(json_decode($json['out'], true)['summary']['ignored'])->toBe(2)
+        ->and($json['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Catalogue.php:9 (internal_access) no longer matches a violation on its line or the statement after it; remove it.')
+        ->and($text['out'])->toContain('2 ignored in place');
+});
+
+it('fails with exit code 2 on a @cordon-ignore without a reason', function () {
+    $project = temp_project('ignore-app');
+    add_unexplained_ignore($project);
+    $run = run_cordon(['verify', '--format=json'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toBe('')
+        ->and($run['err'])->toContain('Cordon ignore directive in app/Modules/Billing/Unexplained.php:5 needs a reason in parentheses');
+});
+
+it('reports config errors even when there are no modules (M9)', function () {
+    $project = temp_project();
+    mkdir($project.'/config');
+    file_put_contents($project.'/config/cordon.php', "<?php return ['rule' => []];");
+
+    foreach ([['verify'], ['verify', '--allow-empty']] as $arguments) {
+        $run = run_cordon($arguments, $project);
+
+        expect($run['code'])->toBe(2)
+            ->and($run['err'])->toContain('Unknown key [rule] in config/cordon.php. Did you mean [rules]?');
+    }
 });

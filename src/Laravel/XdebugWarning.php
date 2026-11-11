@@ -8,6 +8,8 @@ namespace Cordon\Laravel;
  * Detects an active Xdebug, which makes the analysis several times slower.
  *
  * The inputs can be injected so the logic is testable without Xdebug.
+ *
+ * @internal
  */
 final class XdebugWarning
 {

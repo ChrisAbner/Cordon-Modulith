@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Cordon\Reporters;
 
 use Cordon\Analysis\Result;
+use Cordon\Analysis\Violation;
 use Cordon\Contracts\Reporter;
 use Cordon\Support\Paths;
 
 /**
  * GitHub Actions workflow commands: violations show up as annotations on the pull request.
+ *
+ * @internal
  */
 final class GithubReporter implements Reporter
 {
@@ -22,7 +25,12 @@ final class GithubReporter implements Reporter
     {
         $lines = [];
 
-        foreach ($result->violations as $violation) {
+        $annotated = [
+            ...array_map(static fn (Violation $violation): array => ['error', $violation], $result->violations),
+            ...array_map(static fn (Violation $warning): array => ['warning', $warning], $result->warnings),
+        ];
+
+        foreach ($annotated as [$level, $violation]) {
             $properties = [];
 
             if ($violation->file !== null) {
@@ -38,7 +46,7 @@ final class GithubReporter implements Reporter
                 $encoded[] = $name.'='.self::escapeProperty($value);
             }
 
-            $lines[] = sprintf('::error %s::%s', implode(',', $encoded), self::escapeData($violation->message));
+            $lines[] = sprintf('::%s %s::%s', $level, implode(',', $encoded), self::escapeData($violation->message));
         }
 
         // A file that does not parse is skipped, so its references are not checked.
@@ -56,6 +64,14 @@ final class GithubReporter implements Reporter
             count($result->violations),
             $result->suppressed,
         );
+
+        if ($result->warnings !== []) {
+            $summary .= sprintf(', %d warning(s)', count($result->warnings));
+        }
+
+        if ($result->ignored > 0) {
+            $summary .= sprintf(', %d ignored in place', $result->ignored);
+        }
 
         if ($result->parseErrors !== []) {
             $summary .= sprintf(', %d file(s) skipped because they do not parse', count($result->parseErrors));

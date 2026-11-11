@@ -6,6 +6,8 @@ namespace Cordon\Analysis;
 
 /**
  * Every class declared in the analysed modules, looked up case-insensitively like PHP does.
+ *
+ * @api
  */
 final readonly class SymbolTable
 {

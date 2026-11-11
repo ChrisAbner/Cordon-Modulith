@@ -12,6 +12,8 @@ use SplFileInfo;
 
 /**
  * Lists the PHP files of a module, skipping excluded directory names and Blade views.
+ *
+ * @internal
  */
 final readonly class FileCollector
 {

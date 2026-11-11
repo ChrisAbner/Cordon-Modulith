@@ -16,6 +16,8 @@ use Cordon\Module\ModuleMap;
  * explicitly (event(new X), Event::dispatch, Event::listen). X::dispatch()
  * and handle(X $x) only count for classes that are already events, because
  * jobs use the same methods.
+ *
+ * @internal
  */
 final readonly class EventInventory
 {
@@ -35,6 +37,8 @@ final readonly class EventInventory
             }
         }
 
+        // Publishers and listeners are listed in file order, whatever order the files came in.
+        usort($usages, static fn (EventUsage $a, EventUsage $b): int => [$a->file, $a->line, $a->event, $a->kind] <=> [$b->file, $b->line, $b->event, $b->kind]);
         $events = [];
 
         foreach ($usages as $usage) {

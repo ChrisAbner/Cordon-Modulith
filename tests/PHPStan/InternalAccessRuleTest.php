@@ -5,7 +5,9 @@ namespace Cordon\Tests\PHPStan;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\Reference;
 use Cordon\Analysis\ReferenceCollector;
+use Cordon\PHPStan\CordonContext;
 use Cordon\PHPStan\InternalAccessRule;
+use Cordon\Tests\Oracle\Temp;
 use FilesystemIterator;
 use PhpParser\NodeTraverser;
 use PHPStan\Parser\Parser;
@@ -21,19 +23,30 @@ final class InternalAccessRuleTest extends RuleTestCase
 {
     private const APP = __DIR__.'/../Fixtures/namespace-app';
 
-    private const TIP = 'Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi].';
+    private const TIP = 'Depend on its public API instead: a class in a public namespace such as Contracts, or one marked #[PublicApi]. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#internal-access';
+
+    private const CONFIG_TIP = 'Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/phpstan#configuration-errors';
 
     private string $app = self::APP;
 
     protected function getRule(): Rule
     {
-        return new InternalAccessRule($this->createReflectionProvider(), (string) realpath($this->app));
+        return new InternalAccessRule(new CordonContext($this->createReflectionProvider(), (string) realpath($this->app)));
     }
 
     public function test_it_reports_internal_classes_of_other_modules(): void
     {
         $this->analyse([self::APP.'/app/Modules/Billing/Services/CheckoutService.php'], [
             ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
+        ]);
+    }
+
+    public function test_it_honours_cordon_ignore_comments(): void
+    {
+        $this->app = __DIR__.'/../Fixtures/ignore-app';
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Invoice.php'], [
+            ['Module [Billing] uses App\Modules\Catalog\Models\Stock, which is internal to module [Catalog].', 19, self::TIP],
         ]);
     }
 
@@ -62,7 +75,42 @@ final class InternalAccessRuleTest extends RuleTestCase
             [
                 'Cordon could not evaluate config/modules.php (Class "Nwidart\Modules\Commands\CommandsList" not found), so its settings were ignored and the defaults are used. Set the matching paths in config/cordon.php (for example resolvers.nwidart.path) so it does not depend on that file.',
                 1,
+                self::CONFIG_TIP,
             ],
+        ]);
+    }
+
+    public function test_it_reports_config_errors_once(): void
+    {
+        $this->app = $this->copyOfTheApp(['version' => 2, 'violations' => []]);
+        file_put_contents($this->app.'/config/cordon.php', "<?php\n\nreturn ['modules' => ['Shared' => ['open' => true], 'Billing' => ['depend_on' => []]]];\n");
+
+        $this->analyse([
+            $this->app.'/app/Modules/Billing/Services/CheckoutService.php',
+            $this->app.'/app/Modules/Billing/Services/InvoiceRenderer.php',
+        ], [
+            ['Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, metadata.', 1, self::CONFIG_TIP],
+            ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
+            ['Module [Billing] uses App\Modules\Catalog\Contracts\LegacyCatalog, which is internal to module [Catalog].', 10, self::TIP],
+        ]);
+    }
+
+    public function test_it_reports_nothing_when_internal_access_is_a_warning(): void
+    {
+        $this->app = $this->copyOfTheApp(['version' => 2, 'violations' => []]);
+        file_put_contents($this->app.'/config/cordon.php', "<?php\n\nreturn ['modules' => ['Shared' => ['open' => true]], 'rules' => ['internal_access' => 'warn']];\n");
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], []);
+    }
+
+    public function test_it_points_a_cross_module_relation_to_the_recipe(): void
+    {
+        $this->app = $this->copyOfTheApp(['version' => 2, 'violations' => []]);
+        @mkdir($this->app.'/app/Modules/Billing/Models');
+        file_put_contents($this->app.'/app/Modules/Billing/Models/Invoice.php', "<?php\n\nnamespace App\\Modules\\Billing\\Models;\n\nuse App\\Modules\\Catalog\\Models\\Product;\n\nfinal class Invoice\n{\n    public function product()\n    {\n        return \$this->belongsTo(Product::class);\n    }\n}\n");
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Models/Invoice.php'], [
+            ['Module [Billing] uses App\\Modules\\Catalog\\Models\\Product, which is internal to module [Catalog]. Relations between modules tie their tables together: see https://chrisabner.github.io/Cordon-Modulith/recipes/cross-module-relations', 11, self::TIP],
         ]);
     }
 
@@ -86,12 +134,30 @@ final class InternalAccessRuleTest extends RuleTestCase
         ]);
     }
 
+    public function test_it_does_not_apply_the_baseline_to_a_strict_module(): void
+    {
+        $this->app = $this->copyOfTheApp([
+            'version' => 2,
+            'violations' => [[
+                'rule' => 'internal_access',
+                'file' => 'app/Modules/Billing/Services/CheckoutService.php',
+                'target' => 'App\\Modules\\Catalog\\Models\\Product',
+                'count' => 1,
+            ]],
+        ]);
+        file_put_contents($this->app.'/config/cordon.php', "<?php return ['modules' => ['Shared' => ['open' => true], 'Billing' => ['strict' => true]]];");
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], [
+            ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
+        ]);
+    }
+
     public function test_it_reports_a_baseline_it_cannot_read_once(): void
     {
         $this->app = $this->copyOfTheApp('{ not json');
 
         $this->analyse([$this->app.'/app/Modules/Billing/Services/CheckoutService.php'], [
-            ['Cordon could not read the baseline cordon-baseline.json (Syntax error), so it is not applied. Fix the file or regenerate it with cordon:verify --generate-baseline.', 1],
+            ['Cordon could not read the baseline cordon-baseline.json (Syntax error), so it is not applied. Fix the file or regenerate it with cordon:verify --generate-baseline.', 1, self::CONFIG_TIP],
             ['Module [Billing] uses App\Modules\Catalog\Models\Product, which is internal to module [Catalog].', 13, self::TIP],
         ]);
     }
@@ -119,7 +185,7 @@ final class InternalAccessRuleTest extends RuleTestCase
             $collector = new ReferenceCollector($path);
             (new NodeTraverser($collector))->traverse($parser->parseFile($path));
 
-            $line = static fn (Reference $r): string => $r->target.'@'.$r->line;
+            $line = static fn (Reference $r): string => $r->target.'@'.$r->line.':'.$r->kind;
             self::assertSame(array_map($line, $expected->references), array_map($line, $collector->references()), $path);
             $compared++;
         }
@@ -134,7 +200,7 @@ final class InternalAccessRuleTest extends RuleTestCase
      */
     private function copyOfTheApp(array|string $baseline): string
     {
-        $directory = sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4));
+        $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4)));
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(self::APP, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
         mkdir($directory);
 

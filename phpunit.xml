@@ -3,6 +3,10 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true">
+    <php>
+        <!-- The PHPStan tests boot several PHPStan containers in one process. -->
+        <ini name="memory_limit" value="512M"/>
+    </php>
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
@@ -14,6 +18,12 @@
             <directory>tests/PHPStan</directory>
         </testsuite>
     </testsuites>
+    <groups>
+        <!-- The oracles start a PHP process per cell or per mutation: composer oracle, and CI. -->
+        <exclude>
+            <group>oracle</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>src</directory>

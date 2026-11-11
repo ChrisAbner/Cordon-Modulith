@@ -8,6 +8,8 @@ namespace Cordon\Module;
  * Recognises when the detected "modules" are the layers of a standard
  * Laravel app (app/Http, app/Models, app/Providers...) rather than modules
  * split by feature, which is a setup Cordon is not meant for.
+ *
+ * @internal
  */
 final class LayeredLayout
 {

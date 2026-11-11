@@ -11,6 +11,8 @@ use Traversable;
 
 /**
  * @implements IteratorAggregate<int, Module>
+ *
+ * @api
  */
 final class ModuleMap implements Countable, IteratorAggregate
 {
@@ -102,37 +104,6 @@ final class ModuleMap implements Countable, IteratorAggregate
         }
 
         return new self($modules);
-    }
-
-    /**
-     * Human readable problems in the per-module config (unknown module names).
-     *
-     * @param  array<array-key, mixed>  $config
-     * @return list<string>
-     */
-    public function configurationWarnings(array $config): array
-    {
-        $warnings = [];
-
-        foreach ($config as $name => $settings) {
-            $name = (string) $name;
-
-            if (! $this->has($name)) {
-                $warnings[] = sprintf('config/cordon.php references unknown module [%s].', $name);
-
-                continue;
-            }
-
-            $dependsOn = is_array($settings) && is_array($settings['depends_on'] ?? null) ? $settings['depends_on'] : [];
-
-            foreach ($dependsOn as $dependency) {
-                if (! $this->has((string) $dependency)) {
-                    $warnings[] = sprintf('Module [%s] declares a dependency on unknown module [%s].', $name, (string) $dependency);
-                }
-            }
-        }
-
-        return $warnings;
     }
 
     public function count(): int

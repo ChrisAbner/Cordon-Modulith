@@ -6,8 +6,12 @@ namespace Cordon\Laravel;
 
 use Composer\InstalledVersions;
 use Cordon\Laravel\Commands\DocsCommand;
+use Cordon\Laravel\Commands\ExplainCommand;
+use Cordon\Laravel\Commands\GraphCommand;
+use Cordon\Laravel\Commands\ImpactCommand;
 use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
+use Cordon\Laravel\Commands\WhyCommand;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Config\Repository;
 use Symfony\Component\Console\Application;
@@ -22,6 +26,8 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * Configuration comes from StandaloneConfig and the services from the same
  * bindings CordonServiceProvider registers, on a bare ProjectContainer.
+ *
+ * @internal
  */
 final class StandaloneApplication
 {
@@ -32,6 +38,10 @@ final class StandaloneApplication
         'verify' => VerifyCommand::class,
         'modules' => ModulesCommand::class,
         'docs' => DocsCommand::class,
+        'explain' => ExplainCommand::class,
+        'why' => WhyCommand::class,
+        'impact' => ImpactCommand::class,
+        'graph' => GraphCommand::class,
     ];
 
     public static function run(string $basePath, ?InputInterface $input = null, ?OutputInterface $output = null): int

@@ -9,8 +9,22 @@ parametersSchema:
 
 services:
     -
-        class: Cordon\PHPStan\InternalAccessRule
+        class: Cordon\PHPStan\CordonContext
         arguments:
             basePath: %cordon.basePath%
+    -
+        class: Cordon\PHPStan\InternalAccessRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Cordon\PHPStan\UndeclaredDependencyRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Cordon\PHPStan\ModuleEdgeCollector
+        tags:
+            - phpstan.collector
+    -
+        class: Cordon\PHPStan\CycleRule
         tags:
             - phpstan.rules.rule

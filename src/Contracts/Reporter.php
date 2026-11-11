@@ -6,6 +6,9 @@ namespace Cordon\Contracts;
 
 use Cordon\Analysis\Result;
 
+/**
+ * @internal
+ */
 interface Reporter
 {
     public function render(Result $result): string;

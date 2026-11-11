@@ -7,6 +7,9 @@ namespace Cordon\Contracts;
 use Cordon\Analysis\AnalysisContext;
 use Cordon\Analysis\Violation;
 
+/**
+ * @api
+ */
 interface Rule
 {
     /**

@@ -1,6 +1,6 @@
 # Custom rules
 
-Cordon Modulith ships three rules (`internal_access`, `undeclared_dependency`, `cycles`). You can add your own architecture rules that run with them in `cordon:verify`, the Pest expectation and the baseline.
+Cordon Modulith ships seven rules (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`). You can add your own architecture rules that run with them in `cordon:verify`, the Pest expectation and the baseline.
 
 ## 1. Write the rule
 
@@ -49,14 +49,15 @@ final class OnlySharedIsEverywhere implements Rule
 
 ## 2. Register it
 
-List the class in `config/cordon.php`. Built-in rules keep their `true`/`false` switches:
+List the class in `config/cordon.php`, as a value, or as a key with a severity (`error`, `warn` or `off`):
 
 ```php
 'rules' => [
-    'internal_access' => true,
-    'undeclared_dependency' => true,
-    'cycles' => true,
+    'internal_access' => 'error',
+    'undeclared_dependency' => 'error',
+    'cycles' => 'error',
     App\Architecture\OnlySharedIsEverywhere::class,
+    // App\Architecture\OnlySharedIsEverywhere::class => 'warn',
 ],
 ```
 
@@ -68,10 +69,13 @@ Rules are built through the Laravel container, so their constructors can receive
 
 | Property | Content |
 |---|---|
-| `modules` | `ModuleMap` with every module (`name`, `namespace`, `path`, `dependsOn`, `publicApi`, `open`) |
-| `edges` | Every reference that crosses a module boundary: `from` and `to` modules and the `reference` (`sourceFile`, `sourceClass`, `target` class, `line`) |
+| `modules` | `ModuleMap` with every module (`name`, `namespace`, `path`, `dependsOn`, `publicApi`, `open`, `metadata`, `strict`) |
+| `edges` | Every reference that crosses a module boundary: `from` and `to` modules and the `reference` (`sourceFile`, `sourceClass`, `target` class, `line`, and `kind`: `Reference::USE` or `Reference::LISTENER`, as `$edge->isListener()` tells) |
 | `symbols` | `SymbolTable`: every class declared in the modules (`get($fqcn)` returns its file, line and `#[PublicApi]`/`#[Internal]` marker) |
 | `policy` | `PublicApiPolicy`: `isPublic($fqcn, $module, $declaration)` |
+| `hostEdges` | The same for the code outside the modules (`host.paths`), which is not a module: the references from it to a module. Only `host_access` reads them |
+| `signatures` | The references in the public signatures of module classes, inside a module too (`Reference::$signature` says which member) |
+| `parseErrors` | The files that could not be parsed (file => message): their references are missing from `edges` |
 
 References inside a module are not edges. Code is never loaded: rules work on the static analysis only.
 
@@ -79,6 +83,7 @@ References inside a module are not edges. Code is never loaded: rules work on th
 
 - One sentence stating the problem, one stating the fix (the same style as the built-in rules).
 - Fill `file` and `line` when the violation points to code, so the GitHub annotations and the baseline work. The baseline keys entries by rule, file and `target`, so choose a `target` that stays stable when unrelated code changes.
+- Leave the severity alone: the rule's entry in `rules` decides whether its violations are errors or warnings.
 - Set `sourceModule` to the module that must change: `cordon:verify --module` and the Pest expectation filter by it.
 - Report nothing when unsure. False positives make teams switch the rule off.
 
@@ -97,9 +102,9 @@ use Cordon\Rules\RuleSet;
 it('reports modules everybody depends on', function () {
     $modules = (new NamespaceResolver(__DIR__.'/fixtures/app/Modules', 'App\\Modules'))->resolve();
     $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig([
-        'internal_access' => false,
-        'undeclared_dependency' => false,
-        'cycles' => false,
+        'internal_access' => 'off',
+        'undeclared_dependency' => 'off',
+        'cycles' => 'off',
         OnlySharedIsEverywhere::class,
     ]));
 

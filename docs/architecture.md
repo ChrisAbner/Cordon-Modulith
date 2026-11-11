@@ -16,17 +16,17 @@ flowchart LR
     E -->|FileAnalysis: declarations + references| A[Analyzer]
     A -->|AnalysisContext: edges, symbols, policy| Ru[Rules]
     Ru -->|Violations| B[Baseline]
-    B -->|Result| Rep[Reporter: text / json / github]
+    B -->|Result| Rep[Reporter: text / json / github / gitlab / junit / checkstyle]
 ```
 
-1. **ModuleResolver** discovers modules: name, namespace, path. Per-module config (`depends_on`, `public`, `open`) is applied with `ModuleMap::configure()`.
+1. **ModuleResolver** discovers modules: name, namespace, path. Per-module config (`depends_on`, `public`, `open`, `strict`, `metadata`) is applied with `ModuleMap::configure()`.
 2. **FileCollector** lists `*.php` files in each module, skipping excluded directory names and Blade views.
 3. **DependencyExtractor** (`PhpParserExtractor`) parses each file with nikic/php-parser, runs `NameResolver`, and collects:
    - declarations (class, interface, trait, enum) with `#[PublicApi]` / `#[Internal]`;
    - references: every `Name\FullyQualified` node after name resolution, except function and constant names. Imports alone are not references.
-4. **Analyzer** maps each reference to a target module (longest namespace prefix) and each file to a source module (longest path prefix). References that cross modules become **edges**.
-5. **Rules** receive an immutable `AnalysisContext` and yield `Violation`s.
-6. **Baseline** removes known violations (keyed by rule + relative file + target, without line numbers).
+4. **Analyzer** maps each reference to a target module (longest namespace prefix) and each file to a source module (longest path prefix). References that cross modules become **edges**, marked as `use` or `listener` ([ADR 0016](adr/0016-listener-edges.md)). References from the code outside the modules (`host.paths`) become host edges ([ADR 0017](adr/0017-host-module.md)).
+5. **Rules** receive an immutable `AnalysisContext` and yield `Violation`s. Each rule runs with the severity of its entry in `rules` (`error`, `warn` or `off`, [ADR 0015](adr/0015-rule-severities.md)).
+6. **Baseline** removes known violations of rules set to `error` (keyed by rule + relative file + target, without line numbers). A `// @cordon-ignore` comment accepts a violation in place.
 7. **Reporter** renders the `Result`.
 
 `Analyzer::snapshot()` runs steps 2 to 4 and returns a `Snapshot` (context, file analyses, parse errors); `Analyzer::check()` runs the rules on it. `cordon:docs` reuses the snapshot to document modules and events.
@@ -40,15 +40,15 @@ flowchart LR
 | `Contracts\Rule::id(): string`, `check(AnalysisContext): iterable<Violation>` | One boundary rule |
 | `Contracts\Reporter::render(Result): string`, `formatted(): bool` | Output format |
 
-Value objects: `Module`, `ModuleMap`, `ClassDeclaration`, `Reference`, `FileAnalysis`, `Edge`, `AnalysisContext`, `Violation`, `Result`.
+`ModuleResolver`, `DependencyExtractor` and `Reporter` are marked `@internal`: only `Rule` is meant to be implemented by users. Value objects: `Module`, `ModuleMap`, `ClassDeclaration`, `Reference`, `FileAnalysis`, `Edge`, `AnalysisContext`, `Violation`, `Result`, and the enum `Severity`. [ADR 0020](adr/0020-rules-options-and-commands.md) lists which are `@api`.
 
 ## Layers
 
 - `src/Analysis`, `src/Module`, `src/Rules`, `src/Resolvers`, `src/Reporters`, `src/Baseline`, `src/Support`: framework-agnostic core. It may use Symfony Console's `OutputFormatter` for escaping, nothing from Laravel.
 - `src/Documentation`: event extraction and the Markdown generator behind `cordon:docs` (framework-agnostic).
 - `src/Laravel`: service provider, `ResolverFactory` (reads Laravel config), `StandaloneConfig` (config outside Laravel), `Verifier` (shared verification flow), Artisan commands.
-- `src/Testing`: the Pest expectation `toRespectBoundaries()`.
-- `src/PHPStan`: the PHPStan rule for `internal_access`.
+- `src/Testing`: the Pest expectation `toRespectBoundaries()` and `Cordon::assertBoundaries()`.
+- `src/PHPStan`: the PHPStan rules for `internal_access`, `undeclared_dependency` and `cycles`.
 
 ## Decisions
 

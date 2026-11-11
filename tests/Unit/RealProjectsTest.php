@@ -7,6 +7,7 @@ use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Violation;
 use Cordon\Laravel\ResolverFactory;
 use Cordon\Rules\RuleSet;
+use Cordon\Support\ConfigValidator;
 use Illuminate\Config\Repository;
 
 /**
@@ -38,7 +39,7 @@ it('reports exactly the reviewed violations of each real project', function (str
     $modules = ResolverFactory::make($config, $directory)->resolve();
 
     expect($modules->names())->toBe($expected['modules'])
-        ->and($modules->configurationWarnings($cordon['modules']))->toBe([]);
+        ->and(ConfigValidator::errors($cordon, $modules))->toBe([]);
 
     $analyzer = new Analyzer(
         new PhpParserExtractor,
