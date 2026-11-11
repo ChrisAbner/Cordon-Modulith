@@ -48,6 +48,8 @@ One folder per line, relative to the project root, only the ones that exist. For
 
 A changed file under one of those folders counts as a change of its module, so a pull request that only edits a test runs it.
 
+**What it cannot see.** The affected modules follow the files that changed and the dependencies between modules. A change can also break something in a file that did not change: a new migration that creates a table another module already uses, a change in `packages` that stops allowing a package, or a `depends_on` edited in `config/cordon.php`. The tests of that module do not run, and `cordon:verify --since` does not report it. Keep a full `cordon:verify` (and the full test suite) on your main branch or on a schedule.
+
 The code outside the modules (`host.paths`: `app`, `routes` and `database` by default) counts as the module `host`. A change there affects only `host`, because no module depends on it, and `host` has no test folder unless you list one: `'host' => ['tests' => ['tests/Feature']]`.
 
 ## In CI

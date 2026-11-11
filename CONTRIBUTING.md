@@ -11,6 +11,8 @@ composer check   # pint --test, phpstan, pest
 composer bench   # analyses a synthetic project of 1,000 files; fails above 10 s
 ```
 
+Run PHPStan through `composer analyse`: it passes `--memory-limit=512M`, and calling `vendor/bin/phpstan analyse` directly stops at the default memory limit.
+
 `php tests/Benchmark/run.php 5000 50` runs a larger benchmark (files, modules, optional time budget in seconds).
 
 Coverage and mutation testing need pcov (or Xdebug):
