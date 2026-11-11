@@ -1,6 +1,6 @@
 # Exploring the modules
 
-Three commands answer questions about the modules without failing anything. Each takes `--format=json`, and each runs from artisan (`php artisan cordon:explain`) or `vendor/bin/cordon` (`vendor/bin/cordon explain`).
+Four commands answer questions about the modules without failing anything. Each takes `--format=json`, and each runs from artisan (`php artisan cordon:explain`) or `vendor/bin/cordon` (`vendor/bin/cordon explain`).
 
 ## Why is this class internal?
 

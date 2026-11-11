@@ -1,6 +1,6 @@
 # PHPStan
 
-Cordon Modulith ships PHPStan rules for its three rules, so `vendor/bin/phpstan` and your editor report what `cordon:verify` reports:
+Cordon Modulith ships PHPStan rules for three of its rules, so `vendor/bin/phpstan` and your editor report what `cordon:verify` reports:
 
 | Rule | PHPStan identifier | Where it runs |
 |---|---|---|
@@ -8,7 +8,7 @@ Cordon Modulith ships PHPStan rules for its three rules, so `vendor/bin/phpstan`
 | `undeclared_dependency` | `cordon.undeclaredDependency` | Every analysed file, including in the editor |
 | `cycles` | `cordon.cycle` | When PHPStan analyses the whole project, which includes editor mode |
 
-Each error ends with a link to the rule's documentation.
+Each error ends with a link to the rule's documentation. The other rules (`unused_dependency`, `host_access`, `layers` and `public_api_leak`) are reported by `cordon:verify` only.
 
 A fresh Laravel app doesn't ship PHPStan, so install it first (Larastan already brings it):
 

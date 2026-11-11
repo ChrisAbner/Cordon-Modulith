@@ -26,7 +26,7 @@ Classes marked `@api`: `Contracts\Rule`, `Analysis\AnalysisContext`, `Analysis\V
 - Classes marked `@internal`: every other class in `src/`. The custom rules guide uses some of them (`Analyzer`, `RuleSet`, `NamespaceResolver`...) to test a rule; that test code may need changes in a minor release until Cordon offers a public test helper.
 - The wording of messages and the `text` format, which are for people. Parse the JSON instead.
 - The Markdown that `cordon:docs` generates (its `--output` option is covered).
-- Exactly which references are found: fixing a missed reference can report a violation that was there all along. Such fixes are listed in the changelog under "May report different violations".
+- Exactly which references are found: fixing a missed reference can report a violation that was there all along. Such fixes are listed in the changelog under "Fixed", or under "Breaking" when you have to act.
 
 ## New checks
 
