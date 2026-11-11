@@ -1,4 +1,6 @@
 ---
+title: "Cordon Modulith: module boundaries for Laravel"
+titleTemplate: false
 layout: home
 
 hero:

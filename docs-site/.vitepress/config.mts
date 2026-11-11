@@ -3,9 +3,32 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
     title: 'Cordon Modulith',
     description: 'Verifiable boundaries between the modules of a Laravel application.',
+    titleTemplate: ':title | Cordon Modulith for Laravel',
     base: '/Cordon-Modulith/',
     cleanUrls: true,
     lastUpdated: true,
+    sitemap: {
+        hostname: 'https://chrisabner.github.io/Cordon-Modulith/',
+    },
+    head: [
+        ['meta', { name: 'google-site-verification', content: 'r4UmrVpPvmEebxtn41MmWvJP1XTFvlSnSyV2A-1P8HI' }],
+        ['meta', { property: 'og:type', content: 'website' }],
+        ['meta', { property: 'og:site_name', content: 'Cordon Modulith' }],
+        ['meta', { property: 'og:image', content: 'https://chrisabner.github.io/Cordon-Modulith/og-image.png' }],
+        ['meta', { property: 'og:image:width', content: '1280' }],
+        ['meta', { property: 'og:image:height', content: '640' }],
+        ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+        ['meta', { name: 'twitter:image', content: 'https://chrisabner.github.io/Cordon-Modulith/og-image.png' }],
+    ],
+    transformHead({ pageData, title, description }) {
+        const path = pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
+
+        return [
+            ['meta', { property: 'og:title', content: title }],
+            ['meta', { property: 'og:description', content: description }],
+            ['meta', { property: 'og:url', content: `https://chrisabner.github.io/Cordon-Modulith/${path}` }],
+        ]
+    },
     themeConfig: {
         nav: [
             { text: 'Guide', link: '/guide/introduction' },
