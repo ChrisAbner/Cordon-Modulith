@@ -53,6 +53,10 @@ Publishers also include `X::dispatch()` and listeners include `handle(X $event)`
 
 String event names and wildcard listeners are not detected.
 
+## Tables
+
+With the [`tables`](./rules#tables) rule on, each canvas has a Tables section: the tables the module owns (the ones its migrations create), the tables of other modules it uses, and the tables without a single owner, with why. A table that two modules create is listed as `audit_log` (created by Billing and Catalog) in both, and in the card of a module that only uses it. A model whose `$table` is not a literal is listed with that reason. The section is not written while the rule is off, so a project that does not use it gets the same files as before. The documentation reads the modules only, so a table that a migration in `database/migrations` also creates shows its module as the owner here, while `cordon:verify`, which reads the code outside the modules too, sees two creators.
+
 ## Violations
 
 The documentation shows every violation, ignoring the baseline: it describes the code as it is.

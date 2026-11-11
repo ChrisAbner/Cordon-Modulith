@@ -108,7 +108,7 @@ final readonly class Analyzer
         $external = $context->externalReferences;
         usort($external, $compare);
 
-        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures, $external);
+        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures, $external, $context->tables);
     }
 
     /**
@@ -211,8 +211,10 @@ final readonly class Analyzer
             }
         }
 
+        $symbols = SymbolTable::fromAnalyses($analyses);
+
         return new Snapshot(
-            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges, $signatures, $external),
+            new AnalysisContext($modules, $symbols, $this->policy, $edges, $parseErrors, $hostEdges, $signatures, $external, TableMap::build($analyses, $modules, $host, $symbols)),
             $analyses,
             $parseErrors,
         );

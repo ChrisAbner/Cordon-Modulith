@@ -162,6 +162,7 @@ final class DocumentationGenerator
             '',
             ...$this->moduleEvents($name, $events),
             '',
+            ...$this->tables($module, $snapshot),
             '## Violations',
             '',
         ];
@@ -278,6 +279,79 @@ final class DocumentationGenerator
         }
 
         return $lines;
+    }
+
+    /**
+     * The tables of a module, for the `tables` rule: what it owns, the tables
+     * of other modules it uses, and what has no single owner and why. Empty
+     * (no section) when no table was read, which is the case while the rule is off.
+     *
+     * @return list<string>
+     */
+    private function tables(Module $module, Snapshot $snapshot): array
+    {
+        $tables = $snapshot->context->tables;
+
+        if ($tables->isEmpty()) {
+            return [];
+        }
+
+        $owns = $tables->ownedBy($module->name);
+        $uses = [];
+
+        foreach ($tables->crossings($snapshot->context->modules) as $crossing) {
+            if ($crossing['user']->name === $module->name) {
+                $uses[$crossing['use']->table] = '`'.$crossing['use']->table.'` ('.$crossing['owner']->name.')';
+            }
+        }
+
+        ksort($uses);
+        $shared = [];
+
+        foreach ($tables->ownerless() as $table => $creators) {
+            if (in_array($module->name, $creators, true)) {
+                $shared[$table] = true;
+            }
+        }
+
+        // A table with no single owner that the module only uses is as worth knowing about.
+        foreach ($tables->uses as $use) {
+            if (count($tables->creators($use->table)) > 1 && $snapshot->context->modules->forPath($use->file)?->name === $module->name) {
+                $shared[$use->table] = true;
+            }
+        }
+
+        ksort($shared);
+        $without = array_map(fn (string $table): string => sprintf('`%s` (created by %s)', $table, $this->sentence($tables->creators($table))), array_map('strval', array_keys($shared)));
+
+        foreach ($tables->dynamic() as $dynamic) {
+            if ($snapshot->context->modules->forPath($dynamic->file)?->name === $module->name) {
+                $without[] = sprintf('`%s` (%s)', $dynamic->class, $dynamic->reason);
+            }
+        }
+
+        $format = static fn (array $items): string => $items === [] ? 'none' : implode(', ', $items);
+
+        return [
+            '## Tables',
+            '',
+            '- Owns: '.$format(array_map(static fn (string $table): string => '`'.$table.'`', $owns)),
+            '- Uses tables of other modules: '.$format(array_values($uses)),
+            '- Without owner: '.$format($without),
+            '',
+        ];
+    }
+
+    /**
+     * "Billing", "Billing and Catalog", "A, B and C".
+     *
+     * @param  list<string>  $names
+     */
+    private function sentence(array $names): string
+    {
+        $last = array_pop($names);
+
+        return $names === [] ? (string) $last : implode(', ', $names).' and '.$last;
     }
 
     /**

@@ -173,6 +173,33 @@ Cordon reads `vendor/composer/installed.json` as plain data (it never loads your
 
 Every reference counts the way it does for the other rules: code, [docblocks](./configuration#docblocks) when they are on, and listeners (a listener that type-hints a package's event uses that package). The code outside the modules (`host`) is not checked: it is the glue that wires the modules to the framework, so `packages` cannot be set for it. The rule is an `error` like `layers`, and it checks nothing until some module lists `packages`. `@cordon-ignore external_dependency` works as for the other rules. The PHPStan rule does not report it yet. `cordon:why Billing stripe/stripe-php` lists the uses of a package by a module, and `cordon:explain Stripe\StripeClient` says which package a class belongs to and who uses it.
 
+## tables
+
+::: warning Heuristic, off by default
+`tables` reads names out of source code, so it can be wrong in ways the other rules cannot. It is `off` until you turn it on, and `warn` is the severity it is meant for: `'rules' => ['tables' => 'warn']`.
+:::
+
+A module alters, queries or points a foreign key at a table that another module creates:
+
+```text
+! [tables] app/Modules/Billing/Database/Migrations/2024_02_01_000000_create_invoices_table.php:13 (warn)
+  Module [Billing] adds a foreign key to table [orders], which belongs to [Orders]. Read or change another module's data through its public API instead: see https://chrisabner.github.io/Cordon-Modulith/recipes/cross-module-relations
+```
+
+There are three messages, one per kind of use: `Module [Billing] alters table [orders], which belongs to [Orders].` (`Schema::table`, `drop`, `dropIfExists`, `rename`), `Module [Billing] adds a foreign key to table [orders], which belongs to [Orders].` and `Module [Billing] queries table [orders], which belongs to [Orders].` (`DB::table('orders')` and the joins that follow it, or a model of the module whose table is `orders`). One report per file, table and kind of use. A foreign key is reported even when `depends_on` lists the owner: coupling through a table is what the [cross-module relations recipe](../recipes/cross-module-relations) advises against.
+
+**Who owns a table.** The module that creates it with `Schema::create('orders', ...)`, wherever its migration lives: inside the module, or in the code outside the modules (`database/migrations`, see [`host`](./configuration#host)), which then owns it. A table that two of them create has no single owner, and a table that nobody creates has none either: neither is ever reported, and `cordon:docs` lists the first in the module cards as "without owner", with the modules that create it. The tables the host owns (`users` almost always) are never reported, and the code outside the modules is never reported either: it is the glue.
+
+**What it reads.** Only literals: `Schema::create('orders', ...)`, `->on('orders')` after `foreign()` or `foreignId()`, `->constrained('orders')` and `DB::table('orders as o')->join('items', ...)`. A table name in a variable, a constant or `config()` is not guessed and not reported. Joins count only on a chain that starts at `DB::table('...')`, so a Collection's `join('orders')` is not a table, and the same goes for `Schema` and `DB` that are not the facades.
+
+`foreignId('order_id')->constrained()`, with no table, is reported against `orders`: Cordon asks Laravel's own `Str::plural` for the table, as `constrained()` does, so `category_id` is `categories` and `person_id` is `people`. It does not guess in the cases where it cannot know the table: `foreignIdFor(Order::class)->constrained()` (the table is the model's), `constrained($table)` and `constrained(column: 'uuid')`.
+
+**Models.** A model that sets `protected $table = 'orders'` uses that table. One that sets none uses Laravel's default, `Str::snake(Str::pluralStudly($class))` (`OrderItem` is `order_items`), but only when it provably extends `Illuminate\Database\Eloquent\Model` (or the framework's `User`) through the analysed code, and none of its parents sets a `$table` or a `getTable()` of its own. A model with `$table = self::NAME`, or with a `getTable()` method, has a table Cordon cannot know: it is not reported, and the module card lists it as "without owner" with the reason. Anything that extends a class from a package, or a `Pivot`, is left out, and so is a table that a trait or the constructor sets (Cordon does not read traits for this). Cordon never loads the model.
+
+**Nested modules.** A table created in `Billing.Invoices` belongs to `Billing.Invoices`. A nested module may use the tables of its ancestors, as it may use their classes, so `Billing.Invoices` touching a table `Billing` created is not reported. The other way round, and between siblings, it is reported, like `internal_access`. From outside `Billing` a nested module does not exist, so `Orders` touching that table gets `which belongs to [Billing]`.
+
+`@cordon-ignore tables` works as for the other rules, and the baseline records the violations of a rule that is an `error`. The PHPStan rule does not report it. The collector only runs when the rule is on, so a project that leaves it off pays nothing, and turning it on starts a new [analysis cache](./configuration#cache).
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.

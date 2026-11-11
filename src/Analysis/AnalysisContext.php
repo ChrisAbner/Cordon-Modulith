@@ -22,6 +22,7 @@ final readonly class AnalysisContext
      * @param  list<Edge>  $hostEdges  References from the code outside the modules (host.paths) to a module, from Module::host().
      * @param  list<Reference>  $signatures  References in the public signatures of module classes (Reference::$signature set), within a module too.
      * @param  list<Reference>  $externalReferences  References in module files to a class that no module owns (a PHP class, a package's, the project's own), for external_dependency.
+     * @param  TableMap  $tables  Who owns each table and who touches the tables of another module, for the tables rule; empty unless that rule is on.
      */
     public function __construct(
         public ModuleMap $modules,
@@ -32,6 +33,7 @@ final readonly class AnalysisContext
         public array $hostEdges = [],
         public array $signatures = [],
         public array $externalReferences = [],
+        public TableMap $tables = new TableMap,
     ) {
         $this->policy = $policy->withModules($modules);
     }

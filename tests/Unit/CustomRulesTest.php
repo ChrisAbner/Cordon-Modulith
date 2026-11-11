@@ -71,7 +71,7 @@ it('lists the problems in the rules config', function () {
         'App\\Missing\\Rule',
         DeclareDependenciesRule::class => 'loud',
     ]))->toBe([
-        'Unknown rule [internal_acess] in rules. Did you mean [internal_access]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, external_dependency.',
+        'Unknown rule [internal_acess] in rules. Did you mean [internal_access]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, external_dependency, tables.',
         'Rule [cycles] has an invalid value [warning]. Use error, warn or off (or true/false).',
         'Custom rule [App\\Missing\\Rule] must be an existing class that implements Cordon\\Contracts\\Rule.',
         'Rule [Cordon\\Tests\\Fixtures\\Rules\\DeclareDependenciesRule] has an invalid value [loud]. Use error, warn or off (or true/false).',

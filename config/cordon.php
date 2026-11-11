@@ -107,6 +107,10 @@ return [
     | without failing (handy while a rule is being adopted), "off" skips it.
     | true and false still work as error and off.
     |
+    | tables is a heuristic and starts off: it warns about a module that alters,
+    | queries or points a foreign key at a table another module creates (literal
+    | table names only). If you turn it on, "warn" is the severity it is meant for.
+    |
     | Add your own rules: class names that implement Cordon\Contracts\Rule
     | (see docs/custom-rules.md), listed as values, or as keys with a severity.
     |
@@ -121,6 +125,7 @@ return [
         'layers' => 'error',
         'public_api_leak' => 'warn',
         'external_dependency' => 'error',
+        'tables' => 'off',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
     ],

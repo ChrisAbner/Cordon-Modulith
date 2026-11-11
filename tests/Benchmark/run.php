@@ -3,10 +3,12 @@
 /**
  * Benchmark: generates a synthetic project and times the full analysis.
  *
- * Usage: php tests/Benchmark/run.php [files=1000] [modules=20] [max-seconds] [--cache]
+ * Usage: php tests/Benchmark/run.php [files=1000] [modules=20] [max-seconds] [--cache] [--tables]
  * Exits with 1 when max-seconds is given and an analysis is slower.
  * With --cache it times three passes: without the analysis cache, with an
  * empty one (which writes it) and with the one the previous pass wrote.
+ * With --tables the tables rule is on: the extractor reads the tables of each
+ * file, to measure what that costs against a run without it.
  */
 
 declare(strict_types=1);
@@ -24,6 +26,7 @@ use Cordon\Rules\RuleSet;
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 
 $withCache = in_array('--cache', $argv, true);
+$tables = in_array('--tables', $argv, true);
 $args = array_values(array_filter(array_slice($argv, 1), static fn (string $arg): bool => ! str_starts_with($arg, '--')));
 
 $files = max(1, (int) ($args[0] ?? 1000));
@@ -36,8 +39,8 @@ generate($root, $files, $moduleCount);
 $modules = (new NamespaceResolver($root.'/app/Modules', 'App\\Modules'))->resolve();
 $slowest = 0.0;
 
-$pass = static function (string $label, DependencyExtractor $extractor) use ($modules, $root, &$slowest): void {
-    $analyzer = new Analyzer($extractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig([]));
+$pass = static function (string $label, DependencyExtractor $extractor) use ($modules, $root, $tables, &$slowest): void {
+    $analyzer = new Analyzer($extractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig($tables ? ['tables' => 'warn'] : []));
 
     $start = hrtime(true);
     $result = $analyzer->analyze($modules, $root);
@@ -62,13 +65,13 @@ $pass = static function (string $label, DependencyExtractor $extractor) use ($mo
     );
 };
 
-$pass($withCache ? 'no cache:    ' : '', new PhpParserExtractor);
+$pass($withCache ? 'no cache:    ' : '', new PhpParserExtractor(tables: $tables));
 
 if ($withCache) {
     $cacheFile = $root.'/cordon-cache.json';
     @unlink($cacheFile);
 
-    $cached = static fn (): CachedExtractor => new CachedExtractor(new PhpParserExtractor, new AnalysisCache($cacheFile, $root, AnalysisCache::fingerprint()));
+    $cached = static fn (): CachedExtractor => new CachedExtractor(new PhpParserExtractor(tables: $tables), new AnalysisCache($cacheFile, $root, AnalysisCache::fingerprint(['tables' => $tables])));
 
     $pass('cold cache:  ', $cached());
     $pass('warm cache:  ', $cached());

@@ -16,14 +16,14 @@ use InvalidArgumentException;
 final class RuleSet
 {
     /** The ids of the built-in rules, in the order they run. */
-    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID, PublicApiLeakRule::ID, ExternalDependencyRule::ID];
+    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID, PublicApiLeakRule::ID, ExternalDependencyRule::ID, TableRule::ID];
 
     /**
      * Built-in rules that start below error: checks added after 0.3 arrive as
      * warnings, so an upgrade does not fail a build that passed (see the
-     * compatibility page).
+     * compatibility page). `tables` is a heuristic and starts off.
      */
-    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn', PublicApiLeakRule::ID => 'warn'];
+    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn', PublicApiLeakRule::ID => 'warn', TableRule::ID => 'off'];
 
     /**
      * Built-in rules, enabled unless set to off (or false), followed by custom rules.
@@ -72,6 +72,7 @@ final class RuleSet
                 $basePath === null ? new PackageMap('', '') : PackageMap::forProject($basePath),
                 self::sharedPackages($packages),
             ),
+            TableRule::ID => static fn (): Rule => new TableRule,
         ];
 
         $rules = [];
@@ -121,6 +122,22 @@ final class RuleSet
         }
 
         return [$rules, $severities];
+    }
+
+    /**
+     * Whether a built-in rule runs with this `rules` config: its severity is not
+     * off, counting the default it starts with. A value that is no severity
+     * counts as off here (ConfigValidator reports it before anything runs).
+     *
+     * @param  array<array-key, mixed>  $config
+     */
+    public static function enabled(array $config, string $id): bool
+    {
+        try {
+            return Severity::fromConfig($id, $config[$id] ?? self::DEFAULTS[$id] ?? true) !== Severity::Off;
+        } catch (InvalidArgumentException) {
+            return false;
+        }
     }
 
     /**

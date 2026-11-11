@@ -148,6 +148,8 @@ The severity of each rule:
 | `warn` | Violations are reported (as `warnings` in JSON, `::warning` on GitHub) but never fail, and `--generate-baseline` does not record them. Use it while a rule is being adopted. |
 | `off` (or `false`) | The rule does not run. |
 
+`tables` is the one built-in rule that starts `off`: it is a [heuristic](./rules#tables) about the tables modules share, and `warn` is the severity it is meant for.
+
 Custom rules are classes that implement `Cordon\Contracts\Rule`, listed as values (`MyRule::class`) or as keys with a severity (`MyRule::class => 'warn'`). See [custom rules](./custom-rules).
 
 ## layers
@@ -211,7 +213,7 @@ Path of the baseline file, relative to the project root. See [adopting in an exi
 'cache' => 'storage/framework/cache/cordon.json',
 ```
 
-The cache never changes a result: the report is the same cold, warm or with `cache` set to `null`. It stores only what was read from each file, not the violations, so changing `depends_on`, the rules or the baseline needs no new cache. It starts from scratch by itself when Cordon Modulith, nikic/php-parser or PHP change version. Deleting the file is always safe, and so is a file that cannot be read or written: `cordon:verify` warns (`Cordon cache at <path> is unreadable; analysing without it.`) and analyses without it.
+The cache never changes a result: the report is the same cold, warm or with `cache` set to `null`. It stores only what was read from each file, not the violations, so changing `depends_on`, the severity of a rule or the baseline needs no new cache. The one setting that does is turning the [`tables`](./rules#tables) rule on or off, because the extractor reads the tables of each file only while it is on. It starts from scratch by itself when Cordon Modulith, nikic/php-parser or PHP change version. Deleting the file is always safe, and so is a file that cannot be read or written: `cordon:verify` warns (`Cordon cache at <path> is unreadable; analysing without it.`) and analyses without it.
 
 `cordon:verify --no-cache` neither reads nor writes the cache for one run. See [how much it saves](../faq#how-fast-is-it) and [how to keep it between CI runs](./ci#keeping-the-analysis-cache-between-runs).
 

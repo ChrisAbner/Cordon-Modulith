@@ -22,6 +22,7 @@ use Cordon\Laravel\Commands\ModulesCommand;
 use Cordon\Laravel\Commands\VerifyCommand;
 use Cordon\Laravel\Commands\WhyCommand;
 use Cordon\Rules\RuleSet;
+use Cordon\Rules\TableRule;
 use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
@@ -76,7 +77,7 @@ final class CordonServiceProvider extends ServiceProvider
             return ResolverFactory::make($app->make(Repository::class), $basePath);
         });
 
-        $container->bind(DependencyExtractor::class, fn ($app): DependencyExtractor => new PhpParserExtractor(docblocks: self::docblocks($app->make(Repository::class))));
+        $container->bind(DependencyExtractor::class, fn ($app): DependencyExtractor => new PhpParserExtractor(docblocks: self::docblocks($app->make(Repository::class)), tables: self::tables($app->make(Repository::class))));
 
         // $parameters['extractor'] is the cached extractor the Verifier shares with its analyzer.
         $container->bind(Analyzer::class, function ($app, array $parameters = []) use ($basePath): Analyzer {
@@ -132,7 +133,7 @@ final class CordonServiceProvider extends ServiceProvider
      */
     private static function extractorOptions(Repository $config): array
     {
-        return ['docblocks' => self::docblocks($config)];
+        return ['docblocks' => self::docblocks($config), 'tables' => self::tables($config)];
     }
 
     /**
@@ -142,6 +143,14 @@ final class CordonServiceProvider extends ServiceProvider
     private static function docblocks(Repository $config): bool
     {
         return $config->get('cordon.docblocks') === true;
+    }
+
+    /**
+     * Whether the `tables` rule is on, which is when the extractor reads the tables of each file.
+     */
+    private static function tables(Repository $config): bool
+    {
+        return RuleSet::enabled((array) $config->get('cordon.rules', []), TableRule::ID);
     }
 
     /**

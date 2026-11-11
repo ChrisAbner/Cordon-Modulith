@@ -15,6 +15,7 @@ final readonly class FileAnalysis
      * @param  list<ClassDeclaration>  $declarations
      * @param  list<Reference>  $references
      * @param  list<IgnoreDirective>  $ignores  Its @cordon-ignore comments.
+     * @param  list<TableUse>  $tables  The tables it names; empty unless the extractor was asked for them (the `tables` rule is on).
      */
     public function __construct(
         public string $file,
@@ -22,6 +23,7 @@ final readonly class FileAnalysis
         public array $references = [],
         public ?string $error = null,
         public array $ignores = [],
+        public array $tables = [],
     ) {}
 
     /**
@@ -31,7 +33,7 @@ final readonly class FileAnalysis
      *
      * @internal
      *
-     * @return array{declarations: list<array<string, mixed>>, references: list<array<string, mixed>>, error: ?string, ignores: list<array<string, mixed>>}
+     * @return array{declarations: list<array<string, mixed>>, references: list<array<string, mixed>>, error: ?string, ignores: list<array<string, mixed>>, tables: list<array<string, mixed>>}
      */
     public function toArray(): array
     {
@@ -40,6 +42,7 @@ final readonly class FileAnalysis
             'references' => array_map(static fn (Reference $reference): array => $reference->toArray(), $this->references),
             'error' => $this->error,
             'ignores' => array_map(static fn (IgnoreDirective $ignore): array => $ignore->toArray(), $this->ignores),
+            'tables' => array_map(static fn (TableUse $use): array => $use->toArray(), $this->tables),
         ];
     }
 
@@ -59,6 +62,7 @@ final readonly class FileAnalysis
             array_map(static fn (array $reference): Reference => Reference::fromArray($reference, $file), self::list($data['references'] ?? null)),
             $data['error'] ?? null,
             array_map(static fn (array $ignore): IgnoreDirective => IgnoreDirective::fromArray($ignore), self::list($data['ignores'] ?? null)),
+            array_map(static fn (array $use): TableUse => TableUse::fromArray($use, $file), self::list($data['tables'] ?? null)),
         );
     }
 

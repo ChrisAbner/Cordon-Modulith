@@ -147,7 +147,7 @@ it('rejects depends_on and public entries that are not names, without crashing (
 it('validates the root keys and the rules even without modules (M9)', function () {
     expect(ConfigValidator::errors(['rule' => [], 'rules' => ['cycle' => true], 'modules' => ['Billing' => []]], new ModuleMap([])))->toBe([
         'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, packages, rules, listeners, exclude, baseline, cache, docblocks.',
-        'Unknown rule [cycle] in rules. Did you mean [cycles]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, external_dependency.',
+        'Unknown rule [cycle] in rules. Did you mean [cycles]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, external_dependency, tables.',
     ]);
 });
 
