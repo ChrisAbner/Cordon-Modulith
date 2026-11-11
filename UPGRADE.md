@@ -1,5 +1,14 @@
 # Upgrading
 
+## From 0.4 to 0.5
+
+Nothing is required: with an unchanged `config/cordon.php`, 0.5 gives the same report as 0.4. Every addition (`cache`, `docblocks`, `interfaces`, `nested`, `packages`, the `tables` rule) is off or without effect until you configure it. What you may notice:
+
+1. **The texts of configuration errors list the new rules and keys.** The error for an unknown rule or key now includes `external_dependency` and `tables`, and `cache`, `docblocks`, `packages` and, per module, `interfaces` and `nested` among the valid names. If a script matches that text, update it.
+2. **Custom rules run after the new built-in rules.** The built-in rules still come first, now with `external_dependency` and `tables` at the end of them, so the violations of your custom rules come after those of the new rules in the report. A custom rule whose id clashes with `external_dependency` or `tables` is now an error: rename it.
+3. **A nested folder whose name contains a dot is a configuration error**: the dot is the separator of `Parent.Child`. A project that does not use `nested` is not affected.
+4. **Optional.** `cache` makes later runs parse only the files that changed (add the file to `.gitignore`), `--since` and `cordon:affected` select what a pull request touches, and `docblocks` adds the types written in docblocks (it raises the reference counts in `cordon:graph` and `cordon:why`). See the [changelog](CHANGELOG.md).
+
 ## From 0.3 to 0.4
 
 The [changelog](CHANGELOG.md) lists everything; this is what you may have to do. Run `cordon:verify` once after updating and go through the steps it points to.
