@@ -185,3 +185,64 @@ it('reports config errors even when there are no modules (M9)', function () {
             ->and($run['err'])->toContain('Unknown key [rule] in config/cordon.php. Did you mean [rules]?');
     }
 });
+
+/**
+ * A copy of the interfaces app whose config/cordon.php has the given module settings.
+ *
+ * @param  array<string, mixed>  $modules
+ */
+function interfaces_project(array $modules): string
+{
+    $project = temp_project('interfaces-app');
+    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => $modules], true).';');
+
+    return $project;
+}
+
+it('fails a public class outside the named interfaces a module depends on', function () {
+    $project = interfaces_project([
+        'Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList', 'Data\\Price*']]],
+        'Billing' => ['depends_on' => ['Catalog::Pricing']],
+    ]);
+    $run = run_cordon(['verify', '--format=json'], $project);
+    $messages = array_column(json_decode($run['out'], true)['violations'], 'message');
+
+    expect($run['code'])->toBe(1)
+        ->and($messages)->toBe([
+            'Module [Billing] uses App\\Modules\\Catalog\\Contracts\\Stock, which is not in the interfaces it declares on [Catalog] (Pricing).',
+            'Module [Billing] uses App\\Modules\\Catalog\\Contracts\\Unlisted, which is not in the interfaces it declares on [Catalog] (Pricing).',
+        ]);
+});
+
+it('fails with exit code 2 on an interface that lists a class that is not public', function () {
+    $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Models\\Price']]]]);
+    $run = run_cordon(['verify', '--format=json'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toBe('')
+        ->and($run['err'])->toContain('Module [Catalog] interface [Pricing] lists Models\\Price, which is not public.');
+});
+
+it('warns about an interface pattern that matches no class without failing', function () {
+    $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\Missing']]]]);
+    $run = run_cordon(['verify', '--format=json'], $project);
+
+    expect($run['code'])->toBe(0)
+        ->and($run['err'])->toContain('Module [Catalog] interface [Pricing] lists Contracts\\Missing, which matches no class.');
+});
+
+it('explains the interfaces of a class and the interfaces behind a dependency', function () {
+    $project = interfaces_project([
+        'Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList'], 'Shared' => ['Contracts\\PriceList']]],
+        'Billing' => ['depends_on' => ['Catalog::Shared']],
+    ]);
+    $explain = run_cordon(['explain', 'App\\Modules\\Catalog\\Contracts\\PriceList', '--format=json'], $project);
+    $none = run_cordon(['explain', 'App\\Modules\\Catalog\\Contracts\\Stock'], $project);
+    $why = run_cordon(['why', 'Billing', 'Catalog'], $project);
+    $plain = run_cordon(['explain', 'App\\Modules\\Billing\\Services\\Invoicer'], $project);
+
+    expect(json_decode($explain['out'], true)['interfaces'])->toBe(['Catalog::Pricing', 'Catalog::Shared'])
+        ->and($none['out'])->toContain('Interfaces:  (none)')
+        ->and($plain['out'])->not->toContain('Interfaces')
+        ->and($why['out'])->toContain('Billing lists Catalog in depends_on only through Catalog::Shared, and cordon:verify reports undeclared_dependency for references outside them.');
+});

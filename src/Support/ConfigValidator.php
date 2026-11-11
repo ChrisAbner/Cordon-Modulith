@@ -21,7 +21,7 @@ final class ConfigValidator
 
     private const HOST_KEYS = ['paths'];
 
-    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'metadata'];
+    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'interfaces', 'metadata'];
 
     private const LISTENER_KEYS = ['cycles', 'depends_on'];
 
@@ -91,7 +91,7 @@ final class ConfigValidator
 
         if (is_array($config['modules'] ?? null)) {
             foreach ($config['modules'] as $name => $settings) {
-                array_push($errors, ...self::moduleErrors((string) $name, $settings, $modules));
+                array_push($errors, ...self::moduleErrors((string) $name, $settings, $modules, $config['modules']));
             }
         }
 
@@ -136,9 +136,10 @@ final class ConfigValidator
     }
 
     /**
+     * @param  array<array-key, mixed>  $allSettings  The `modules` config, to read the interfaces other modules define.
      * @return list<string>
      */
-    private static function moduleErrors(string $name, mixed $settings, ModuleMap $modules): array
+    private static function moduleErrors(string $name, mixed $settings, ModuleMap $modules, array $allSettings): array
     {
         if (! $modules->has($name)) {
             return [sprintf('config/cordon.php configures unknown module [%s].', $name).self::didYouMean($name, $modules->names())];
@@ -163,12 +164,14 @@ final class ConfigValidator
         }
 
         foreach (is_array($dependsOn) ? array_filter($dependsOn, 'is_string') : [] as $dependency) {
-            if (str_contains($dependency, '::')) {
-                $errors[] = sprintf('Module [%s] depends on [%s]: the Module::Interface syntax is reserved for named interfaces in a later version.', $name, $dependency);
-            } elseif (! $modules->has($dependency)) {
-                $errors[] = sprintf('Module [%s] declares a dependency on unknown module [%s].', $name, $dependency).self::didYouMean($dependency, $modules->names());
-            } elseif (($hidden = self::hiddenBehind($modules, $name, $dependency)) !== null) {
+            $target = Module::entryModule($dependency);
+
+            if (! $modules->has($target)) {
+                $errors[] = sprintf('Module [%s] declares a dependency on unknown module [%s].', $name, $target).self::didYouMean($target, $modules->names());
+            } elseif (($hidden = self::hiddenBehind($modules, $name, $target)) !== null) {
                 $errors[] = sprintf('Module [%s] depends on [%s], which is nested in [%s] and so invisible outside it. Depend on [%s] instead.', $name, $dependency, $hidden, $hidden);
+            } elseif (str_contains($dependency, '::')) {
+                array_push($errors, ...self::interfaceDependencyErrors($name, $dependency, $allSettings));
             }
         }
 
@@ -190,6 +193,93 @@ final class ConfigValidator
 
         if (array_key_exists('nested', $settings)) {
             array_push($errors, ...self::nestedErrors($name, $settings['nested'], $modules));
+        }
+
+        if (array_key_exists('interfaces', $settings)) {
+            array_push($errors, ...self::interfaceErrors($name, $settings['interfaces']));
+        }
+
+        return $errors;
+    }
+
+    /**
+     * A depends_on entry "Module::Interface": the interface has to exist in the settings of the module.
+     *
+     * @param  array<array-key, mixed>  $allSettings
+     * @return list<string>
+     */
+    private static function interfaceDependencyErrors(string $name, string $dependency, array $allSettings): array
+    {
+        $target = Module::entryModule($dependency);
+        $interface = substr($dependency, strlen($target) + 2);
+
+        if ($interface === '*') {
+            return [];
+        }
+
+        if ($interface === '') {
+            return [sprintf('Module [%s] depends on [%s], which names no interface. Write %s::Name, or %s::* for the whole public API.', $name, $dependency, $target, $target)];
+        }
+
+        $defined = is_array($allSettings[$target] ?? null) && is_array($allSettings[$target]['interfaces'] ?? null)
+            ? array_map('strval', array_keys($allSettings[$target]['interfaces']))
+            : [];
+
+        if ($defined === []) {
+            return [sprintf('Module [%s] depends on [%s], but module [%s] defines no interfaces. Add interfaces to its settings in config/cordon.php, or depend on [%s].', $name, $dependency, $target, $target)];
+        }
+
+        if (in_array($interface, $defined, true)) {
+            return [];
+        }
+
+        return [sprintf(
+            'Module [%s] depends on [%s], but module [%s] defines no interface [%s].%s Interfaces of [%s]: %s.',
+            $name,
+            $dependency,
+            $target,
+            $interface,
+            self::didYouMean($dependency, array_map(static fn (string $candidate): string => $target.'::'.$candidate, $defined)),
+            $target,
+            implode(', ', $defined),
+        )];
+    }
+
+    /**
+     * The shape of the `interfaces` setting of a module: a map of name => list of class names or namespaces.
+     *
+     * @return list<string>
+     */
+    private static function interfaceErrors(string $module, mixed $interfaces): array
+    {
+        if (! is_array($interfaces) || ($interfaces !== [] && array_is_list($interfaces))) {
+            return [sprintf('Module [%s]: interfaces must be a map of interface name to a list of class names or namespaces.', $module)];
+        }
+
+        $errors = [];
+
+        foreach ($interfaces as $name => $patterns) {
+            $name = (string) $name;
+
+            if ($name === '*') {
+                $errors[] = sprintf('Module [%s]: [*] cannot name an interface, because %s::* already means the whole public API.', $module, $module);
+            } elseif ($name === '' || str_contains($name, '::')) {
+                $errors[] = sprintf('Module [%s]: the interface name [%s] cannot %s.', $module, $name, $name === '' ? 'be empty' : 'contain "::"');
+            }
+
+            if (! is_array($patterns) || ! array_is_list($patterns) || array_filter($patterns, static fn (mixed $pattern): bool => ! is_string($pattern)) !== []) {
+                $errors[] = sprintf('Module [%s]: interface [%s] must be a list of class names or namespaces.', $module, $name);
+
+                continue;
+            }
+
+            foreach ($patterns as $pattern) {
+                if (trim($pattern, '\\') === '') {
+                    $errors[] = sprintf('Module [%s] interface [%s]: an empty pattern matches nothing. Write a class name relative to the module, such as Contracts\\PriceList.', $module, $name);
+                } elseif (substr_count($pattern, '*') > (str_ends_with($pattern, '*') ? 1 : 0)) {
+                    $errors[] = sprintf('Module [%s] interface [%s]: the pattern [%s] may use * only at the end.', $module, $name, $pattern);
+                }
+            }
         }
 
         return $errors;

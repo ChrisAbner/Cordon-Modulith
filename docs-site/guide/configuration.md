@@ -65,10 +65,41 @@ Per-module settings, keyed by module name as shown by `cordon:modules`:
 | `public` | Extra public namespaces or classes, relative to the module namespace. |
 | `open` | Every class of the module is public. |
 | `strict` | `true` keeps the module's violations out of the baseline: they always fail, and `--generate-baseline` does not record them. For a module that is clean and must stay clean. |
+| `interfaces` | Named subsets of the public API that other modules can depend on: `'Pricing' => ['Contracts\\PriceList', 'Data\\Price*']`. See [named interfaces](#named-interfaces). |
 | `nested` | Modules inside this one: a list of folders directly under the module (`['Invoices', 'Payments']`), or `true` for every folder that is not a public namespace. See [nested modules](#nested-modules). |
 | `metadata` | Free-form information about the module: `cordon:docs` shows its `description` and `owner`. |
 
-In `depends_on`, `Module::Interface` is reserved for named interfaces in a later version.
+In `depends_on`, `Catalog::Pricing` limits a module to a [named interface](#named-interfaces) of `Catalog`.
+
+## Named interfaces
+
+A module can name subsets of its public API, as in Spring Modulith, and a module that depends on it can ask for one of them instead of the whole thing:
+
+```php
+'modules' => [
+    'Catalog' => [
+        'interfaces' => [
+            'Pricing' => ['Contracts\\PriceList', 'Data\\Price*'],
+            'Inventory' => ['Contracts\\Stock'],
+        ],
+    ],
+    'Billing' => ['depends_on' => ['Catalog::Pricing']],
+    'Orders' => ['depends_on' => ['Catalog::Pricing', 'Catalog::Inventory']],
+    'Reports' => ['depends_on' => ['Catalog']],   // Catalog::* is the same: the whole public API
+],
+```
+
+Each entry is a class name relative to the module namespace. A trailing `*` makes it a prefix: `Data\*` is every class under `Data`, and `Data\Price*` every class whose name starts so. Names are compared without regard to case, as PHP does. A class can be in several interfaces, or in none.
+
+- `Catalog` and `Catalog::*` mean what they always did: any public class of `Catalog`. A project that does not use `interfaces` behaves as before.
+- With `Catalog::Pricing`, `Billing` may use the public classes of `Pricing` only. Using another public class of `Catalog` is an [`undeclared_dependency`](./rules#undeclared-dependency): `Module [Billing] uses App\Modules\Catalog\Contracts\Stock, which is not in the interfaces it declares on [Catalog] (Pricing).` The same goes for a listener that handles an event outside the interface, unless `listeners.depends_on` is `false`. With several entries, the union of their interfaces applies.
+- An interface does not make a class public. Its classes have to be public already (a public namespace, `#[PublicApi]`, the module's `public` list or `open`), and `cordon:verify` fails with exit code `2` when an interface names a class that is not: `Module [Catalog] interface [Pricing] lists Models\Price, which is not public.` A pattern with `*` may reach internal classes, which stay internal. A pattern that matches no class (or, with `*`, no public class) is a warning. A class that is internal is reported by `internal_access`, as before, and not a second time here.
+- `depends_on` accepts only the interfaces a module defines: `Catalog::Pricng` is a configuration error with a suggestion, and so is an interface of a module that defines none.
+- [`unused_dependency`](./rules#unused-dependency) looks at each entry: `Catalog::Pricing` is unused when no class of `Pricing` is used.
+- `cordon:explain <class>` lists the interfaces the class belongs to, `cordon:why` says when a dependency is limited to interfaces, and `cordon:graph` labels the arrow (`3 Catalog::Pricing`).
+- With [nested modules](#nested-modules), `Billing.Payments::Gateway` is allowed from inside `Billing`, and `Billing::Api` can list classes of its children (they must be public outside `Billing`). A nested module may use any class of its ancestors, so interfaces never restrict it from using its parent.
+
+The rule works in the PHPStan rule too, with the same message. The checks that need the classes (public members, patterns that match nothing) run in `cordon:verify` and the Pest expectation.
 
 ## Nested modules
 
@@ -139,7 +170,7 @@ How a listener's reference to another module's event counts. See [what counts as
 `cordon:verify` checks the whole file before it analyses anything. Unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rules stop it with exit code `2`, and name the closest valid key:
 
 ```text
-Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, metadata.
+Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, metadata.
 ```
 
 `cordon:modules` shows the same messages as warnings, and the PHPStan rule reports them once as `cordon.configuration`.

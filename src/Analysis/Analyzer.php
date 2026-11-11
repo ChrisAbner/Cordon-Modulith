@@ -64,6 +64,8 @@ final readonly class Analyzer
         $violations = $ignores->filter($violations);
         $warnings = $ignores->filter($warnings);
 
+        [$interfaceErrors, $interfaceWarnings] = InterfaceAudit::run($snapshot);
+
         return new Result(
             $snapshot->context->modules,
             $violations,
@@ -79,6 +81,8 @@ final readonly class Analyzer
             array_column($ignores->unused(), 'message'),
             $ignores->ignored(),
             array_column($ignores->unused(), 'file'),
+            $interfaceErrors,
+            $interfaceWarnings,
         );
     }
 

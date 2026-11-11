@@ -47,6 +47,8 @@ final class ModuleFilter
             array_values(array_filter($result->warnings, $involved)),
             array_values(array_intersect($result->checkedModules ?? $modules, $modules)),
             ...self::ignores($result, static fn (Violation $violation): bool => self::involvesAny($violation, $modules), static fn (string $file): bool => in_array($result->modules->forPath($file)?->name, $modules, true)),
+            interfaceErrors: $result->interfaceErrors,
+            interfaceWarnings: $result->interfaceWarnings,
         );
     }
 
@@ -109,6 +111,8 @@ final class ModuleFilter
 
                 return false;
             }),
+            interfaceErrors: $result->interfaceErrors,
+            interfaceWarnings: $result->interfaceWarnings,
         );
     }
 

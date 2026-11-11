@@ -90,6 +90,10 @@ final class Cordon
             Assert::fail('Cordon Modulith found no modules. Check the resolver settings in config/cordon.php.');
         }
 
+        if (($errors = self::result()->interfaceErrors) !== []) {
+            Assert::fail(implode(PHP_EOL, ['Invalid named interfaces:', ...array_map(static fn (string $error): string => '  - '.$error, $errors)]));
+        }
+
         if (($errors = self::result()->ignoreErrors) !== []) {
             Assert::fail(implode(PHP_EOL, ['Invalid @cordon-ignore comments:', ...array_map(static fn (string $error): string => '  - '.$error, $errors)]));
         }

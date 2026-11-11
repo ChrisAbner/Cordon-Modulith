@@ -96,7 +96,7 @@ final class GraphExporter
      * @param  list<string>  $modules
      * @param  list<Edge>  $edges
      * @param  list<Violation>  $violations
-     * @return array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int}>}
+     * @return array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int, interfaces?: list<string>}>}
      */
     public static function model(array $modules, array $edges, array $violations, ?string $focus = null): array
     {
@@ -104,7 +104,7 @@ final class GraphExporter
 
         foreach ($edges as $edge) {
             $key = $edge->from->name.'|'.$edge->to->name;
-            $pairs[$key] ??= ['from' => $edge->from->name, 'to' => $edge->to->name, 'references' => 0, 'kinds' => [], 'violations' => 0];
+            $pairs[$key] ??= ['from' => $edge->from->name, 'to' => $edge->to->name, 'references' => 0, 'kinds' => [], 'violations' => 0, 'interfaces' => self::declaredInterfaces($edge)];
             $pairs[$key]['references']++;
             $pairs[$key]['kinds'][$edge->reference->kind] = true;
         }
@@ -139,7 +139,11 @@ final class GraphExporter
                 $kinds = array_keys($pair['kinds']);
                 sort($kinds);
 
-                return [...$pair, 'kinds' => $kinds];
+                $interfaces = $pair['interfaces'];
+                unset($pair['interfaces']);
+
+                // Only a dependency limited to named interfaces says which: the others are unchanged.
+                return [...$pair, 'kinds' => $kinds, ...($interfaces === [] ? [] : ['interfaces' => $interfaces])];
             }, $pairs)),
         ];
     }
@@ -149,7 +153,7 @@ final class GraphExporter
      * DOT, each arrow is labelled with its number of references, red when it
      * has violations and dotted when it is made only of listeners.
      *
-     * @param  array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int}>}  $model
+     * @param  array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int, interfaces?: list<string>}>}  $model
      */
     public static function flowchart(array $model): string
     {
@@ -159,7 +163,8 @@ final class GraphExporter
 
         foreach ($model['edges'] as $link => $edge) {
             $arrow = $edge['kinds'] === [Reference::LISTENER] ? '-.->' : '-->';
-            $lines[] = sprintf('    m%d %s|%d| m%d', $ids[$edge['from']], $arrow, $edge['references'], $ids[$edge['to']]);
+            $label = self::label($edge);
+            $lines[] = sprintf('    m%d %s|%s| m%d', $ids[$edge['from']], $arrow, isset($edge['interfaces']) ? '"'.str_replace('"', '#quot;', $label).'"' : $label, $ids[$edge['to']]);
 
             if ($edge['violations'] > 0) {
                 $red[] = $link;
@@ -174,14 +179,14 @@ final class GraphExporter
     }
 
     /**
-     * @param  array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int}>}  $model
+     * @param  array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int, interfaces?: list<string>}>}  $model
      */
     public static function dot(array $model): string
     {
         $lines = ['digraph cordon {', '    rankdir=LR;', '    node [shape=box];', ...self::dotNodes($model['modules'])];
 
         foreach ($model['edges'] as $edge) {
-            $attributes = [sprintf('label="%d"', $edge['references'])];
+            $attributes = [sprintf('label="%s"', addslashes(self::label($edge)))];
 
             if ($edge['violations'] > 0) {
                 $attributes[] = 'color="#dd3333"';
@@ -197,6 +202,48 @@ final class GraphExporter
         $lines[] = '}';
 
         return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    /**
+     * What an arrow of cordon:graph says: the number of references, and the
+     * named interfaces the dependency is limited to ("3 Catalog::Pricing").
+     *
+     * @param  array{references: int, interfaces?: list<string>}  $edge
+     */
+    private static function label(array $edge): string
+    {
+        return implode(' ', [(string) $edge['references'], ...(isset($edge['interfaces']) ? [implode(', ', $edge['interfaces'])] : [])]);
+    }
+
+    /**
+     * The named interfaces ("Catalog::Pricing") the source module lists for
+     * the target of an edge, when it does not also list the whole module.
+     * Outside a parent a nested module is seen as the parent, so its parent's
+     * entries are looked up too.
+     *
+     * @return list<string>
+     */
+    private static function declaredInterfaces(Edge $edge): array
+    {
+        if ($edge->from->dependsOn === null) {
+            return [];
+        }
+
+        $parts = explode('.', $edge->to->name);
+
+        for ($length = count($parts); $length >= 1; $length--) {
+            $name = implode('.', array_slice($parts, 0, $length));
+
+            if ($edge->from->declaresWhole($name)) {
+                return [];
+            }
+
+            if (($interfaces = $edge->from->declaredInterfaces($name)) !== []) {
+                return array_map(static fn (string $interface): string => $name.'::'.$interface, $interfaces);
+            }
+        }
+
+        return [];
     }
 
     /**

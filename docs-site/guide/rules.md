@@ -57,6 +57,17 @@ Using a module's **public** class without listing that module reports only `unde
 | `Modules\Catalog\Models\Product` (internal, `Catalog` listed) | `internal_access` only |
 | `Modules\Catalog\Models\Product` (internal, `Catalog` not listed) | both |
 
+### Named interfaces
+
+`Catalog::Pricing` in `depends_on` lists only part of `Catalog`'s public API (the [`Pricing` interface](./configuration#named-interfaces)). A public class of `Catalog` that is not in it is reported, once per file and class:
+
+```text
+x [undeclared_dependency] app/Modules/Billing/Services/Invoicer.php:12
+  Module [Billing] uses App\Modules\Catalog\Contracts\Stock, which is not in the interfaces it declares on [Catalog] (Pricing).
+```
+
+Add the class to an interface `Billing` declares, or declare the interface that has it. `Catalog` and `Catalog::*` allow the whole public API, as before.
+
 ## cycles
 
 Cordon reports each dependency that takes part in a cycle, with the shortest cycle it closes. Two modules that depend on each other give two reports:
@@ -95,7 +106,7 @@ A module lists a module in `depends_on` but none of its classes uses it. It usua
   Module [Catalog] lists [Shared] in depends_on, but does not use it. Remove it so depends_on shows the real dependencies.
 ```
 
-It is a warning by default (it arrived in 0.4); set `'unused_dependency' => 'error'` to make it fail. Listening to an event of the module counts as using it, unless `listeners.depends_on` is `false`.
+It is a warning by default (it arrived in 0.4); set `'unused_dependency' => 'error'` to make it fail. Listening to an event of the module counts as using it, unless `listeners.depends_on` is `false`. An entry for a named interface (`Catalog::Pricing`) is unused when no class of that interface is used.
 
 ## host_access
 

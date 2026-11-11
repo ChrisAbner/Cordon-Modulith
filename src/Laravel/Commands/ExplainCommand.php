@@ -67,12 +67,22 @@ final class ExplainCommand extends Command
             }
         }
 
+        // The named interfaces of the module, and of the modules it is nested in, that the class belongs to.
+        $interfaces = null;
+
+        foreach ($verifier->modules() as $candidate) {
+            if ($candidate->interfaces !== [] && $candidate->ownsClass($declaration->fqcn)) {
+                $interfaces = [...($interfaces ?? []), ...array_map(static fn (string $name): string => $candidate->name.'::'.$name, $candidate->interfacesOf($declaration->fqcn))];
+            }
+        }
+
         $report = [
             'class' => $declaration->fqcn,
             'module' => $module->name,
             'public' => $public,
             'reason' => $policy->reason($declaration->fqcn, $module, $declaration),
             'used_by' => $usedBy,
+            ...($interfaces === null ? [] : ['interfaces' => $interfaces]),
         ];
 
         // A nested module exists only inside its parent: the status above is the one outside it.
@@ -97,6 +107,11 @@ final class ExplainCommand extends Command
         if ($parent !== null) {
             $this->line(sprintf('  Inside %s:  %s: %s', $parent->name, $report['public_inside'] ? 'public' : 'internal', $report['reason_inside']));
         }
+
+        if ($interfaces !== null) {
+            $this->line('  Interfaces:  '.($interfaces === [] ? '(none)' : implode(', ', $interfaces)));
+        }
+
         $this->line('  Used by:'.($usedBy === [] ? ' no other module' : ''));
 
         foreach ($usedBy as $use) {

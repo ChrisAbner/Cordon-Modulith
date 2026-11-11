@@ -54,12 +54,13 @@ final class WhyCommand extends Command
             }
         }
 
-        $allowed = $from->dependsOn === null ? null : in_array($to->name, $from->dependsOn, true);
+        $allowed = $from->dependsOn === null ? null : $from->declares($to->name);
         $reported = $this->reports($verifier->check($snapshot), $from, $to);
         $uncountedListeners = $references !== [] && $this->onlyListeners($references) && config('cordon.listeners.depends_on', true) === false;
         $reason = match (true) {
             $references === [] => sprintf('%s does not depend on %s.', $from->name, $to->name),
             $allowed === null => sprintf('%s does not declare depends_on, so it may depend on any module.', $from->name),
+            $allowed && $reported => sprintf('%s lists %s in depends_on only through %s, and cordon:verify reports undeclared_dependency for references outside them.', $from->name, $to->name, implode(', ', array_map(static fn (string $interface): string => $to->name.'::'.$interface, $from->declaredInterfaces($to->name)))),
             $allowed => sprintf('%s lists %s in depends_on.', $from->name, $to->name),
             $reported => sprintf('%s does not list %s in depends_on: cordon:verify reports it as undeclared_dependency.', $from->name, $to->name),
             $this->reports($verifier->check($snapshot, baseline: false), $from, $to) => sprintf('%s does not list %s in depends_on, but cordon:verify does not report it: the baseline records it.', $from->name, $to->name),

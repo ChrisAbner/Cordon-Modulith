@@ -126,6 +126,7 @@ it('reports in PHPStan what cordon:verify reports', function (string $fixture, a
 })->with([
     'namespace app' => ['namespace-app', ['Shared' => ['open' => true], 'Catalog' => ['depends_on' => []]]],
     'listeners app' => ['listeners-app', ['Billing' => ['depends_on' => []]]],
+    'named interfaces' => ['interfaces-app', ['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList', 'Data\\Price*'], 'Inventory' => ['Contracts\\Stock']]], 'Billing' => ['depends_on' => ['Catalog::Pricing']], 'Orders' => ['depends_on' => ['Catalog::Inventory']]]],
     'nested app' => ['nested-app', ['Billing' => ['nested' => ['Invoices', 'Payments']], 'Orders' => ['depends_on' => []], 'Billing.Invoices' => ['depends_on' => []]]],
 ]);
 

@@ -45,7 +45,7 @@ it('leaves the suggestion out when no key is close', function () {
 
 it('rejects an unknown module key', function () {
     expect(config_errors(['modules' => ['Billing' => ['depend_on' => ['Catalog']]]]))->toBe([
-        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, metadata.',
+        'Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, metadata.',
     ]);
 });
 
@@ -62,10 +62,11 @@ it('rejects a dependency on an unknown module', function () {
     ]);
 });
 
-it('reserves the Module::Interface syntax in depends_on', function () {
+it('accepts Module::Interface in depends_on only for an interface the module defines', function () {
     expect(config_errors(['modules' => ['Billing' => ['depends_on' => ['Catalog::Contracts']]]]))->toBe([
-        'Module [Billing] depends on [Catalog::Contracts]: the Module::Interface syntax is reserved for named interfaces in a later version.',
-    ]);
+        'Module [Billing] depends on [Catalog::Contracts], but module [Catalog] defines no interfaces. Add interfaces to its settings in config/cordon.php, or depend on [Catalog].',
+    ])
+        ->and(config_errors(['modules' => ['Catalog' => ['interfaces' => ['Contracts' => ['Contracts\\*']]], 'Billing' => ['depends_on' => ['Catalog::Contracts', 'Catalog::*']]]]))->toBe([]);
 });
 
 it('rejects settings of the wrong type', function () {

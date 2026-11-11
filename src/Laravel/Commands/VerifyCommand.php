@@ -150,9 +150,10 @@ final class VerifyCommand extends Command
         $basePath = $verifier->basePath();
 
         // A @cordon-ignore without a reason, or naming a rule that does not
-        // exist, is a broken decision: it fails like a config error.
-        if ($result->ignoreErrors !== []) {
-            foreach ($result->ignoreErrors as $error) {
+        // exist, is a broken decision, and so is a named interface that lists a
+        // class that is not public: they fail like a config error.
+        if (($errors = [...$result->interfaceErrors, ...$result->ignoreErrors]) !== []) {
+            foreach ($errors as $error) {
                 if ($format === 'github') {
                     $this->output->writeln('::error title=Cordon::'.$error, OutputInterface::OUTPUT_RAW);
                 } else {
@@ -163,7 +164,7 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
-        foreach ([...$verifier->cacheWarnings(), ...$result->ignoreWarnings] as $warning) {
+        foreach ([...$verifier->cacheWarnings(), ...$result->interfaceWarnings, ...$result->ignoreWarnings] as $warning) {
             if ($format === 'github') {
                 $this->output->writeln('::warning title=Cordon::'.$warning, OutputInterface::OUTPUT_RAW);
             } else {

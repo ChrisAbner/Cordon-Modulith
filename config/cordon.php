@@ -68,6 +68,11 @@ return [
     |             a public namespace. They are named Parent.Child (Billing.Invoices)
     |             and configured under that name; outside the parent only its
     |             public API exists.
+    | interfaces: named subsets of the public API, e.g.
+    |             'Pricing' => ['Contracts\\PriceList', 'Data\\Price*'] (relative
+    |             class names, a trailing * for a namespace or prefix). Another module
+    |             then lists 'Catalog::Pricing' in depends_on to use only that part;
+    |             'Catalog' and 'Catalog::*' still mean the whole public API.
     | metadata:   free-form information about the module (owner, description...).
     |             Cordon does not read it yet; the key is reserved for it.
     |

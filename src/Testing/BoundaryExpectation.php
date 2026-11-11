@@ -37,6 +37,10 @@ final class BoundaryExpectation
             ));
         }
 
+        if (($errors = Cordon::result()->interfaceErrors) !== []) {
+            Assert::fail(implode(PHP_EOL, ['Invalid named interfaces:', ...array_map(fn (string $error): string => '  - '.$error, $errors)]));
+        }
+
         if (($errors = Cordon::result()->ignoreErrors) !== []) {
             Assert::fail(implode(PHP_EOL, ['Invalid @cordon-ignore comments:', ...array_map(fn (string $error): string => '  - '.$error, $errors)]));
         }
