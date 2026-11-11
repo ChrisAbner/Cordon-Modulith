@@ -7,6 +7,7 @@ use Cordon\Analysis\FileAnalysis;
 use Cordon\Analysis\FileCollector;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
+use Cordon\Analysis\Reference;
 use Cordon\Analysis\Result;
 use Cordon\Contracts\DependencyExtractor;
 use Cordon\Reporters\JsonReporter;
@@ -354,10 +355,11 @@ it('writes the cache atomically and leaves no temporary file', function () {
         ->toMatchArray(['version' => 1, 'fingerprint' => AnalysisCache::fingerprint()]);
 });
 
-it('round-trips every analysis of the fixture projects through the cache format', function (string $fixture) {
-    $extractor = new PhpParserExtractor;
+it('round-trips every analysis of the fixture projects through the cache format', function (string $fixture, bool $docblocks, bool $tables) {
+    // docblocks and tables on: with the defaults the docblock references and the table uses are not extracted, so they would not be round-tripped.
+    $extractor = new PhpParserExtractor(docblocks: true, tables: true);
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(fixture_path($fixture), FilesystemIterator::SKIP_DOTS));
-    $count = 0;
+    $count = $docblockReferences = $tableUses = 0;
 
     foreach ($files as $file) {
         if ($file->getExtension() !== 'php') {
@@ -369,7 +371,17 @@ it('round-trips every analysis of the fixture projects through the cache format'
 
         expect($restored)->toEqual($analysis);
         $count++;
+        $docblockReferences += count(array_filter($analysis->references, static fn (Reference $reference): bool => $reference->kind === Reference::DOCBLOCK));
+        $tableUses += count($analysis->tables);
     }
 
-    expect($count)->toBeGreaterThan(0);
-})->with(['namespace-app', 'layered-app', 'listeners-docblocks-app', 'docblocks-app', 'tables-app']);
+    expect($count)->toBeGreaterThan(0)
+        ->and($docblockReferences > 0)->toBe($docblocks)
+        ->and($tableUses > 0)->toBe($tables);
+})->with([
+    'namespace-app' => ['namespace-app', false, false],
+    'layered-app' => ['layered-app', false, false],
+    'listeners-docblocks-app' => ['listeners-docblocks-app', true, false],
+    'docblocks-app' => ['docblocks-app', true, false],
+    'tables-app' => ['tables-app', false, true],
+]);
