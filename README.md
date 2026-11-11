@@ -155,11 +155,17 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 
 ## Rules
 
-| Rule | Reports |
-|---|---|
-| `internal_access` | A module using a class that is not part of another module's public API. One report per file and target class. |
-| `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
-| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. |
+| Rule | Reports | Default |
+|---|---|---|
+| `internal_access` | A module using a class that is not part of another module's public API. One report per file and target class. | error |
+| `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. | error |
+| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. | error |
+| `unused_dependency` | A `depends_on` entry the module never uses. One report per module and unused entry. | warn |
+| `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's public API. One report per file and target class. | warn |
+| `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
+| `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
+
+`warn` rules are reported but do not fail the build, and the others are `error`. Set any rule to `error`, `warn` or `off` under `rules` in the config (a custom rule goes there too).
 
 You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
 

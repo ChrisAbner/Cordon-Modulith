@@ -1,12 +1,16 @@
 # Rules
 
-| Rule | Reports |
-|---|---|
-| `internal_access` | A module using a class that is not part of another module's [public API](./public-api). One report per file and target class. |
-| `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. |
-| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. |
+| Rule | Reports | Default |
+|---|---|---|
+| `internal_access` | A module using a class that is not part of another module's [public API](./public-api). One report per file and target class. | error |
+| `undeclared_dependency` | A module with `depends_on` using a module that is not listed. One report per file and target module. | error |
+| `cycles` | Modules that depend on each other in a cycle. One report per dependency inside the cycle, with the shortest cycle it closes. | error |
+| `unused_dependency` | A `depends_on` entry the module never uses. One report per module and unused entry. | warn |
+| `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's [public API](./public-api). One report per file and target class. | warn |
+| `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
+| `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
 
-All three are enabled by default. Switch them off in the config:
+The built-in rules are enabled by default. `unused_dependency`, `host_access` and `public_api_leak` start as warnings (they arrived after 0.3): their violations are reported but do not fail. `layers` checks nothing until `layers` is configured. Set a rule to `error`, `warn` or `off` (`true` and `false` keep working) in the config:
 
 ```php
 'rules' => [
