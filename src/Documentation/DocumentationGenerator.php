@@ -148,7 +148,7 @@ final class DocumentationGenerator
             '',
             '## Public API',
             '',
-            ...$this->bullets($this->publicApi($module, $snapshot), 'No public classes yet.'),
+            ...$this->publicApiSection($module, $snapshot),
             '',
             '## Uses',
             '',
@@ -355,9 +355,37 @@ final class DocumentationGenerator
     }
 
     /**
+     * The body of the "Public API" section. A nested module has two: what the
+     * other modules inside its parent can use, and what the outside sees, which
+     * is only what the parent exposes.
+     *
      * @return list<string>
      */
-    private function publicApi(Module $module, Snapshot $snapshot): array
+    private function publicApiSection(Module $module, Snapshot $snapshot): array
+    {
+        $parent = $snapshot->context->modules->parentOf($module);
+
+        if ($parent === null) {
+            return $this->bullets($this->publicApi($module, $snapshot, null), 'No public classes yet.');
+        }
+
+        return [
+            sprintf('Seen by the other modules inside `%s`:', $parent->name),
+            '',
+            // The parent stands for any module inside it: they all see the same.
+            ...$this->bullets($this->publicApi($module, $snapshot, $parent), 'No public classes yet.'),
+            '',
+            sprintf('Seen from outside `%s`, which exposes only what its `public` setting names:', $parent->name),
+            '',
+            ...$this->bullets($this->publicApi($module, $snapshot, null), 'No public classes yet.'),
+        ];
+    }
+
+    /**
+     * @param  Module|null  $consumer  The module that looks at the API; null for the outside.
+     * @return list<string>
+     */
+    private function publicApi(Module $module, Snapshot $snapshot, ?Module $consumer): array
     {
         $classes = [];
 
@@ -365,7 +393,7 @@ final class DocumentationGenerator
             foreach ($analysis->declarations as $declaration) {
                 if ($module->ownsClass($declaration->fqcn)
                     && $snapshot->context->modules->forClass($declaration->fqcn)?->name === $module->name
-                    && $snapshot->context->policy->isPublic($declaration->fqcn, $module, $declaration)) {
+                    && $snapshot->context->policy->isPublic($declaration->fqcn, $module, $declaration, $consumer)) {
                     $classes[] = '`'.$module->relativeName($declaration->fqcn).'`';
                 }
             }

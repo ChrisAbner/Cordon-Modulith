@@ -9,6 +9,7 @@ use Cordon\Documentation\DocumentationGenerator;
 use Cordon\Documentation\EventEntry;
 use Cordon\Documentation\EventInventory;
 use Cordon\Resolvers\NamespaceResolver;
+use Cordon\Resolvers\NestedResolver;
 use Cordon\Rules\RuleSet;
 
 /**
@@ -155,4 +156,35 @@ it('takes the role from the name inside the module, not from the module name', f
 it('escapes pipes in the module metadata', function () {
     expect(listeners_canvas('Billing', ['Billing' => ['metadata' => ['owner' => 'team | payments']]]))
         ->toContain('| Owner | team \\| payments |');
+});
+
+it('shows the public API of a nested module as its siblings see it, and as the outside does', function () {
+    $config = ['Billing' => ['nested' => ['Invoices', 'Payments'], 'public' => ['Payments\\Models']]];
+    $modules = (new NestedResolver(new NamespaceResolver(fixture_path('nested-app/app/Modules'), 'App\\Modules'), $config))->resolve()->configure($config);
+    $snapshot = (new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig()))->snapshot($modules);
+    $files = (new DocumentationGenerator)->generate($snapshot, [], EventInventory::build($snapshot), fixture_path('nested-app'));
+
+    expect($files['modules/Billing.Invoices.md'])->toContain(implode("\n", [
+        '## Public API',
+        '',
+        'Seen by the other modules inside `Billing`:',
+        '',
+        '- `Contracts\\InvoiceReader`',
+        '',
+        'Seen from outside `Billing`, which exposes only what its `public` setting names:',
+        '',
+        'No public classes yet.',
+        '',
+        '## Uses',
+    ]))
+        ->and($files['modules/Billing.Payments.md'])->toContain(implode("\n", [
+            'Seen by the other modules inside `Billing`:',
+            '',
+            '- `Contracts\\PaymentGateway`',
+            '',
+            'Seen from outside `Billing`, which exposes only what its `public` setting names:',
+            '',
+            '- `Models\\Payment`',
+        ]))
+        ->and($files['modules/Billing.md'])->toContain("## Public API\n\n- `Contracts\\BillingGateway`\n");
 });
