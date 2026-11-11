@@ -98,14 +98,15 @@ final class GraphExporter
      * The arrows are the raw edges: Orders points at Billing.Invoices when it
      * uses a class of it, while the rules see Billing there. Only the
      * interfaces of an arrow are looked up through the module the source sees
-     * ($map, to resolve it: without it the target itself).
+     * ($map resolves it: without it a nested project would lose the label of
+     * the parent's interface, so it is required).
      *
      * @param  list<string>  $modules
      * @param  list<Edge>  $edges
      * @param  list<Violation>  $violations
      * @return array{modules: list<string>, edges: list<array{from: string, to: string, references: int, kinds: list<string>, violations: int, interfaces?: list<string>}>}
      */
-    public static function model(array $modules, array $edges, array $violations, ?string $focus = null, ?ModuleMap $map = null): array
+    public static function model(array $modules, array $edges, array $violations, ModuleMap $map, ?string $focus = null): array
     {
         $pairs = [];
 
@@ -225,7 +226,7 @@ final class GraphExporter
     public static function c4(Snapshot $snapshot, array $violations, ?string $focus = null): string
     {
         $modules = $snapshot->context->modules;
-        $model = self::model($modules->names(), $snapshot->context->edges, $violations, $focus);
+        $model = self::model($modules->names(), $snapshot->context->edges, $violations, $modules, $focus);
         $ids = array_flip($model['modules']);
         [$roots, $children] = self::hierarchy($model['modules']);
         $boundary = 0;
@@ -313,13 +314,13 @@ final class GraphExporter
      *
      * @return list<string>
      */
-    private static function declaredInterfaces(Edge $edge, ?ModuleMap $map): array
+    private static function declaredInterfaces(Edge $edge, ModuleMap $map): array
     {
         if ($edge->from->dependsOn === null) {
             return [];
         }
 
-        $name = $map?->visible($edge->to, $edge->from)->name ?? $edge->to->name;
+        $name = $map->visible($edge->to, $edge->from)->name;
 
         if ($edge->from->declaresWhole($name)) {
             return [];

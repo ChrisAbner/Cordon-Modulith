@@ -381,13 +381,9 @@ it('applies the interfaces of the parent to the code outside it, through the vis
 
 it('labels an arrow with the interfaces Billing declares on Catalog', function () {
     $result = analyse_interfaces_app(['Catalog' => CATALOG_INTERFACES, 'Billing' => ['depends_on' => ['Catalog::Pricing', 'Catalog::Inventory']]]);
-    $snapshotEdges = (function () {
-        $built = RuleSet::fromConfig([]);
-        $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $built);
-
-        return $analyzer->snapshot(interfaces_modules(['Catalog' => CATALOG_INTERFACES, 'Billing' => ['depends_on' => ['Catalog::Pricing', 'Catalog::Inventory']]]))->context->edges;
-    })();
-    $model = GraphExporter::model(['Billing', 'Catalog', 'Orders'], $snapshotEdges, $result->violations);
+    $modules = interfaces_modules(['Catalog' => CATALOG_INTERFACES, 'Billing' => ['depends_on' => ['Catalog::Pricing', 'Catalog::Inventory']]]);
+    $edges = (new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig([])))->snapshot($modules)->context->edges;
+    $model = GraphExporter::model(['Billing', 'Catalog', 'Orders'], $edges, $result->violations, $modules);
     $billing = array_values(array_filter($model['edges'], fn (array $edge) => $edge['from'] === 'Billing'));
 
     $label = $billing[0]['references'].' Catalog::Pricing, Catalog::Inventory';
@@ -400,8 +396,9 @@ it('labels an arrow with the interfaces Billing declares on Catalog', function (
 it('leaves the arrows of whole-module dependencies as they were', function () {
     $built = RuleSet::fromConfig([]);
     $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $built);
-    $edges = $analyzer->snapshot(interfaces_modules(['Catalog' => CATALOG_INTERFACES, 'Billing' => ['depends_on' => ['Catalog', 'Catalog::Pricing']]]))->context->edges;
-    $model = GraphExporter::model(['Billing', 'Catalog', 'Orders'], $edges, []);
+    $modules = interfaces_modules(['Catalog' => CATALOG_INTERFACES, 'Billing' => ['depends_on' => ['Catalog', 'Catalog::Pricing']]]);
+    $edges = $analyzer->snapshot($modules)->context->edges;
+    $model = GraphExporter::model(['Billing', 'Catalog', 'Orders'], $edges, [], $modules);
 
     expect($model['edges'][0])->not->toHaveKey('interfaces')
         ->and(GraphExporter::flowchart($model))->toContain('-->|'.$model['edges'][0]['references'].'|');
@@ -416,7 +413,7 @@ it('labels an arrow with the interfaces the rules apply: a sibling edge ignores 
     $modules = (new NestedResolver(new NamespaceResolver(fixture_path('nested-app/app/Modules'), 'App\\Modules'), $config))->resolve()->configure($config);
     $built = RuleSet::fromConfig([]);
     $edges = (new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $built))->snapshot($modules)->context->edges;
-    $model = GraphExporter::model($modules->names(), $edges, [], null, $modules);
+    $model = GraphExporter::model($modules->names(), $edges, [], $modules);
     $labels = [];
 
     foreach ($model['edges'] as $edge) {
@@ -431,4 +428,18 @@ it('labels an arrow with the interfaces the rules apply: a sibling edge ignores 
 it('keeps Module free of interfaces by default', function () {
     expect(Module::make('Billing', 'App\\Billing', '/p')->interfaces)->toBe([])
         ->and(Module::make('Billing', 'App\\Billing', '/p')->withConfig(['interfaces' => ['A' => ['X'], 'B' => [3, 'Y\\*'], 'C' => 'no', 4 => ['Z']]])->interfaces)->toBe(['A' => ['X'], 'B' => ['Y\\*'], '4' => ['Z']]);
+});
+
+it('keeps the parent interface in the C4 arrow of a nested project', function () {
+    $config = [
+        'Billing' => ['nested' => ['Invoices', 'Payments'], 'public' => ['Contracts', 'Invoices\\Contracts', 'Payments\\Contracts'], 'interfaces' => ['Api' => ['Contracts\\BillingGateway']]],
+        'Billing.Invoices' => ['depends_on' => ['Billing::Api']],
+        'Orders' => ['depends_on' => ['Billing::Api']],
+    ];
+    $modules = (new NestedResolver(new NamespaceResolver(fixture_path('nested-app/app/Modules'), 'App\\Modules'), $config))->resolve()->configure($config);
+    $snapshot = (new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig([])))->snapshot($modules);
+    $c4 = GraphExporter::c4($snapshot, []);
+
+    // Orders sees Billing.Payments as Billing: the label names Billing::Api, as the Mermaid arrow does.
+    expect($c4)->toContain('Rel(m3, m2, "2 Billing::Api")');
 });

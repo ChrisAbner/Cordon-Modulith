@@ -80,7 +80,7 @@ function every_output(Analyzer $analyzer, Snapshot $snapshot, string $base): arr
         $outputs['docs '.$file] = $content;
     }
 
-    $model = GraphExporter::model($result->modules->names(), $snapshot->context->edges, $result->violations);
+    $model = GraphExporter::model($result->modules->names(), $snapshot->context->edges, $result->violations, $result->modules);
     $outputs['graph json'] = (string) json_encode($model);
     $outputs['graph dot'] = GraphExporter::dot($model);
     $outputs['graph mermaid'] = GraphExporter::flowchart($model);

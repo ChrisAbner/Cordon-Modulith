@@ -51,7 +51,7 @@ final class GraphCommand extends Command
             return self::SUCCESS;
         }
 
-        $model = GraphExporter::model($verifier->modules()->names(), $snapshot->context->edges, $violations, $focus, $verifier->modules());
+        $model = GraphExporter::model($verifier->modules()->names(), $snapshot->context->edges, $violations, $verifier->modules(), $focus);
 
         $output = match ($format) {
             'json' => (string) json_encode($model, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL,
