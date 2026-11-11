@@ -103,13 +103,13 @@ it('ignores what is not a layer and what is not a module name in the layers conf
 it('leaves out the custom rules set to off without dropping the ones after them', function () {
     $rules = RuleSet::fromConfig(['cycles' => false, DeclareDependenciesRule::class => 'off', WarnSeverityRule::class]);
 
-    expect(array_map(fn (Rule $rule) => $rule->id(), $rules))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers', 'public_api_leak', 'warn_severity']);
+    expect(array_map(fn (Rule $rule) => $rule->id(), $rules))->toBe(['internal_access', 'undeclared_dependency', 'unused_dependency', 'host_access', 'layers', 'public_api_leak', 'external_dependency', 'warn_severity']);
 });
 
 it('builds the rules together with their severities', function () {
     [$rules, $severities] = RuleSet::build(['cycles' => 'warn', 'internal_access' => 'off', DeclareDependenciesRule::class => 'warn', WarnSeverityRule::class]);
 
-    expect(array_map(fn (Rule $rule) => $rule->id(), $rules))->toBe(['undeclared_dependency', 'cycles', 'unused_dependency', 'host_access', 'layers', 'public_api_leak', 'declare_dependencies', 'warn_severity'])
+    expect(array_map(fn (Rule $rule) => $rule->id(), $rules))->toBe(['undeclared_dependency', 'cycles', 'unused_dependency', 'host_access', 'layers', 'public_api_leak', 'external_dependency', 'declare_dependencies', 'warn_severity'])
         ->and($severities)->toBe([
             'undeclared_dependency' => Severity::Error,
             'cycles' => Severity::Warn,
@@ -117,6 +117,7 @@ it('builds the rules together with their severities', function () {
             'host_access' => Severity::Warn,
             'layers' => Severity::Error,
             'public_api_leak' => Severity::Warn,
+            'external_dependency' => Severity::Error,
             'declare_dependencies' => Severity::Warn,
             'warn_severity' => Severity::Error,
         ]);
@@ -146,8 +147,8 @@ it('treats a custom rule it has no config for as an error', function () {
 it('names the unknown rules and the entries that are not rules', function (array $config, string $message) {
     expect(RuleSet::errors($config))->toBe([$message]);
 })->with([
-    'a misspelled id' => [['internal_acess' => 'warn'], 'Unknown rule [internal_acess] in rules. Did you mean [internal_access]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak.'],
-    'a severity in a list' => [['warn'], 'Unknown rule [0] in rules. Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak.'],
+    'a misspelled id' => [['internal_acess' => 'warn'], 'Unknown rule [internal_acess] in rules. Did you mean [internal_access]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, external_dependency, tables.'],
+    'a severity in a list' => [['warn'], 'Unknown rule [0] in rules. Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak, external_dependency, tables.'],
     'a missing class as the key' => [['App\\Missing\\Rule' => 'warn'], 'Custom rule [App\\Missing\\Rule] must be an existing class that implements Cordon\\Contracts\\Rule.'],
     'an existing class without a namespace as the key' => [['stdClass' => 'warn'], 'Custom rule [stdClass] must be an existing class that implements Cordon\\Contracts\\Rule.'],
     'an existing class that is not a rule' => [[stdClass::class], 'Custom rule [stdClass] must be an existing class that implements Cordon\\Contracts\\Rule.'],

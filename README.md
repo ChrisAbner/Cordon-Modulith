@@ -164,8 +164,10 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 | `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's public API. One report per file and target class. | warn |
 | `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
 | `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
+| `external_dependency` | A module using a Composer package that is not in its `packages` or in the shared ones, with `packages` configured (it checks nothing without it). One report per file and package. | error |
+| `tables` | A module altering, querying or pointing a foreign key at a table that another module creates. A heuristic that reads literal names: off until you turn it on, and meant to run as `warn`. One report per file, table and kind of use. | off |
 
-`warn` rules are reported but do not fail the build, and the others are `error`. Set any rule to `error`, `warn` or `off` under `rules` in the config (a custom rule goes there too).
+`warn` rules are reported but do not fail the build, and the others are `error`, except `tables`, which is `off` until you set it (it is meant for `warn`). `layers` and `external_dependency` check nothing until `layers` or `packages` is configured. Set any rule to `error`, `warn` or `off` under `rules` in the config (a custom rule goes there too).
 
 You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
 

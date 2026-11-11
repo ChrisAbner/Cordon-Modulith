@@ -363,7 +363,11 @@ it('checks layers between the visible modules', function () {
     $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $built, RuleSet::severities($rules, $built));
     $result = $analyzer->analyze(nested_modules(), fixture_path('nested-app'));
 
-    expect(nested_findings($result->violations, 'layers'))->toBe(['Orders -> Billing OrderService.php Billing']);
+    expect(nested_findings($result->violations, 'layers'))->toBe([
+        'Orders -> Billing OrderService.php App\\Modules\\Billing\\Contracts\\BillingGateway',
+        'Orders -> Billing OrderService.php App\\Modules\\Billing\\Invoices\\Contracts\\InvoiceReader',
+        'Orders -> Billing OrderService.php App\\Modules\\Billing\\Payments\\Models\\Payment',
+    ]);
 });
 
 // public_api_leak

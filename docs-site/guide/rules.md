@@ -9,8 +9,10 @@
 | `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's [public API](./public-api). One report per file and target class. | warn |
 | `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
 | `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
+| `external_dependency` | A module using a Composer package that is not in its `packages` or in the shared ones, with `packages` configured (it checks nothing without it). One report per file and package. | error |
+| `tables` | A module altering, querying or pointing a foreign key at a table that another module creates. A heuristic that reads literal names: off until you turn it on, and meant to run as `warn`. One report per file, table and kind of use. | off |
 
-The built-in rules are enabled by default. `unused_dependency`, `host_access` and `public_api_leak` start as warnings (they arrived after 0.3): their violations are reported but do not fail. `layers` checks nothing until `layers` is configured. Set a rule to `error`, `warn` or `off` (`true` and `false` keep working) in the config:
+The built-in rules are enabled by default. `unused_dependency`, `host_access` and `public_api_leak` start as warnings (they arrived after 0.3): their violations are reported but do not fail. `layers` checks nothing until `layers` is configured, and `external_dependency` checks nothing until a module lists `packages`. `tables` is the exception: it is `off` until you turn it on. Set a rule to `error`, `warn` or `off` (`true` and `false` keep working) in the config:
 
 ```php
 'rules' => [
