@@ -136,6 +136,8 @@ cordon:
 
 A cache written by another version of PHP, Cordon Modulith or nikic/php-parser is replaced without a message. A file that is damaged makes the run warn and go on without it. `--no-cache` skips it for one run.
 
+Only restore a cache written by your own branches. The cache has no integrity check: it is trusted as it is, so a cache saved by a job you do not trust, such as a pull request from a fork, could hide violations. Restore from your protected branches and from pull requests of your own repository, never from forks, and pass `--no-cache` when in doubt.
+
 ## Keeping the baseline small
 
 `--fail-on-stale` makes a baseline entry that no longer matches the code fail the build, so fixed violations are removed from the baseline in the same pull request (`--prune-baseline`). See [shrinking the baseline](./baseline#shrinking-the-baseline).
