@@ -107,7 +107,7 @@ final class Verifier
      */
     public function configurationErrors(): array
     {
-        $errors = ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
+        $errors = ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules(), $this->basePath);
 
         // Building the rules is the only check of custom rule ids (two rules with one id).
         if ($errors === []) {
@@ -119,6 +119,16 @@ final class Verifier
         }
 
         return $errors;
+    }
+
+    /**
+     * Things in config/cordon.php that do not stop the analysis but are probably mistakes, such as a listed package that is not installed.
+     *
+     * @return list<string>
+     */
+    public function configurationWarnings(): array
+    {
+        return ConfigValidator::warnings((array) $this->config->get('cordon', []), $this->resolvedModules(), $this->basePath);
     }
 
     /**

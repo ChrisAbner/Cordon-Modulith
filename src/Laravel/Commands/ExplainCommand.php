@@ -7,8 +7,10 @@ namespace Cordon\Laravel\Commands;
 use Cordon\Analysis\Result;
 use Cordon\Laravel\Commands\Concerns\ExploresModules;
 use Cordon\Laravel\Verifier;
+use Cordon\Rules\ExternalDependencyRule;
 use Cordon\Rules\InternalAccessRule;
 use Cordon\Rules\Severity;
+use Cordon\Support\PackageMap;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
 
@@ -35,6 +37,10 @@ final class ExplainCommand extends Command
         $module = $verifier->modules()->forClass($class);
 
         if ($module === null) {
+            if (($package = $this->packageOf($verifier, $class)) !== null) {
+                return $this->explainPackageClass($verifier, $class, $package);
+            }
+
             $this->stderr(sprintf('[%s] does not belong to any module.', $class));
 
             return self::INVALID;
@@ -113,6 +119,76 @@ final class ExplainCommand extends Command
         }
 
         $this->line('  Used by:'.($usedBy === [] ? ' no other module' : ''));
+
+        foreach ($usedBy as $use) {
+            $mark = match ($use['severity']) {
+                Severity::Error->value => 'x',
+                Severity::Warn->value => '!',
+                default => '-',
+            };
+            $this->line(sprintf('    %s %s  %s:%d (%s)', $mark, $use['module'], $use['file'], $use['line'], $use['kind']));
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * The installed package that provides a class outside every module. Packages
+     * are only looked at when a module lists them: without it a class of
+     * a vendor is outside the modules, as it always was.
+     */
+    private function packageOf(Verifier $verifier, string $class): ?string
+    {
+        foreach ($verifier->modules() as $module) {
+            if ($module->packages !== null) {
+                return PackageMap::forProject($verifier->basePath())->packageOf($class);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A class of an installed package: the package, and the modules that use it.
+     */
+    private function explainPackageClass(Verifier $verifier, string $class, string $package): int
+    {
+        $snapshot = $verifier->snapshot();
+        $result = $verifier->check($snapshot);
+        $reported = [];
+
+        foreach ([...$result->violations, ...$result->warnings] as $violation) {
+            if ($violation->rule === ExternalDependencyRule::ID && $violation->file !== null && $violation->target === $package) {
+                $reported[$violation->file] ??= $violation->severity->value;
+            }
+        }
+
+        $usedBy = [];
+
+        foreach ($snapshot->context->externalReferences as $reference) {
+            $module = $snapshot->context->modules->forPath($reference->sourceFile);
+
+            if ($module !== null && strcasecmp($reference->target, $class) === 0) {
+                $usedBy[] = [
+                    'module' => $module->name,
+                    'file' => Paths::relative($verifier->basePath(), $reference->sourceFile),
+                    'line' => $reference->line,
+                    'kind' => $reference->kind,
+                    'violation' => isset($reported[$reference->sourceFile]),
+                    'severity' => $reported[$reference->sourceFile] ?? null,
+                ];
+            }
+        }
+
+        if ($this->option('format') === 'json') {
+            $this->json(['class' => $class, 'package' => $package, 'used_by' => $usedBy]);
+
+            return self::SUCCESS;
+        }
+
+        $this->line($class);
+        $this->line('  Package:  '.$package);
+        $this->line('  Used by:'.($usedBy === [] ? ' no module' : ''));
 
         foreach ($usedBy as $use) {
             $mark = match ($use['severity']) {

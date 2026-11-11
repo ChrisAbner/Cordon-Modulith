@@ -18,6 +18,8 @@ App\Modules\Catalog\Models\Product
 
 The status gives the reason: `#[Internal]` or `#[PublicApi]` on the class, an open module, a public namespace such as `Contracts`, or the module's `public` setting. `x` marks the uses that `cordon:verify` reports as errors and `!` the ones it reports as warnings, after the baseline; `-` is a use it does not report. In JSON, each use has `violation` and its `severity`. `listener` uses come from listeners of the class.
 
+When a module lists [`packages`](./configuration#packages), `explain` also takes a class of an installed package (`cordon:explain 'Stripe\StripeClient'`): it prints the package (`Package:  stripe/stripe-php`) and the modules that use the class, marked the same way for `external_dependency`.
+
 ## Why does this module depend on that one?
 
 ```bash
@@ -32,6 +34,8 @@ Billing does not declare depends_on, so it may depend on any module.
 ```
 
 It lists every reference, and whether `depends_on` allows the dependency. Use it before adding a module to `depends_on`, or to find what to change to remove a dependency.
+
+The second argument can also be a Composer package: `cordon:why Billing stripe/stripe-php` lists the references of `Billing` to the classes of that package, and whether `packages` allows them (the [`external_dependency`](./rules#external-dependency) rule). A name with a slash is a package, a name without one is a module.
 
 ## What can a change to this module affect?
 

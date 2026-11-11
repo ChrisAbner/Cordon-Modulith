@@ -105,8 +105,10 @@ final readonly class Analyzer
         };
         $signatures = $context->signatures;
         usort($signatures, $compare);
+        $external = $context->externalReferences;
+        usort($external, $compare);
 
-        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures);
+        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures, $external);
     }
 
     /**
@@ -172,6 +174,7 @@ final readonly class Analyzer
         $edges = [];
         $hostEdges = [];
         $signatures = [];
+        $external = [];
         $hostModule = Module::host();
 
         foreach ($analyses as $analysis) {
@@ -200,14 +203,16 @@ final readonly class Analyzer
                     $signatures[] = $reference;
                 }
 
-                if ($to !== null && $to->name !== $from->name) {
+                if ($to === null) {
+                    $external[] = $reference;
+                } elseif ($to->name !== $from->name) {
                     $edges[] = new Edge($from, $to, $reference);
                 }
             }
         }
 
         return new Snapshot(
-            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges, $signatures),
+            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges, $signatures, $external),
             $analyses,
             $parseErrors,
         );

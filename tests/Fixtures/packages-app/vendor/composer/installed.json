@@ -1,0 +1,34 @@
+{
+    "packages": [
+        {
+            "name": "stripe/stripe-php",
+            "version": "v16.0.0",
+            "type": "library",
+            "install-path": "../stripe/stripe-php",
+            "autoload": { "psr-4": { "Stripe\\": "lib/" } }
+        },
+        {
+            "name": "guzzlehttp/guzzle",
+            "version": "7.9.0",
+            "type": "library",
+            "install-path": "../guzzlehttp/guzzle",
+            "autoload": { "psr-4": { "GuzzleHttp\\": "src/" } }
+        },
+        {
+            "name": "laravel/framework",
+            "version": "v12.0.0",
+            "type": "library",
+            "install-path": "../laravel/framework",
+            "autoload": { "psr-4": { "Illuminate\\": "src/Illuminate/" } }
+        },
+        {
+            "name": "illuminate/support",
+            "version": "v12.0.0",
+            "type": "library",
+            "install-path": "../illuminate/support",
+            "autoload": { "psr-4": { "Illuminate\\Support\\": "src/" } }
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

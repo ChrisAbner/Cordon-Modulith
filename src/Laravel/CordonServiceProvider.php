@@ -79,11 +79,11 @@ final class CordonServiceProvider extends ServiceProvider
         $container->bind(DependencyExtractor::class, fn ($app): DependencyExtractor => new PhpParserExtractor(docblocks: self::docblocks($app->make(Repository::class))));
 
         // $parameters['extractor'] is the cached extractor the Verifier shares with its analyzer.
-        $container->bind(Analyzer::class, function ($app, array $parameters = []): Analyzer {
+        $container->bind(Analyzer::class, function ($app, array $parameters = []) use ($basePath): Analyzer {
             /** @var Repository $config */
             $config = $app->make(Repository::class);
             $rulesConfig = (array) $config->get('cordon.rules', []);
-            [$rules, $severities] = RuleSet::build($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []), (array) $config->get('cordon.layers', []));
+            [$rules, $severities] = RuleSet::build($rulesConfig, fn (string $class): Rule => $app->make($class), (array) $config->get('cordon.listeners', []), (array) $config->get('cordon.layers', []), (array) $config->get('cordon.packages', []), $basePath);
 
             return new Analyzer(
                 $parameters['extractor'] ?? $app->make(DependencyExtractor::class),

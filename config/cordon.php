@@ -73,6 +73,12 @@ return [
     |             class names, a trailing * for a namespace or prefix). Another module
     |             then lists 'Catalog::Pricing' in depends_on to use only that part;
     |             'Catalog' and 'Catalog::*' still mean the whole public API.
+    | packages:   the Composer packages this module may use, besides the shared
+    |             ones below: names ('stripe/stripe-php') or prefixes ending in *
+    |             ('symfony/*'). Any other package it uses is an
+    |             external_dependency violation. Omit it to leave the module
+    |             unrestricted; [] allows only the shared packages. A nested
+    |             module without its own packages takes its parent's.
     | tests:      folders with the module's tests, relative to the project root,
     |             for cordon:affected --tests (['tests/Unit/Pricing']). Without it:
     |             tests/<Module> and the tests folder inside the module.
@@ -114,6 +120,7 @@ return [
         'host_access' => 'warn',
         'layers' => 'error',
         'public_api_leak' => 'warn',
+        'external_dependency' => 'error',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
     ],
@@ -133,6 +140,24 @@ return [
         // ['Orders', 'Billing'],
         // ['Catalog'],
         // ['Shared'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Packages
+    |--------------------------------------------------------------------------
+    |
+    | Which Composer packages each module may use. A module that lists
+    | `packages` (see Per-module settings) may only use those and the shared
+    | ones here, read from vendor/composer/installed.json: run composer
+    | install first. Modules that list nothing are not checked, and neither is
+    | the code outside the modules. PHP's own classes, the project's and those of
+    | a package that is not installed never count as packages.
+    |
+    */
+
+    'packages' => [
+        // 'shared' => ['laravel/framework', 'illuminate/*'],
     ],
 
     /*

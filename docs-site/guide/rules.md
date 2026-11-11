@@ -151,6 +151,28 @@ A public class names an internal class of its own module in its public signature
 
 The public signature is what other modules see: the parameters and return types of public methods, public properties (promoted ones too) and the types of public constants. Private and protected members, the other parameters of a constructor (the container passes them) and anonymous classes do not count. Return a class from a public namespace instead, such as a DTO in `Data`, or mark the class `#[PublicApi]` if it is meant to be shared. It is a warning by default (it arrived in 0.4).
 
+## external_dependency
+
+With `packages` in `config/cordon.php`, a module uses a Composer package it does not list:
+
+```php
+'packages' => ['shared' => ['laravel/framework', 'illuminate/*']],
+'modules' => [
+    'Billing' => ['packages' => ['stripe/stripe-php']],
+],
+```
+
+```text
+x [external_dependency] app/Modules/Billing/Services/Checkout.php:15
+  Module [Billing] uses GuzzleHttp\Client from [guzzlehttp/guzzle], which is not in its packages.
+```
+
+One report per file and package, at the first use. A module may use the packages it lists and the `shared` ones (names such as `stripe/stripe-php`, or a prefix ending in `*`: `symfony/*`, `illuminate/*`; compared without regard to case). A module without `packages` is not checked, and `packages => []` allows only the shared ones. A nested module without its own `packages` takes the list of the module it is in. Fix a report by moving the use behind a class of a module that may use the package, or by listing the package when the dependency is intended.
+
+Cordon reads `vendor/composer/installed.json` as plain data (it never loads your autoloader), so run `composer install` first: when a module lists `packages` and the file is missing, `cordon:verify` stops with exit code `2`, and a listed package that is not installed is a warning with the closest name. A class belongs to a package only when an installed package provably provides it: the file of a PSR-4 or PSR-0 class has to exist in the package, and a classmap names its classes one by one. So PHP's own classes (`DateTimeImmutable`, `PDO`), the classes of your project and of your modules, and those of a package that is not installed (a `require-dev` package left out by `--no-dev`, a PHP extension) belong to none and are never reported, even when a package shares their namespace. When two packages declare nested prefixes (`Illuminate\` and `Illuminate\Support\`), the class goes to the package that holds its file, preferring the longest prefix. A package listed under a name it replaces (`illuminate/support` for `laravel/framework`) also covers it.
+
+Every reference counts the way it does for the other rules: code, [docblocks](./configuration#docblocks) when they are on, and listeners (a listener that type-hints a package's event uses that package). The code outside the modules (`host`) is not checked: it is the glue that wires the modules to the framework, so `packages` cannot be set for it. The rule is an `error` like `layers`, and it checks nothing until some module lists `packages`. `@cordon-ignore external_dependency` works as for the other rules. The PHPStan rule does not report it yet. `cordon:why Billing stripe/stripe-php` lists the uses of a package by a module, and `cordon:explain Stripe\StripeClient` says which package a class belongs to and who uses it.
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.

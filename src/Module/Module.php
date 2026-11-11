@@ -16,6 +16,7 @@ final readonly class Module
      * @param  bool  $strict  Its violations never enter the baseline: a clean module stays clean.
      * @param  string|null  $parent  The name of the module this one is nested in; null for a top-level module. A nested module is named "Parent.Child".
      * @param  array<string, list<string>>  $interfaces  Named interfaces: name => class names relative to the module namespace, a trailing * making an entry a prefix (a namespace, or "Data\Price*").
+     * @param  list<string>|null  $packages  The Composer packages the module may use (names, or a prefix ending in *), besides the shared ones; null means "not declared" (not enforced).
      */
     public function __construct(
         public string $name,
@@ -28,6 +29,7 @@ final readonly class Module
         public bool $strict = false,
         public ?string $parent = null,
         public array $interfaces = [],
+        public ?array $packages = null,
     ) {}
 
     /** The name of the code outside the modules (host.paths in config/cordon.php). */
@@ -201,6 +203,14 @@ final readonly class Module
                 : null;
         }
 
+        $packages = $this->packages;
+
+        if (array_key_exists('packages', $config)) {
+            $packages = is_array($config['packages'])
+                ? array_values(array_filter($config['packages'], 'is_string'))
+                : null;
+        }
+
         $publicApi = isset($config['public']) && is_array($config['public'])
             ? array_values(array_filter($config['public'], 'is_string'))
             : $this->publicApi;
@@ -216,6 +226,7 @@ final readonly class Module
             is_bool($config['strict'] ?? null) ? $config['strict'] : $this->strict,
             $this->parent,
             is_array($config['interfaces'] ?? null) ? self::interfacesFrom($config['interfaces']) : $this->interfaces,
+            $packages,
         );
     }
 

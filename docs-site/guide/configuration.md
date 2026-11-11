@@ -23,6 +23,10 @@ return [
         'Shared' => ['open' => true],                     // every class is public
     ],
 
+    'packages' => [
+        // 'shared' => ['laravel/framework', 'illuminate/*'],   // usable by every module that lists packages
+    ],
+
     'rules' => [
         'internal_access' => 'error',                     // error, warn or off
         'undeclared_dependency' => 'error',
@@ -69,6 +73,7 @@ Per-module settings, keyed by module name as shown by `cordon:modules`:
 | `strict` | `true` keeps the module's violations out of the baseline: they always fail, and `--generate-baseline` does not record them. For a module that is clean and must stay clean. |
 | `interfaces` | Named subsets of the public API that other modules can depend on: `'Pricing' => ['Contracts\\PriceList', 'Data\\Price*']`. See [named interfaces](#named-interfaces). |
 | `nested` | Modules inside this one: a list of folders directly under the module (`['Invoices', 'Payments']`), or `true` for every folder that is not a public namespace. See [nested modules](#nested-modules). |
+| `packages` | The Composer packages this module may use besides the shared ones: names (`'stripe/stripe-php'`) or prefixes ending in `*` (`'symfony/*'`). Any other package it uses is an `external_dependency`. Omit it to leave the module unrestricted; `[]` allows only the shared ones. See [packages](#packages). |
 | `tests` | The folders with the tests of the module, relative to the project root, for `cordon:affected --tests`: `['tests/Unit/Pricing']`. Without it, `tests/<Module>` and the `tests` folder inside the module. `[]` means none. |
 | `metadata` | Free-form information about the module: `cordon:docs` shows its `description` and `owner`. |
 
@@ -149,6 +154,16 @@ Custom rules are classes that implement `Cordon\Contracts\Rule`, listed as value
 
 Layers from the top down, each a list of module names; see [the layers rule](./rules#layers). A module may be in one layer only, a layer may not be empty, and every name must be a detected module. `[]` (the default) turns layers off.
 
+## packages
+
+Which Composer packages each module may use, checked by [`external_dependency`](./rules#external-dependency). Nothing is checked until a module lists `packages`.
+
+| Key | Meaning |
+|---|---|
+| `shared` | Packages every module may use, such as `['laravel/framework', 'illuminate/*']`. Names or prefixes ending in `*`, compared without regard to case. |
+
+The per-module `packages` list goes in `modules` (see above). A nested module without its own list takes the one of its parent. The code outside the modules (`host`) takes no `packages`: it is not checked. Cordon reads `vendor/composer/installed.json` (or the `config.vendor-dir` of `composer.json`) as plain JSON, never your autoloader: when a module lists `packages` and the file is missing, `cordon:verify` exits with `2`, and a listed package that is not installed is a warning.
+
 ## host
 
 The code outside the modules, which [`host_access`](./rules#host-access) checks.
@@ -175,7 +190,7 @@ How a listener's reference to another module's event counts. See [what counts as
 `cordon:verify` checks the whole file before it analyses anything. Unknown keys, unknown modules or dependencies, settings of the wrong type and unknown rules stop it with exit code `2`, and name the closest valid key:
 
 ```text
-Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, tests, metadata.
+Unknown key [depend_on] for module [Billing]. Did you mean [depends_on]? Valid keys: depends_on, public, open, strict, nested, interfaces, packages, tests, metadata.
 ```
 
 `cordon:modules` shows the same messages as warnings, and the PHPStan rule reports them once as `cordon.configuration`.

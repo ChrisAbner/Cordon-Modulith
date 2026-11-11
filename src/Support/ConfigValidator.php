@@ -17,19 +17,25 @@ use Cordon\Rules\RuleSet;
  */
 final class ConfigValidator
 {
-    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'layers', 'rules', 'listeners', 'exclude', 'baseline', 'cache', 'docblocks'];
+    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'layers', 'packages', 'rules', 'listeners', 'exclude', 'baseline', 'cache', 'docblocks'];
 
     private const HOST_KEYS = ['paths', 'tests'];
 
-    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'interfaces', 'tests', 'metadata'];
+    private const MODULE_KEYS = ['depends_on', 'public', 'open', 'strict', 'nested', 'interfaces', 'packages', 'tests', 'metadata'];
 
     private const LISTENER_KEYS = ['cycles', 'depends_on'];
 
+    private const PACKAGES_KEYS = ['shared'];
+
+    /** A package name ("vendor/name") or a pattern with a single trailing * ("vendor/*", "vendor/pre*", "*"). */
+    private const PACKAGE_PATTERN = '~^(?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+|(?:[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]*)?)?\*)$~';
+
     /**
      * @param  array<array-key, mixed>  $config  The whole `cordon` config array.
+     * @param  string|null  $basePath  The project root: with it, modules that list packages need vendor/composer/installed.json.
      * @return list<string>
      */
-    public static function errors(array $config, ModuleMap $modules): array
+    public static function errors(array $config, ModuleMap $modules, ?string $basePath = null): array
     {
         $errors = [];
 
@@ -83,6 +89,14 @@ final class ConfigValidator
             }
         }
 
+        if (array_key_exists('packages', $config)) {
+            array_push($errors, ...self::packagesErrors($config['packages']));
+        }
+
+        if ($basePath !== null && self::listsPackages($config) && ($problem = PackageMap::forProject($basePath)->problem()) !== null) {
+            $errors[] = $problem;
+        }
+
         // Without modules (a wrong resolver path), every configured module would
         // be unknown: only the keys that do not name modules are checked.
         if ($modules->count() === 0) {
@@ -100,6 +114,113 @@ final class ConfigValidator
         if (is_array($config['modules'] ?? null)) {
             foreach ($config['modules'] as $name => $settings) {
                 array_push($errors, ...self::moduleErrors((string) $name, $settings, $modules, $config['modules']));
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Warnings about the config that do not stop the analysis: for now, packages that are listed but not installed.
+     *
+     * @param  array<array-key, mixed>  $config
+     * @return list<string>
+     */
+    public static function warnings(array $config, ModuleMap $modules, string $basePath): array
+    {
+        if (! self::listsPackages($config)) {
+            return [];
+        }
+
+        $installed = PackageMap::forProject($basePath);
+
+        if ($installed->problem() !== null) {
+            return [];
+        }
+
+        $lists = [];
+
+        if (is_array($config['packages'] ?? null) && is_array($config['packages']['shared'] ?? null)) {
+            $lists['packages.shared lists'] = $config['packages']['shared'];
+        }
+
+        foreach (is_array($config['modules'] ?? null) ? $config['modules'] : [] as $name => $settings) {
+            if (is_array($settings) && is_array($settings['packages'] ?? null) && $modules->has((string) $name)) {
+                $lists[sprintf('Module [%s] lists package', $name)] = $settings['packages'];
+            }
+        }
+
+        $warnings = [];
+
+        foreach ($lists as $subject => $packages) {
+            foreach ($packages as $package) {
+                // A wildcard names no package: it may match none today and some after the next require.
+                if (is_string($package) && ! str_contains($package, '*') && ! $installed->has($package)) {
+                    $warnings[] = sprintf('%s [%s], which is not installed.%s Check the name, or run composer install.', $subject, $package, self::didYouMean($package, $installed->names()));
+                }
+            }
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * Whether any module sets `packages`: only then is external_dependency active, and installed.json needed.
+     *
+     * @param  array<array-key, mixed>  $config
+     */
+    private static function listsPackages(array $config): bool
+    {
+        foreach (is_array($config['modules'] ?? null) ? $config['modules'] : [] as $settings) {
+            if (is_array($settings) && is_array($settings['packages'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function packagesErrors(mixed $packages): array
+    {
+        if (! is_array($packages)) {
+            return ['packages in config/cordon.php must be an array.'];
+        }
+
+        $errors = [];
+
+        foreach (array_keys($packages) as $key) {
+            if (! in_array($key, self::PACKAGES_KEYS, true)) {
+                $errors[] = self::unknownKey((string) $key, 'in packages', self::PACKAGES_KEYS);
+            }
+        }
+
+        if (array_key_exists('shared', $packages)) {
+            array_push($errors, ...self::packageListErrors($packages['shared'], 'packages.shared'));
+        }
+
+        return $errors;
+    }
+
+    /**
+     * The shape of a list of package names or patterns.
+     *
+     * @param  string  $setting  How the messages name the list: "Module [Billing]: packages" or "packages.shared".
+     * @return list<string>
+     */
+    private static function packageListErrors(mixed $list, string $setting): array
+    {
+        if (! is_array($list) || ! array_is_list($list) || array_filter($list, static fn (mixed $entry): bool => ! is_string($entry)) !== []) {
+            return [sprintf('%s must be a list of package names, such as "vendor/name" or "vendor/*".', $setting)];
+        }
+
+        $errors = [];
+
+        foreach ($list as $entry) {
+            if (preg_match(self::PACKAGE_PATTERN, $entry) !== 1) {
+                $errors[] = sprintf('%s lists [%s], which is not a package name. Write vendor/name, or vendor/* for every package of a vendor.', $setting, $entry);
             }
         }
 
@@ -149,6 +270,10 @@ final class ConfigValidator
      */
     private static function moduleErrors(string $name, mixed $settings, ModuleMap $modules, array $allSettings): array
     {
+        if ($name === Module::HOST && ! $modules->has($name) && is_array($settings) && array_key_exists('packages', $settings)) {
+            return [sprintf('Module [%s] cannot list packages: %s is the code outside the modules, which external_dependency does not check. Set packages on the modules instead.', $name, $name)];
+        }
+
         if (! $modules->has($name)) {
             return [sprintf('config/cordon.php configures unknown module [%s].', $name).self::didYouMean($name, $modules->names())];
         }
@@ -205,6 +330,10 @@ final class ConfigValidator
 
         if (array_key_exists('interfaces', $settings)) {
             array_push($errors, ...self::interfaceErrors($name, $settings['interfaces']));
+        }
+
+        if (array_key_exists('packages', $settings)) {
+            array_push($errors, ...self::packageListErrors($settings['packages'], sprintf('Module [%s]: packages', $name)));
         }
 
         if (array_key_exists('tests', $settings) && ! HostPaths::valid($settings['tests'])) {

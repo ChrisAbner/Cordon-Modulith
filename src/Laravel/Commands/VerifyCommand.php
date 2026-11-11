@@ -188,7 +188,7 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
-        foreach ([...$verifier->cacheWarnings(), ...$result->interfaceWarnings, ...$result->ignoreWarnings] as $warning) {
+        foreach ([...$verifier->configurationWarnings(), ...$verifier->cacheWarnings(), ...$result->interfaceWarnings, ...$result->ignoreWarnings] as $warning) {
             if ($format === 'github') {
                 $this->output->writeln('::warning title=Cordon::'.$warning, OutputInterface::OUTPUT_RAW);
             } else {
