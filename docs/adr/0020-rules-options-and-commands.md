@@ -1,6 +1,6 @@
 # ADR 0020: Other additions of 0.4: rules, module options, commands and the API surface
 
-**Status:** proposed
+**Status:** accepted (2026-11-11)
 
 > The maintainer decided on 2026-11-08 that 0.4 includes everything in the plans, but recorded no decision on the shape of these items: names, defaults and details are the plan's, as the code implements them. Accept this ADR, or split it and reject what should change before 1.0 freezes it.
 

@@ -10,6 +10,8 @@ We ran Cordon Modulith on three open source Laravel applications, one for each k
 
 All three were analysed in October 2026 on Laravel 13 and PHP 8.4. Each page lists the exact commit. The violation counts are those of Cordon 0.2.0, which reports one `cycles` violation per dependency inside a cycle (167, 201 and 127 here); they were recomputed at the same commits on 2026-11-04. Before 0.2.0, each group of tangled modules was a single violation.
 
+**Re-checked with 0.4.0 (2026-11-11).** At the same commits and with the same configs, 0.4.0 reports exactly the same errors as 0.3.1 in all three apps (`internal_access` and `cycles`, byte for byte). What changes is that 0.4.0 also analyses the code outside the modules by default (the [`host`](../guide/configuration) module: `app`, `routes`, `database`), so more files are read (2,012, 3,041 and 1,165) and two new kinds of warning appear. Warnings never fail the build: `host_access` (1, 216 and 114: code outside the modules using a module's internals) and `public_api_leak` (1, 37 and 1: a public class exposing an internal one). Setting `host.paths` to `[]` gives back the figures in the table.
+
 ## What we found
 
 - **No false positives.** We checked every one of the 2,858 `internal_access` reports by machine: the reported line contains the class (or its import alias), and the class is declared in the module Cordon named. We then read a sample of each kind by hand. Every report pointed at a real reference: inheritance, constructor injection, static calls, Eloquent relations or `instanceof`.

@@ -1,6 +1,6 @@
 # ADR 0019: Validate `config/cordon.php` before analysing
 
-**Status:** proposed
+**Status:** accepted (2026-11-11)
 
 > No decision of the maintainer is recorded for the exact shape of this validation. It comes from the 0.4 plan (a strict config before 1.0 freezes it) and from the decision of 2026-11-08 to ship everything the plans contain. The error texts and the cases below are what the code does now.
 

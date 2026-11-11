@@ -2,7 +2,7 @@
 
 All notable changes to Cordon Modulith are documented here. The project follows [Semantic Versioning](https://semver.org) from 1.0.0; before that, minor versions may contain breaking changes.
 
-## [0.4.0] - unreleased
+## [0.4.0] - 2026-11-11
 
 This release settles the model that 1.0 will freeze: rule severities, listener edges, a strict config, a versioned JSON report and the code outside the modules. Read [UPGRADE.md](UPGRADE.md) first: a broken config now stops `cordon:verify`, and some reports change. The decisions are recorded in [ADR 0015](docs/adr/0015-rule-severities.md) (severities, warnings and the baseline), [0016](docs/adr/0016-listener-edges.md) (listener edges), [0017](docs/adr/0017-host-module.md) (the `host`), [0018](docs/adr/0018-json-report-version.md) (the JSON report), [0019](docs/adr/0019-strict-configuration.md) (the strict config) and [0020](docs/adr/0020-rules-options-and-commands.md) (the other additions).
 
