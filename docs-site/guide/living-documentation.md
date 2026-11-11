@@ -5,6 +5,7 @@ Generate Markdown documentation of the real architecture, straight from the code
 ```bash
 php artisan cordon:docs                     # writes docs/architecture/
 php artisan cordon:docs --output=docs/modules
+php artisan cordon:docs --diagrams=c4       # also writes architecture.puml
 ```
 
 The output folder (`docs/architecture` by default, relative to the project root) is created if it doesn't exist. Commit it: the diffs show how the architecture changes.
@@ -14,6 +15,7 @@ The output folder (`docs/architecture` by default, relative to the project root)
 | `README.md` | Every module with its namespace, dependencies, users and violation count, and a Mermaid diagram of the dependencies. Edge labels count the classes used; edges with internal access are red. |
 | `modules/<Module>.md` | A canvas per module: its description and owner (from `metadata`), namespace, path, `depends_on`, a diagram of the module and its neighbours, its components grouped by Laravel role, its public API, the classes it uses from other modules and the ones other modules use from it (internal ones flagged), its events and its violations. |
 | `events.md` | Every module event with the classes that publish and listen to it. |
+| `architecture.puml` | Only with `--diagrams=c4` (`--diagrams=mermaid` is the default): the C4-PlantUML diagram of the modules, the one `cordon:graph --format=c4` prints, with the violations in red. See [the whole graph](./explore#the-whole-graph). |
 
 GitHub and GitLab render the Mermaid diagrams. The output is deterministic (sorted, no timestamps), so you can commit it and see architecture changes in pull request diffs.
 

@@ -6,11 +6,12 @@ namespace Cordon\Documentation;
 
 use Cordon\Analysis\Edge;
 use Cordon\Analysis\Reference;
+use Cordon\Analysis\Snapshot;
 use Cordon\Analysis\Violation;
 use Cordon\Module\ModuleMap;
 
 /**
- * The module graph, for cordon:graph (Mermaid, DOT, JSON: labels count
+ * The module graph, for cordon:graph (Mermaid, DOT, JSON, C4: labels count
  * references) and the diagrams of cordon:docs (labels count the classes used,
  * as its tables list them).
  *
@@ -208,6 +209,84 @@ final class GraphExporter
         $lines[] = '}';
 
         return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    /**
+     * The C4-PlantUML diagram of cordon:graph --format=c4 and of cordon:docs
+     * --diagrams=c4: one container boundary for the application, a component
+     * per module with the description of its metadata, and a relationship per
+     * dependency like the arrows of the other formats (number of references,
+     * named interfaces), in red with violations. A nested module is drawn
+     * inside a boundary of its parent, next to the parent's own component.
+     * With $focus, only that module and its neighbours.
+     *
+     * @param  list<Violation>  $violations
+     */
+    public static function c4(Snapshot $snapshot, array $violations, ?string $focus = null): string
+    {
+        $modules = $snapshot->context->modules;
+        $model = self::model($modules->names(), $snapshot->context->edges, $violations, $focus);
+        $ids = array_flip($model['modules']);
+        [$roots, $children] = self::hierarchy($model['modules']);
+        $boundary = 0;
+        $lines = ['@startuml', '!include <C4/C4_Component>', 'LAYOUT_LEFT_RIGHT()', 'Container_Boundary(app, "Application") {'];
+        $component = static function (string $name) use ($modules, $ids): string {
+            $description = $modules->get($name)?->metadata['description'] ?? null;
+            $description = is_string($description) ? trim($description) : '';
+
+            return sprintf('Component(m%d, %s, "Module"%s)', $ids[$name], self::plantuml($name), $description === '' ? '' : ', '.self::plantuml($description));
+        };
+        $draw = function (string $node, string $indent) use (&$draw, &$lines, &$boundary, $children, $component): void {
+            if (! isset($children[$node])) {
+                $lines[] = $indent.$component($node);
+
+                return;
+            }
+
+            $lines[] = sprintf('%sBoundary(b%d, %s) {', $indent, $boundary++, self::plantuml($node));
+            $lines[] = $indent.'    '.$component($node);
+
+            foreach ($children[$node] as $child) {
+                $draw($child, $indent.'    ');
+            }
+
+            $lines[] = $indent.'}';
+        };
+
+        foreach ($roots as $root) {
+            $draw($root, '    ');
+        }
+
+        $lines[] = '}';
+
+        foreach ($model['edges'] as $edge) {
+            $from = 'm'.$ids[$edge['from']];
+            $to = 'm'.$ids[$edge['to']];
+            $lines[] = sprintf('Rel(%s, %s, %s)', $from, $to, self::plantuml(self::label($edge)));
+
+            if ($edge['violations'] > 0) {
+                $lines[] = sprintf('UpdateRelStyle(%s, %s, $textColor="#d33", $lineColor="#d33")', $from, $to);
+            }
+        }
+
+        $lines[] = '@enduml';
+
+        return implode(PHP_EOL, $lines).PHP_EOL;
+    }
+
+    /**
+     * A PlantUML string literal. PlantUML has no escape for a double quote
+     * inside a string, so quotes and percent signs (which start its %chr()
+     * functions) become %chr() calls, a backslash is doubled and a line break
+     * becomes the \n PlantUML draws as one. A "\t" in a text is still drawn
+     * as a tab.
+     */
+    private static function plantuml(string $text): string
+    {
+        $text = str_replace(['\\', '%'], ['\\\\', '%chr(37)'], $text);
+        $text = str_replace('"', '%chr(34)', $text);
+
+        return '"'.str_replace(["\r\n", "\r", "\n"], '\\n', $text).'"';
     }
 
     /**

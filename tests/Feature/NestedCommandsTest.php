@@ -51,6 +51,10 @@ it('exports the nested modules inside clusters of their parent', function () {
     Artisan::call('cordon:graph', ['--format' => 'dot']);
 
     expect(Artisan::output())->toContain('subgraph "cluster_Billing" {');
+
+    Artisan::call('cordon:graph', ['--format' => 'c4']);
+
+    expect(Artisan::output())->toContain('Boundary(b0, "Billing") {')->toContain('Component(m1, "Billing.Invoices", "Module")');
 });
 
 it('explains a nested class as seen from outside and from inside its parent', function () {
