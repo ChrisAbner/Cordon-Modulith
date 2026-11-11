@@ -370,6 +370,57 @@ it('checks layers between the visible modules', function () {
     ]);
 });
 
+/**
+ * Findings of the layers rule for a copy of nested-app where Billing.Payments also uses an Orders event.
+ *
+ * @param  list<list<string>>  $layers
+ * @return list<string>
+ */
+function nested_layer_findings(array $layers): array
+{
+    $root = temp_project('nested-app');
+    file_put_contents($root.'/app/Modules/Billing/Payments/Services/Notifier.php', "<?php\n\nnamespace App\\Modules\\Billing\\Payments\\Services;\n\nuse App\\Modules\\Orders\\Contracts\\OrderPlaced;\n\nfinal class Notifier\n{\n    public function __construct(OrderPlaced \$event) {}\n}\n");
+    $rules = ['layers' => 'error', 'internal_access' => 'off'];
+    $built = RuleSet::fromConfig($rules, null, [], $layers);
+    $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, $built, RuleSet::severities($rules, $built));
+
+    return nested_findings($analyzer->analyze(nested_modules(root: $root), $root)->violations, 'layers');
+}
+
+it('gives a nested module that layers does not name the layer of its parent, as the source of a dependency', function () {
+    // Billing is below Orders, so the child Billing.Payments is too, and it must not depend on Orders.
+    expect(nested_layer_findings([['Orders'], ['Billing']]))->toBe([
+        'Billing.Payments -> Orders Notifier.php App\\Modules\\Orders\\Contracts\\OrderPlaced',
+    ]);
+});
+
+it('lets a nested module depend on a lower layer through the layer of its parent', function () {
+    $found = nested_layer_findings([['Billing'], ['Orders']]);
+
+    expect(array_values(array_filter($found, fn (string $line) => str_starts_with($line, 'Billing.'))))->toBe([]);
+});
+
+it('gives a nested module that layers does not name the layer of its parent, as the target of a dependency', function () {
+    // Billing.Invoices is below Billing, and its sibling Billing.Payments takes the layer of Billing, above it.
+    expect(nested_layer_findings([['Billing'], ['Billing.Invoices']]))->toBe([
+        'Billing.Invoices -> Billing.Payments InvoiceService.php App\\Modules\\Billing\\Payments\\Contracts\\PaymentGateway',
+        'Billing.Invoices -> Billing.Payments InvoiceService.php App\\Modules\\Billing\\Payments\\Models\\Payment',
+    ]);
+});
+
+it('keeps the layer a nested module has in layers over the one of its parent', function () {
+    // Billing.Payments is named above Orders, though Billing is below it: depending on Orders is fine.
+    expect(nested_layer_findings([['Billing.Invoices'], ['Billing.Payments'], ['Orders'], ['Billing']]))->toBe([]);
+});
+
+it('still skips the use between a parent and its children in layers, whatever the order of their layers', function () {
+    foreach ([[['Billing'], ['Billing.Invoices'], ['Orders']], [['Billing.Invoices'], ['Billing'], ['Orders']]] as $layers) {
+        $found = nested_layer_findings($layers);
+
+        expect(array_values(array_filter($found, fn (string $line) => str_contains($line, 'Billing -> Billing.') || str_contains($line, 'Billing.Invoices -> Billing '))))->toBe([]);
+    }
+});
+
 // public_api_leak
 
 it('warns when a public class of a nested module exposes an internal one, for the modules inside the parent', function () {

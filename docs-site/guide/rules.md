@@ -140,7 +140,7 @@ x [layers] app/Modules/Shared/Money.php:12
   Module [Shared] (layer 3) depends on [Orders] (layer 1) through App\Modules\Orders\Models\Order; a layer may only depend on the layers below it.
 ```
 
-A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. It reports once per file and class of the layer above, so a new class in a file already in the baseline is a new violation. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. The PHPStan rule does not report it yet.
+A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. It reports once per file and class of the layer above, so a new class in a file already in the baseline is a new violation. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. A [nested module](./configuration#nested-modules) that `layers` does not name takes the layer of its nearest ancestor that it names, as the source and as the target of a dependency, the same inheritance `external_dependency` and `tables` use: with `Billing` in a layer, `Billing.Payments` is in it too. Naming the child in `layers` gives it a layer of its own. The use between a parent and its children is never reported. The PHPStan rule does not report it yet.
 
 ## public_api_leak
 

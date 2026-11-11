@@ -154,7 +154,7 @@ Custom rules are classes that implement `Cordon\Contracts\Rule`, listed as value
 
 ## layers
 
-Layers from the top down, each a list of module names; see [the layers rule](./rules#layers). A module may be in one layer only, a layer may not be empty, and every name must be a detected module. `[]` (the default) turns layers off.
+Layers from the top down, each a list of module names; see [the layers rule](./rules#layers). A module may be in one layer only, a layer may not be empty, and every name must be a detected module. `[]` (the default) turns layers off. A nested module (`Billing.Payments`) left out of `layers` is in the layer of its nearest ancestor that is named, so listing `Billing` is enough; list the child to give it a layer of its own.
 
 ## packages
 
