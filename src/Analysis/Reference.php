@@ -17,8 +17,11 @@ final readonly class Reference
     /** The event a listener handles: handle(Event $e) or Event::listen(Event::class, ...). */
     public const LISTENER = 'listener';
 
+    /** A class named only in a docblock type (@param, @var, @return, @extends...), read when `docblocks` is on. */
+    public const DOCBLOCK = 'docblock';
+
     /**
-     * @param  self::USE|self::LISTENER  $kind
+     * @param  self::USE|self::LISTENER|self::DOCBLOCK  $kind
      * @param  bool  $relation  The model of an Eloquent relation: $this->belongsTo(Target::class) and its siblings.
      * @param  ?string  $signature  In the public signature of $sourceClass, the member that names it: "find() returns", "pay() takes", "$customer has type", "DEFAULT has type".
      */

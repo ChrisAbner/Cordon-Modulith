@@ -143,26 +143,78 @@ final class PositionMatrix
     ];
 
     /**
+     * The same, for the docblock types read when `docblocks` is on (these cells run with it on, and the
+     * docblock_member and docblock cells above, which run with it off, must find nothing).
+     * Templates, type aliases and pseudo-types, the keys of a shape and tags that do not parse find nothing.
+     *
+     * @var array<string, array{0: string, 1: string, 2: string, 3: list<string>|null, 4: string, 5: string, 6: bool}>
+     */
+    public const DOCBLOCK_POSITIONS = [
+        'doc_var_property' => ['member', '/** @var {T} */ public $d;', 'ref', self::WITH_PROPERTIES, '8.2', '5.3', false],
+        'doc_param' => ['member', '/** @param {T} $v */ public function m($v): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_return' => ['member', '/** @return {T} */ public function m(){BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_nullable_union' => ['member', '/** @param {T}|null $v */ public function m($v): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_generic_argument' => ['member', '/** @param array<string, list<{T}>> $v */ public function m($v): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_generic_type' => ['member', '/** @return {T}<int> */ public function m(){BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_class_string' => ['member', '/** @return class-string<{T}> */ public function m(){BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_array_of' => ['member', '/** @param {T}[] $v */ public function m($v): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_callable' => ['member', '/** @param callable({T}): void $v */ public function m($v): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_shape_value' => ['member', '/** @param array{id: {T}} $v */ public function m($v): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_throws' => ['member', '/** @throws {T} */ public function m(): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_method_tag' => ['member', '/** @method {T} find({T} $id) */ public function m(): void{BODY}', 'ref', null, '8.2', '5.3', false],
+        'doc_use_tag' => ['member', '/** @use {T}<int> */ use \\Matrix\\Other\\Holds;', 'ref', self::WITH_TRAITS, '8.2', '5.3', false],
+        'doc_class_extends' => ['decl', '/** @extends {T}<int> */ final class C extends \\Matrix\\Other\\Base {}', 'ref', null, '8.2', '5.3', false],
+        'doc_class_implements' => ['decl', '/** @implements {T}<int> */ final class C implements \\Matrix\\Other\\Contract {}', 'ref', null, '8.2', '5.3', false],
+        'doc_class_mixin' => ['decl', '/** @mixin {T} */ final class C {}', 'ref', null, '8.2', '5.3', false],
+        'doc_class_property' => ['decl', '/** @property {T} $magic */ final class C {}', 'ref', null, '8.2', '5.3', false],
+        'doc_class_template' => ['decl', '/** @template X of {T} */ final class C {}', 'ref', null, '8.2', '5.3', false],
+        'doc_function_param' => ['decl', '/** @param {T} $v */ function g($v): void {}', 'ref', null, '8.2', '5.3', false],
+        'doc_inline_var' => ['stmt', '/** @var {T} $d */ $d = 1;', 'ref', null, '8.2', '5.3', false],
+        'doc_pseudo_types' => ['member', '/** @param array-key|positive-int|non-empty-string|class-string|static|self|$this|callable|iterable<mixed>|int<0, max> $v */ public function m($v): void{BODY}', 'none', null, '8.2', '5.3', false],
+        'doc_shape_key' => ['member', '/** @param array{{T}: int} $v */ public function m($v): void{BODY}', 'none', null, '8.2', '5.3', false],
+        'doc_broken_generic' => ['member', '/** @param array<string, {T} $v */ public function m($v): void{BODY}', 'none', null, '8.2', '5.3', false],
+        'doc_description' => ['member', "/**\n     * Uses {T} to do things.\n     *\n     * @see {T}\n     * @deprecated use {T}\n     */\n    public function m(): void{BODY}", 'none', null, '8.2', '5.3', false],
+        'doc_param_out' => ['member', '/** @param-out {T} $v */ public function m(&$v): void{BODY}', 'none', null, '8.2', '5.3', false],
+    ];
+
+    /**
      * @return list<Cell>
      */
     public static function cells(): array
     {
         $cells = [];
 
-        foreach (self::POSITIONS as $position => [$kind, $template, $expect, $containers, $phpMin, $parserMin, $declaration]) {
-            foreach (self::FORMS as $form => [$use, $expression]) {
-                foreach (self::CONTAINERS[$kind] as $container => $wrapper) {
-                    if ($containers !== null && ! in_array($container, $containers, true)) {
-                        continue;
-                    }
+        foreach ([[self::POSITIONS, false], [self::DOCBLOCK_POSITIONS, true]] as [$positions, $docblocks]) {
+            foreach ($positions as $position => $definition) {
+                array_push($cells, ...self::cellsOf($position, $definition, $docblocks));
+            }
+        }
 
-                    $member = str_replace('{BODY}', $container === 'interface' ? ';' : ' {}', $template);
-                    $body = str_replace('{X}', str_replace('{T}', $expression, $member), $wrapper);
-                    $id = $position.' '.$form.' '.$container;
-                    $code = "<?php\n\nnamespace Matrix;\n\n".($use !== '' ? $use."\n\n" : '')."// cell: {$id}\n".$body."\n";
+        return $cells;
+    }
 
-                    $cells[] = new Cell($position, $form, $container, $code, $expect === 'ref' ? [strtolower(self::TARGET)] : [], $phpMin, $parserMin, $declaration);
+    /**
+     * @param  array{0: string, 1: string, 2: string, 3: list<string>|null, 4: string, 5: string, 6: bool}  $definition
+     * @return list<Cell>
+     */
+    private static function cellsOf(string $position, array $definition, bool $docblocks): array
+    {
+        $cells = [];
+
+        [$kind, $template, $expect, $containers, $phpMin, $parserMin, $declaration] = $definition;
+
+        foreach (self::FORMS as $form => [$use, $expression]) {
+            foreach (self::CONTAINERS[$kind] as $container => $wrapper) {
+                if ($containers !== null && ! in_array($container, $containers, true)) {
+                    continue;
                 }
+
+                $member = str_replace('{BODY}', $container === 'interface' ? ';' : ' {}', $template);
+                $body = str_replace('{X}', str_replace('{T}', $expression, $member), $wrapper);
+                $id = $position.' '.$form.' '.$container;
+                $code = "<?php\n\nnamespace Matrix;\n\n".($use !== '' ? $use."\n\n" : '')."// cell: {$id}\n".$body."\n";
+
+                $cells[] = new Cell($position, $form, $container, $code, $expect === 'ref' ? [strtolower(self::TARGET)] : [], $phpMin, $parserMin, $declaration, $docblocks);
             }
         }
 

@@ -33,13 +33,13 @@ it('accepts the per-module settings of the fixture app', function () {
 
 it('rejects an unknown top-level key and suggests the closest one', function () {
     expect(config_errors(['rule' => []]))->toBe([
-        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache, docblocks.',
     ]);
 });
 
 it('leaves the suggestion out when no key is close', function () {
     expect(config_errors(['colour' => 'red']))->toBe([
-        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
+        'Unknown key [colour] in config/cordon.php. Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache, docblocks.',
     ]);
 });
 
@@ -138,7 +138,7 @@ it('rejects depends_on and public entries that are not names, without crashing (
 
 it('validates the root keys and the rules even without modules (M9)', function () {
     expect(ConfigValidator::errors(['rule' => [], 'rules' => ['cycle' => true], 'modules' => ['Billing' => []]], new ModuleMap([])))->toBe([
-        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
+        'Unknown key [rule] in config/cordon.php. Did you mean [rules]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache, docblocks.',
         'Unknown rule [cycle] in rules. Did you mean [cycles]? Built-in rules: internal_access, undeclared_dependency, cycles, unused_dependency, host_access, layers, public_api_leak.',
     ]);
 });
@@ -153,6 +153,20 @@ it('accepts a cache path or null and rejects anything else', function () {
 
 it('suggests cache for a misspelled key', function () {
     expect(config_errors(['cach' => 'a.json']))->toBe([
-        'Unknown key [cach] in config/cordon.php. Did you mean [cache]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache.',
+        'Unknown key [cach] in config/cordon.php. Did you mean [cache]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache, docblocks.',
+    ]);
+});
+
+it('accepts docblocks as true or false and rejects anything else', function () {
+    expect(config_errors(['docblocks' => true]))->toBe([])
+        ->and(config_errors(['docblocks' => false]))->toBe([])
+        ->and(config_errors(['docblocks' => 'yes']))->toBe(['docblocks in config/cordon.php must be true or false.'])
+        ->and(config_errors(['docblocks' => 1]))->toBe(['docblocks in config/cordon.php must be true or false.'])
+        ->and(config_errors(['docblocks' => null]))->toBe(['docblocks in config/cordon.php must be true or false.']);
+});
+
+it('suggests docblocks for a misspelled key', function () {
+    expect(config_errors(['docblock' => true]))->toBe([
+        'Unknown key [docblock] in config/cordon.php. Did you mean [docblocks]? Valid keys: resolver, resolvers, public_namespaces, modules, host, layers, rules, listeners, exclude, baseline, cache, docblocks.',
     ]);
 });

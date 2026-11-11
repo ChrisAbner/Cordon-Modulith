@@ -155,7 +155,7 @@ The public signature is what other modules see: the parameters and return types 
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.
 
-Not counted: `use` imports on their own, function calls, constants, docblock types (`@var`, generics), class names in strings (`'App\\Foo'`, `app('...')`) and dynamic references. When unsure, Cordon Modulith reports nothing: false positives are treated as bugs.
+Not counted: `use` imports on their own, function calls, constants, class names in strings (`'App\\Foo'`, `app('...')`) and dynamic references. Class names in docblock types (`@var`, `@param`, generics) are not counted either, unless you turn on [`docblocks`](./configuration#docblocks). When unsure, Cordon Modulith reports nothing: false positives are treated as bugs.
 
 Files in `vendor`, `node_modules`, `tests` and `Tests` directories and Blade views are skipped. Code outside modules (for example `app/Http`) is checked by [`host_access`](#host-access).
 

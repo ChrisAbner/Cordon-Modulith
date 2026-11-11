@@ -56,6 +56,6 @@ php artisan cordon:graph --format=json    # for your own tools
 php artisan cordon:graph --module=Billing # Billing and its neighbours only
 ```
 
-Each arrow is a dependency labelled with its number of references, the same number in the three formats. Dependencies with violations (after the baseline) are red, and a dependency made only of listeners is dotted in Mermaid and dashed in DOT. The JSON lists `modules`, and per dependency `from`, `to`, `references`, `kinds` (`use`, `listener`) and `violations`.
+Each arrow is a dependency labelled with its number of references, the same number in the three formats. Dependencies with violations (after the baseline) are red, and a dependency made only of listeners is dotted in Mermaid and dashed in DOT. The JSON lists `modules`, and per dependency `from`, `to`, `references`, `kinds` (`use`, `listener`, and `docblock` with [`docblocks`](./configuration#docblocks) on) and `violations`.
 
 The diagrams of `cordon:docs` differ on purpose: their labels count the classes used, as the tables next to them list, and only `internal_access` makes an arrow red.

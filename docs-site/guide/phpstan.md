@@ -60,6 +60,14 @@ parameters:
         basePath: /path/to/project
 ```
 
+The class names in docblock types count when `docblocks` is `true` in `config/cordon.php`, as in `cordon:verify`. To decide it for PHPStan alone, set the parameter: when it is `true` or `false` it wins over the config, and when it is left out the config decides.
+
+```yaml
+parameters:
+    cordon:
+        docblocks: true
+```
+
 ## Configuration errors
 
 Project config files (`config/cordon.php`, `config/modules.php`, `config/app-modules.php`) are evaluated without booting Laravel. Helpers such as `base_path()`, `app_path()` and `config_path()` resolve against the project root, but anything that needs the framework (facades, the container, `env()` values that live in a booted app) can't be evaluated. In that case the rule reports one error with the identifier `cordon.configuration` and the resolvers fall back to their defaults.

@@ -48,7 +48,7 @@ final class UndeclaredDependencyRule implements Rule
         }
 
         $file = $scope->getFile();
-        $collector = new ReferenceCollector($file);
+        $collector = new ReferenceCollector($file, $this->context->docblocks());
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
         $from = $this->context->moduleOf($file);

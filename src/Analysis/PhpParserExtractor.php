@@ -20,7 +20,10 @@ final class PhpParserExtractor implements DependencyExtractor
 {
     private Parser $parser;
 
-    public function __construct(?Parser $parser = null)
+    /**
+     * @param  bool  $docblocks  Also read the class names in docblock types (the `docblocks` config key).
+     */
+    public function __construct(private readonly bool $docblocks = false, ?Parser $parser = null)
     {
         $this->parser = $parser ?? (new ParserFactory)->createForNewestSupportedVersion();
     }
@@ -39,7 +42,7 @@ final class PhpParserExtractor implements DependencyExtractor
             return new FileAnalysis($file, error: $error->getMessage());
         }
 
-        $collector = new ReferenceCollector($file);
+        $collector = new ReferenceCollector($file, $this->docblocks);
 
         $traverser = new NodeTraverser;
         $traverser->addVisitor(new NameResolver);

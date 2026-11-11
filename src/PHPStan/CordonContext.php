@@ -66,6 +66,7 @@ final class CordonContext
         private readonly ReflectionProvider $reflectionProvider,
         private readonly string $basePath,
         ?Container $container = null,
+        private readonly ?bool $docblocks = null,
     ) {
         // PHPStan sets these for --tmp-file and --instead-of (editor mode, PHPStan 2.1.17+).
         if ($container !== null && $container->hasParameter('singleReflectionFile') && $container->hasParameter('singleReflectionInsteadOfFile')) {
@@ -95,6 +96,17 @@ final class CordonContext
     public function basePath(): string
     {
         return $this->basePath;
+    }
+
+    /**
+     * Whether class names in docblocks count: the `docblocks` parameter of the extension when set,
+     * otherwise `docblocks` in config/cordon.php, so PHPStan agrees with cordon:verify.
+     */
+    public function docblocks(): bool
+    {
+        $this->boot();
+
+        return $this->docblocks ?? ($this->config['docblocks'] ?? false) === true;
     }
 
     public function modules(): ModuleMap

@@ -246,3 +246,27 @@ it('explains the interfaces of a class and the interfaces behind a dependency', 
         ->and($plain['out'])->not->toContain('Interfaces')
         ->and($why['out'])->toContain('Billing lists Catalog in depends_on only through Catalog::Shared, and cordon:verify reports undeclared_dependency for references outside them.');
 });
+
+/**
+ * A copy of the docblocks app whose config/cordon.php sets docblocks.
+ */
+function docblocks_project(bool $docblocks): string
+{
+    $project = temp_project('docblocks-app');
+    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => ['Billing' => ['depends_on' => ['Orders']]], 'docblocks' => $docblocks, 'host' => ['paths' => []]], true).';');
+
+    return $project;
+}
+
+it('reads class names from docblocks when the config says so', function () {
+    $off = run_cordon(['verify', '--format=json'], docblocks_project(false));
+    $on = run_cordon(['verify', '--format=json'], docblocks_project(true));
+    $rules = array_column(json_decode($on['out'], true)['violations'], 'rule');
+
+    sort($rules);
+
+    expect($off['code'])->toBe(0)
+        ->and(json_decode($off['out'], true)['violations'])->toBe([])
+        ->and($on['code'])->toBe(1)
+        ->and($rules)->toBe(['cycles', 'cycles', 'internal_access', 'undeclared_dependency']);
+});

@@ -198,4 +198,22 @@ return [
 
     'cache' => null,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Class names in docblocks
+    |--------------------------------------------------------------------------
+    |
+    | false (the default): only class names in code count as dependencies.
+    | true: the class names in docblock types count too, as another kind of
+    | reference that follows the same rules: @param, @return, @var, @property,
+    | @method, @throws, @extends, @implements, @use, @mixin, the bound of
+    | @template, and generics, unions and shapes inside them. Template names,
+    | type aliases and pseudo-types (array-key, positive-int, class-string...)
+    | are never classes, and a docblock that does not parse is skipped.
+    | Turn it on when your code relies on generics such as Collection<int, Invoice>.
+    |
+    */
+
+    'docblocks' => false,
+
 ];

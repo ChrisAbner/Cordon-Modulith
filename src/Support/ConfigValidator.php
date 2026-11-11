@@ -17,7 +17,7 @@ use Cordon\Rules\RuleSet;
  */
 final class ConfigValidator
 {
-    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'layers', 'rules', 'listeners', 'exclude', 'baseline', 'cache'];
+    private const KEYS = ['resolver', 'resolvers', 'public_namespaces', 'modules', 'host', 'layers', 'rules', 'listeners', 'exclude', 'baseline', 'cache', 'docblocks'];
 
     private const HOST_KEYS = ['paths'];
 
@@ -47,6 +47,10 @@ final class ConfigValidator
 
         if (array_key_exists('cache', $config) && $config['cache'] !== null && (! is_string($config['cache']) || $config['cache'] === '')) {
             $errors[] = 'cache in config/cordon.php must be a file path or null.';
+        }
+
+        if (array_key_exists('docblocks', $config) && ! is_bool($config['docblocks'])) {
+            $errors[] = 'docblocks in config/cordon.php must be true or false.';
         }
 
         if (is_array($config['rules'] ?? null)) {

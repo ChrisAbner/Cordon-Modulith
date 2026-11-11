@@ -74,7 +74,7 @@ final class CordonServiceProvider extends ServiceProvider
             return ResolverFactory::make($app->make(Repository::class), $basePath);
         });
 
-        $container->bind(DependencyExtractor::class, fn (): DependencyExtractor => new PhpParserExtractor);
+        $container->bind(DependencyExtractor::class, fn ($app): DependencyExtractor => new PhpParserExtractor(docblocks: self::docblocks($app->make(Repository::class))));
 
         // $parameters['extractor'] is the cached extractor the Verifier shares with its analyzer.
         $container->bind(Analyzer::class, function ($app, array $parameters = []): Analyzer {
@@ -130,7 +130,16 @@ final class CordonServiceProvider extends ServiceProvider
      */
     private static function extractorOptions(Repository $config): array
     {
-        return [];
+        return ['docblocks' => self::docblocks($config)];
+    }
+
+    /**
+     * Whether `docblocks` is on. Anything but true is off: a value that is not a
+     * boolean is reported by ConfigValidator before anything is analysed.
+     */
+    private static function docblocks(Repository $config): bool
+    {
+        return $config->get('cordon.docblocks') === true;
     }
 
     /**

@@ -37,7 +37,7 @@ final class ModuleEdgeCollector implements Collector
     {
         $this->context->trackDependencies($scope);
 
-        $collector = new ReferenceCollector($scope->getFile());
+        $collector = new ReferenceCollector($scope->getFile(), $this->context->docblocks());
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
         $from = $this->context->moduleOf($scope->getFile());

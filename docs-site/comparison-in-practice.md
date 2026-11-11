@@ -40,7 +40,7 @@ Three results stood out to me.
 
 **A test that passes is not always a test that checked.** Pest went green on a class that clearly uses an internal model, because that class could not be autoloaded. A missing parent class is enough. So is a file whose folder does not match its namespace: the module's `tests/` folder against the `Tests\` namespace hid a second case the same way. Cordon does not see this kind of gap because it never needs the class to load. I did not expect it to be silent.
 
-**deptrac sees more than Cordon does.** It caught a dependency that exists only in a docblock, which Cordon deliberately ignores (more on that below). The [comparison page](./comparison) used to understate this, and it has been corrected. Deptrac *can* express a per-module public API, if you split layers and use the `attribute` collector. What Cordon saves you is writing and maintaining that map, not the capability itself.
+**deptrac sees more than Cordon does.** It caught a dependency that exists only in a docblock, which Cordon ignores by default (more on that below). The [comparison page](./comparison) used to understate this, and it has been corrected. Deptrac *can* express a per-module public API, if you split layers and use the `attribute` collector. What Cordon saves you is writing and maintaining that map, not the capability itself.
 
 **Nobody catches strings.** `app('App\Modules\Catalog\Models\Product')` got past all three tools. If your code resolves classes from strings, none of these checks will cover it.
 
@@ -54,11 +54,11 @@ They combine well: deptrac or Pest inside each module, and Cordon between module
 
 ## The trade-off Cordon made, and what I'd do differently today
 
-Cordon ignores docblock-only types and string class names on purpose. A dependency counts only when it is a real class name in code. The aim was zero false positives in CI, because a boundary check that cries wolf gets switched off. The cost shows in the table: deptrac caught a dependency that Cordon missed. In exchange, Cordon checks the whole app (1000 files and 20 modules in about 1 second in its CI benchmark) and never needs the analysed code to load.
+By default Cordon ignores docblock-only types and string class names on purpose. A dependency counts only when it is a real class name in code. The aim was zero false positives in CI, because a boundary check that cries wolf gets switched off. The cost shows in the table: deptrac caught a dependency that Cordon missed. In exchange, Cordon checks the whole app (1000 files and 20 modules in about 1 second in its CI benchmark) and never needs the analysed code to load.
 
 What I'd do differently today:
 
-- **Make docblock types an opt-in.** deptrac shows that this is practical. Teams that lean on generics in `@var` and `@param` should be able to turn it on.
+- **Make docblock types an opt-in.** deptrac shows that this is practical. Teams that lean on generics in `@var` and `@param` should be able to turn it on. Since 0.5 they can: [`docblocks`](./guide/configuration#docblocks) is off by default and, when on, reads the class names in docblock types. The experiment above was run before it existed, so its table still shows the default behaviour.
 - **Treat "analysed nothing" as a failure from day one.** The same lesson as Pest's silent pass applies to Cordon. Version 0.1.1 exited with 0 when it found no modules, and its GitHub output did not mention files it could not parse. Both are fixed in 0.2.0.
 
 The configs, the extra fixture files and the raw output of every run are in [`docs/comparison-evidence`](https://github.com/ChrisAbner/Cordon-Modulith/tree/main/docs/comparison-evidence), so you can reproduce each row of the table.

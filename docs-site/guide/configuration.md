@@ -42,6 +42,8 @@ return [
     'baseline' => 'cordon-baseline.json',
 
     'cache' => null,   // 'storage/framework/cache/cordon.json' to reuse the analysis of unchanged files
+
+    'docblocks' => false,   // true: class names in docblock types (@param, @var, generics...) count too
 ];
 ```
 
@@ -194,6 +196,25 @@ Path of the baseline file, relative to the project root. See [adopting in an exi
 The cache never changes a result: the report is the same cold, warm or with `cache` set to `null`. It stores only what was read from each file, not the violations, so changing `depends_on`, the rules or the baseline needs no new cache. It starts from scratch by itself when Cordon Modulith, nikic/php-parser or PHP change version. Deleting the file is always safe, and so is a file that cannot be read or written: `cordon:verify` warns (`Cordon cache at <path> is unreadable; analysing without it.`) and analyses without it.
 
 `cordon:verify --no-cache` neither reads nor writes the cache for one run. See [how much it saves](../faq#how-fast-is-it) and [how to keep it between CI runs](./ci#keeping-the-analysis-cache-between-runs).
+
+## docblocks
+
+`false` by default: only class names written in code are dependencies. With `'docblocks' => true`, the class names in docblock types count too, as another kind of reference (`docblock`) that goes through the same rules as any other: `internal_access`, `undeclared_dependency`, `unused_dependency`, `cycles`, `layers`, named interfaces and the baseline. Turn it on when your types live in docblocks, for example `@var Collection<int, Invoice>` or `@param list<Order> $orders`.
+
+```php
+'docblocks' => true,
+```
+
+These tags are read, with the generics, unions, intersections, `array<K, V>`, `list<T>`, `class-string<T>`, callable signatures and array shapes inside them: `@param`, `@return`, `@var`, `@property` (also `-read` and `-write`), `@method`, `@throws`, `@extends`, `@implements`, `@use`, `@mixin`, the bound of `@template T of Foo`, and `@phpstan-type` / `@phpstan-import-type` (and their `@psalm-` forms). Names are resolved the way PHP resolves them, with the namespace and the `use` imports of the file; a name written with `namespace\` is relative to the namespace.
+
+Cordon Modulith reports nothing when a name could be something else, so turning this on does not add false positives:
+
+- Template names (`@template T`) and type aliases (`@phpstan-type`) are not classes inside their scope, and neither are PHP and PHPDoc types such as `int`, `array-key`, `positive-int`, `non-empty-string`, `callable`, `self`, `static`, `$this`, or `class-string` without an argument.
+- The keys of an array shape (`array{id: int}`) are names, not classes.
+- A tag or type that does not parse is skipped, and so is the rest of that tag. Other tags of the same docblock still count. A broken docblock never fails an analysis.
+- Only docblocks (`/** */`) are read, not `//` or `/* */` comments, and a name inside free text (`@deprecated use Foo`) or in a tag that is not listed (`@see`, `@param-out`, `@phpstan-assert`) is not a reference.
+
+A class named in a type and in the code is two references (one of kind `use`, one of kind `docblock`), and `cordon:why` shows which is which. The setting is part of the [analysis cache](#cache) fingerprint, so changing it never reuses a cache written with the other value. The PHPStan rule reads the same key from `config/cordon.php`; to set it in `phpstan.neon` instead, use the `cordon.docblocks` parameter, which takes precedence (see [PHPStan](./phpstan)).
 
 ## Using the config outside Laravel
 

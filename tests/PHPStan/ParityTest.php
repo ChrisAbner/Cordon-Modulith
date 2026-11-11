@@ -23,8 +23,10 @@ const PHPSTAN_IDENTIFIERS = [
  * A copy of a fixture app with the given module settings, every listener counted for cycles.
  *
  * @param  array<string, array<string, mixed>>  $modules
+ * @param  array<string, mixed>  $config  More keys of config/cordon.php.
+ * @param  array<string, bool>  $parameters  Values of the cordon parameters of the extension.
  */
-function parity_project(string $fixture, array $modules): string
+function parity_project(string $fixture, array $modules, array $config = [], array $parameters = []): string
 {
     $project = Temp::directory('cordon-parity-');
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(fixture_path($fixture), FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
@@ -35,8 +37,9 @@ function parity_project(string $fixture, array $modules): string
     }
 
     is_dir($project.'/config') || mkdir($project.'/config');
-    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => $modules, 'listeners' => ['cycles' => true]], true).';');
-    file_put_contents($project.'/phpstan.neon', "includes:\n    - ".dirname(__DIR__, 2)."/extension.neon\nparameters:\n    level: 0\n    paths:\n        - app\n    tmpDir: {$project}/.phpstan\n    parallel:\n        maximumNumberOfProcesses: 1\n");
+    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => $modules, 'listeners' => ['cycles' => true], ...$config], true).';');
+    $cordon = $parameters === [] ? '' : "    cordon:\n".implode('', array_map(fn (string $name, bool $value): string => "        {$name}: ".($value ? 'true' : 'false')."\n", array_keys($parameters), $parameters));
+    file_put_contents($project.'/phpstan.neon', "includes:\n    - ".dirname(__DIR__, 2)."/extension.neon\nparameters:\n{$cordon}    level: 0\n    paths:\n        - app\n    tmpDir: {$project}/.phpstan\n    parallel:\n        maximumNumberOfProcesses: 1\n");
 
     return $project;
 }
@@ -74,11 +77,11 @@ function phpstan_findings(string $project): array
  * @param  array<string, array<string, mixed>>  $modules
  * @return list<string>
  */
-function verify_findings(string $project, array $modules): array
+function verify_findings(string $project, array $modules, bool $docblocks = false): array
 {
     $map = (new NestedResolver(new NamespaceResolver($project.'/app/Modules', 'App\\Modules'), $modules))->resolve()->configure($modules);
     $rules = RuleSet::fromConfig([], null, ['cycles' => true]);
-    $analyzer = new Analyzer(new PhpParserExtractor, new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']), new PublicApiPolicy, $rules, RuleSet::severities([], $rules));
+    $analyzer = new Analyzer(new PhpParserExtractor(docblocks: $docblocks), new FileCollector(['vendor', 'node_modules', 'tests', 'Tests']), new PublicApiPolicy, $rules, RuleSet::severities([], $rules));
     $snapshot = $analyzer->snapshot($map);
 
     $first = [];
@@ -129,6 +132,35 @@ it('reports in PHPStan what cordon:verify reports', function (string $fixture, a
     'named interfaces' => ['interfaces-app', ['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList', 'Data\\Price*'], 'Inventory' => ['Contracts\\Stock']]], 'Billing' => ['depends_on' => ['Catalog::Pricing']], 'Orders' => ['depends_on' => ['Catalog::Inventory']]]],
     'nested app' => ['nested-app', ['Billing' => ['nested' => ['Invoices', 'Payments']], 'Orders' => ['depends_on' => []], 'Billing.Invoices' => ['depends_on' => []]]],
 ]);
+
+const DOCBLOCK_PARITY_MODULES = [
+    'depends_on' => [['Billing' => ['depends_on' => ['Orders']]]],
+    'named interfaces' => [['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList']]], 'Billing' => ['depends_on' => ['Orders', 'Catalog::Pricing']]]],
+];
+
+it('reports in PHPStan the dependencies that only exist in docblocks, like cordon:verify, when docblocks is on', function (array $modules) {
+    $project = parity_project('docblocks-app', $modules, ['docblocks' => true]);
+    $findings = verify_findings($project, $modules, docblocks: true);
+
+    expect(phpstan_findings($project))->toBe($findings)
+        ->and(array_map(fn (string $finding) => strtok($finding, ' '), $findings))->toContain('internal_access', 'undeclared_dependency', 'cycles');
+})->with(DOCBLOCK_PARITY_MODULES);
+
+it('reports nothing from docblocks in PHPStan, like cordon:verify, when docblocks is off', function (array $modules) {
+    $project = parity_project('docblocks-app', $modules);
+
+    expect(phpstan_findings($project))->toBe([])
+        ->and(verify_findings($project, $modules))->toBe([]);
+})->with(DOCBLOCK_PARITY_MODULES);
+
+it('takes docblocks from the cordon parameter of the extension too', function () {
+    $modules = DOCBLOCK_PARITY_MODULES['depends_on'][0];
+    $on = parity_project('docblocks-app', $modules, parameters: ['docblocks' => true]);
+    $off = parity_project('docblocks-app', $modules, ['docblocks' => true], ['docblocks' => false]);
+
+    expect(phpstan_findings($on))->toBe(verify_findings($on, $modules, docblocks: true))->not->toBe([])
+        ->and(phpstan_findings($off))->toBe([]);
+});
 
 /**
  * A copy of a real-* project with its expected.json config written where

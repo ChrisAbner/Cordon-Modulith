@@ -10,7 +10,7 @@ Cordon Modulith is not the only way to keep a Laravel codebase in shape. Here is
 
 [Deptrac](https://github.com/deptrac/deptrac) is the reference static architecture checker for PHP. You define layers with collectors (by namespace, directory, class name, inheritance...) and which layers may depend on which.
 
-- **What it does well:** framework-agnostic, very flexible, mature, fast, with caching, a baseline and several output formats. It can express layered rules *inside* modules, and it also reads types written in docblocks, which Cordon Modulith ignores.
+- **What it does well:** framework-agnostic, very flexible, mature, fast, with caching, a baseline and several output formats. It can express layered rules *inside* modules, and it also reads types written in docblocks, which Cordon Modulith reads when you turn on [`docblocks`](./guide/configuration#docblocks) (off by default).
 - **What Cordon Modulith adds:** module discovery from nwidart, InterNACHI or `app/Modules` with no layer definitions; a public API model per module (public namespaces, `#[PublicApi]`/`#[Internal]`, open modules) without writing a layer map; cycle detection with the shortest path; Laravel integration (Artisan, Pest expectation, Boost skill, living documentation). Deptrac can express a per-module public API too, by splitting each module into a public and an internal layer and using its `attribute` collector. It checks the rules between layers, not cycles in the code.
 - **Choose Deptrac** when you need layered rules or you are not on Laravel. You can use both: Deptrac for layers inside modules, Cordon Modulith for the edges between them.
 
