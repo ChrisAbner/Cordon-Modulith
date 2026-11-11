@@ -143,6 +143,19 @@ final class Verifier
     }
 
     /**
+     * The snapshot of the modules alone, for the documentation: the code
+     * outside them (host.paths) is not analysed. The cache keeps what earlier
+     * runs stored for the host files.
+     */
+    public function moduleSnapshot(): Snapshot
+    {
+        $snapshot = $this->analyzer()->snapshot($this->modules());
+        $this->cache?->save(keepUnused: true);
+
+        return $snapshot;
+    }
+
+    /**
      * Ignore the analysis cache for the rest of the run: it is neither read nor written.
      */
     public function withoutCache(): void

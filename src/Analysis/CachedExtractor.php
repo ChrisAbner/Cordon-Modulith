@@ -57,11 +57,13 @@ final class CachedExtractor implements DependencyExtractor
 
     /**
      * Writes the cache. Call it once the analysis is done.
+     *
+     * @param  bool  $keepUnused  Keep what earlier runs cached for files this one did not analyse. See AnalysisCache::save().
      */
-    public function save(): void
+    public function save(bool $keepUnused = false): void
     {
         if ($this->enabled) {
-            $this->cache->save();
+            $this->cache->save($keepUnused);
         }
     }
 

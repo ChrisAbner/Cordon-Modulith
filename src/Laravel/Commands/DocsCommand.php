@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel\Commands;
 
-use Cordon\Analysis\Analyzer;
 use Cordon\Laravel\ModuleDocs;
 use Cordon\Laravel\Verifier;
 use Cordon\Laravel\XdebugWarning;
@@ -22,7 +21,7 @@ final class DocsCommand extends Command
 
     protected $description = 'Generate Markdown documentation of the modules: dependency diagrams, module canvases and an event inventory';
 
-    public function handle(Verifier $verifier, Analyzer $analyzer, XdebugWarning $xdebug): int
+    public function handle(Verifier $verifier, XdebugWarning $xdebug): int
     {
         $diagrams = $this->option('diagrams');
 
@@ -47,7 +46,7 @@ final class DocsCommand extends Command
         $output = $this->option('output');
         $directory = Paths::join($verifier->basePath(), is_string($output) && $output !== '' ? $output : 'docs/architecture');
 
-        $files = ModuleDocs::files($verifier, $analyzer, $diagrams);
+        $files = ModuleDocs::files($verifier, $diagrams);
 
         foreach ($files as $name => $contents) {
             $path = $directory.DIRECTORY_SEPARATOR.$name;

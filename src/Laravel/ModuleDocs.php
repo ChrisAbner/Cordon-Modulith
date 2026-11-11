@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel;
 
-use Cordon\Analysis\Analyzer;
 use Cordon\Documentation\DocumentationGenerator;
 use Cordon\Documentation\EventInventory;
 use Cordon\Documentation\GraphExporter;
@@ -20,14 +19,15 @@ final class ModuleDocs
 {
     /**
      * The Markdown files, plus architecture.puml (the C4 diagram) with $diagrams = 'c4'.
+     * The files are read through the verifier's analyzer, so they use the same analysis cache as cordon:verify.
      *
      * @param  'mermaid'|'c4'  $diagrams
      * @return array<string, string> file name => contents
      */
-    public static function files(Verifier $verifier, Analyzer $analyzer, string $diagrams = 'mermaid'): array
+    public static function files(Verifier $verifier, string $diagrams = 'mermaid'): array
     {
-        $snapshot = $analyzer->snapshot($verifier->modules());
-        $result = $analyzer->check($snapshot, $verifier->basePath());
+        $snapshot = $verifier->moduleSnapshot();
+        $result = $verifier->check($snapshot, baseline: false);
 
         $files = (new DocumentationGenerator)->generate($snapshot, $result->violations, EventInventory::build($snapshot), $verifier->basePath());
 

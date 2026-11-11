@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel;
 
-use Cordon\Analysis\Analyzer;
 use Cordon\Documentation\GraphExporter;
 use Cordon\Support\ConfigValidator;
 use Illuminate\Container\Container;
@@ -57,7 +56,7 @@ final class Architecture
      */
     public static function docs(): array
     {
-        return ModuleDocs::files(self::verifier(), Container::getInstance()->make(Analyzer::class));
+        return ModuleDocs::files(self::verifier());
     }
 
     private static function verifier(): Verifier

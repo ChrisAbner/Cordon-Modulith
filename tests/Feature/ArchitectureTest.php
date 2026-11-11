@@ -1,5 +1,8 @@
 <?php
 
+use Cordon\Analysis\FileAnalysis;
+use Cordon\Analysis\PhpParserExtractor;
+use Cordon\Contracts\DependencyExtractor;
 use Cordon\Laravel\Architecture;
 use Cordon\Tests\Oracle\Temp;
 use Illuminate\Support\Facades\Artisan;
@@ -64,6 +67,92 @@ it('documents the modules as cordon:docs does when code outside the modules uses
     foreach ($files as $name => $contents) {
         expect($contents)->toBe(file_get_contents($output.'/'.$name));
     }
+
+    foreach ([...glob($output.'/modules/*.md'), ...glob($output.'/*.md')] as $file) {
+        unlink($file);
+    }
+
+    rmdir($output.'/modules');
+    rmdir($output);
+});
+
+/**
+ * Binds an extractor that records the files it is asked for, and returns its calls.
+ *
+ * @return object{calls: list<string>}
+ */
+function spy_on_extractions(): object
+{
+    $spy = new class implements DependencyExtractor
+    {
+        /** @var list<string> */
+        public array $calls = [];
+
+        public function extract(string $file): FileAnalysis
+        {
+            $this->calls[] = $file;
+
+            return (new PhpParserExtractor)->extract($file);
+        }
+    };
+
+    app()->bind(DependencyExtractor::class, fn () => $spy);
+
+    return $spy;
+}
+
+it('does not extract the unchanged files again when cache is set', function () {
+    config()->set('cordon.cache', Temp::directory('cordon-cache-').'/cordon.json');
+    $spy = spy_on_extractions();
+
+    $first = Architecture::docs();
+    $extracted = count($spy->calls);
+    $second = Architecture::docs();
+
+    expect($extracted)->toBeGreaterThan(0)
+        ->and(count($spy->calls))->toBe($extracted)
+        ->and($second)->toBe($first);
+});
+
+it('documents the same with and without cache', function () {
+    $without = Architecture::docs();
+
+    config()->set('cordon.cache', Temp::directory('cordon-cache-').'/cordon.json');
+    $cold = Architecture::docs();
+    $warm = Architecture::docs();
+
+    expect($cold)->toBe($without)
+        ->and($warm)->toBe($without);
+});
+
+it('shares the cache with cordon:verify, host files included', function () {
+    $host = Temp::removeAtExit(Temp::directory('cordon-architecture-host-'));
+    file_put_contents($host.'/Controller.php', "<?php\n\nnamespace Host;\n\nfinal class Controller {}\n");
+    config()->set('cordon.host.paths', [$host]);
+    config()->set('cordon.cache', Temp::directory('cordon-cache-').'/cordon.json');
+    $spy = spy_on_extractions();
+
+    Artisan::call('cordon:verify');
+    $extracted = count($spy->calls);
+    Architecture::docs();
+    Artisan::call('cordon:verify');
+
+    // The docs run neither parsed again what verify cached nor dropped the host file from the cache.
+    expect($extracted)->toBeGreaterThan(0)
+        ->and(count($spy->calls))->toBe($extracted);
+});
+
+it('caches the file analyses of cordon:docs', function () {
+    config()->set('cordon.cache', Temp::directory('cordon-cache-').'/cordon.json');
+    $spy = spy_on_extractions();
+    $output = Temp::removeAtExit(sys_get_temp_dir().'/cordon-architecture-'.uniqid());
+
+    Artisan::call('cordon:docs', ['--output' => $output]);
+    $extracted = count($spy->calls);
+    Artisan::call('cordon:docs', ['--output' => $output]);
+
+    expect($extracted)->toBeGreaterThan(0)
+        ->and(count($spy->calls))->toBe($extracted);
 
     foreach ([...glob($output.'/modules/*.md'), ...glob($output.'/*.md')] as $file) {
         unlink($file);

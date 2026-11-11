@@ -104,12 +104,19 @@ final class AnalysisCache
     /**
      * Writes the entries this run used, so files that were deleted or renamed
      * drop out. Does nothing when that is what the file already holds.
+     *
+     * @param  bool  $keepUnused  Keep the stored entries this run did not use, for a run that analyses only part of the files (cordon:docs leaves the host code out): they drop out on the next full run.
      */
-    public function save(): void
+    public function save(bool $keepUnused = false): void
     {
+        $stored = $this->entries();
+
+        if ($keepUnused) {
+            $this->used = [...$stored, ...$this->used];
+        }
+
         // Files are extracted in the order the analyzer visits them (modules, then host paths) and stored sorted.
         ksort($this->used);
-        $stored = $this->entries();
         ksort($stored);
 
         if (! $this->replace && ! $this->changed && array_keys($stored) === array_keys($this->used)) {
