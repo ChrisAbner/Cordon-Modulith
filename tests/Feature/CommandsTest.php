@@ -434,7 +434,7 @@ it('checks the layers from the config', function () {
     $layers = array_values(array_filter(json_decode(Artisan::output(), true)['violations'], fn (array $violation) => $violation['rule'] === 'layers'));
 
     expect($layers)->not->toBe([])
-        ->and($layers[0]['message'])->toBe('Module [Billing] (layer 2) depends on [Shared] (layer 1); a layer may only depend on the layers below it.')
+        ->and($layers[0]['message'])->toBe('Module [Billing] (layer 2) depends on [Shared] (layer 1) through App\\Modules\\Shared\\Money; a layer may only depend on the layers below it.')
         ->and($layers[0]['docs_url'])->toEndWith('/guide/rules#layers');
 });
 

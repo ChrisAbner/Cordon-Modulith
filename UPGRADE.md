@@ -13,3 +13,4 @@
 5. **If you wrote custom rules**, the classes they use are marked `@api` and are covered by the [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility) page. Classes marked `@internal` (such as `Analyzer` or `RuleSet`) may change in any release.
 6. `nikic/php-parser` 5.3 or later is required. Composer upgrades it when you update Cordon.
 7. **If some modules live outside the project root** (a monorepo with `../packages`), their files are now written with `../` in reports and in the baseline, instead of an absolute path. Regenerate the baseline once with `cordon:verify --generate-baseline`.
+8. **If you tried `layers` from a development version before 0.4.0**, its baseline entries are now per class (ADR 0014): the target is the class that crosses the layer, not the module. Regenerate the baseline once with `cordon:verify --generate-baseline`. Releases before 0.4 had no `layers`, so nothing else changes.

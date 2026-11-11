@@ -11,7 +11,8 @@ use Cordon\Contracts\Rule;
 /**
  * Layers, from the top down: a module may depend on modules of its own
  * layer and of the layers below it, never above. Modules outside every
- * layer are not checked. One violation per file and module depended on.
+ * layer are not checked. One violation per file and class depended on, like
+ * internal_access, so the baseline tracks classes and not modules.
  *
  * @internal
  */
@@ -47,7 +48,8 @@ final class LayerRule implements Rule
         foreach ($context->edges as $edge) {
             $from = $this->layerOf[$edge->from->name] ?? null;
             $to = $this->layerOf[$edge->to->name] ?? null;
-            $key = $edge->reference->sourceFile.'|'.$edge->to->name;
+            $target = $edge->reference->target;
+            $key = $edge->reference->sourceFile.'|'.strtolower($target);
 
             if ($from === null || $to === null || $to >= $from || isset($reported[$key]) || ($edge->isListener() && ! $this->countListeners)) {
                 continue;
@@ -57,12 +59,12 @@ final class LayerRule implements Rule
 
             yield new Violation(
                 self::ID,
-                sprintf('Module [%s] (layer %d) depends on [%s] (layer %d); a layer may only depend on the layers below it.', $edge->from->name, $from, $edge->to->name, $to),
+                sprintf('Module [%s] (layer %d) depends on [%s] (layer %d) through %s; a layer may only depend on the layers below it.', $edge->from->name, $from, $edge->to->name, $to, $target),
                 $edge->reference->sourceFile,
                 $edge->reference->line,
                 $edge->from->name,
                 $edge->to->name,
-                $edge->to->name,
+                $target,
             );
         }
     }

@@ -120,10 +120,10 @@ With `layers` in `config/cordon.php`, a module depends on a module of a layer ab
 
 ```text
 x [layers] app/Modules/Shared/Money.php:12
-  Module [Shared] (layer 3) depends on [Orders] (layer 1); a layer may only depend on the layers below it.
+  Module [Shared] (layer 3) depends on [Orders] (layer 1) through App\Modules\Orders\Models\Order; a layer may only depend on the layers below it.
 ```
 
-A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. The PHPStan rule does not report it yet.
+A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. It reports once per file and class of the layer above, so a new class in a file already in the baseline is a new violation. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. The PHPStan rule does not report it yet.
 
 ## public_api_leak
 
