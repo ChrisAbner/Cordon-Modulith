@@ -15,7 +15,7 @@ Modules affected by the changes since origin/main:
 
 `--since` takes any git reference. The changes are what was committed since your branch forked from it (`git diff <ref>...HEAD`), plus what is staged, modified or not tracked yet, so it works the same in CI and on a laptop. A module is affected when one of its files changed, deleted files included, or when it depends on an affected module, directly or through others: the graph is the one of [`cordon:impact`](../guide/explore#what-can-a-change-to-this-module-affect).
 
-With `--format=json`, `version` is the version of the format (`1`: new fields are added without changing it), `since` the reference, `changed` lists the modules that have changed files, and `affected` every module with the `reason` (`changed`, `depends_on`, `parent` for a module that contains an affected nested one, or `nested` for a nested module of a changed or affected module) and the module it was reached `through` (`null` for a changed module). With `--tests`, `tests` lists the folders. For example:
+With `--format=json`, `version` is the version of the format (`1`: new fields are added without changing it), `since` the reference, `changed` lists the modules that have changed files, and `affected` every module with the `reason` (`changed`, `depends_on`, `parent` for a module that contains an affected nested one, or `nested` for a nested module of any affected module, the siblings of an affected nested module included: it can list one that is not really affected, but never misses a test) and the module it was reached `through` (`null` for a changed module). With `--tests`, `tests` lists the folders. For example:
 
 ```json
 {

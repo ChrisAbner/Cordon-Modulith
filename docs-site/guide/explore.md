@@ -65,7 +65,7 @@ Modules affected by the changes since origin/main:
 
 The modules with changed files since a git reference, and the ones that depend on them (the graph of `cordon:impact`). With `--tests` it prints the test folders of those modules, one per line, to pass to Pest. See [run only the tests the change can affect](../recipes/affected-tests). `cordon:verify --since=origin/main` checks the files that changed, as `cordon:verify <paths>` does.
 
-A change in a nested module affects its parent too, which is the module the outside sees, and whatever depends on it. A change in a parent affects its nested modules, and so does a parent that is affected only because it depends on a change (its nested modules use its internals). A parent reached only because a nested module changed does not pull in the other nested modules, unless they depend on the one that changed. A change in the code outside the modules (`host`) affects only `host`: nothing depends on it.
+A change in a nested module affects its parent too, which is the module the outside sees, and whatever depends on it. Every affected module brings in all its nested modules, whatever the reason it is affected (a change in it, a dependency on a change, or one of its nested modules being affected): they may use its internals, and a nested module using its parent is not a dependency the graph follows. So the other nested modules of a parent are listed (as `nested`) even when they do not depend on the one that changed. That can list a sibling that is not really affected, which is the price of never missing a test. A change in the code outside the modules (`host`) affects only `host`: nothing depends on it.
 
 ## The whole graph
 

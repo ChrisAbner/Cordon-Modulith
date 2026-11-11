@@ -241,13 +241,14 @@ describe('cordon affected', function () {
             ]);
     });
 
-    it('does not list the siblings of a nested module that changed, only its parent', function () {
+    it('lists the parent and, with it, the siblings of a nested module that changed', function () {
         $project = git_project('nested-app');
         change($project, 'app/Modules/Billing/Payments/Models/Payment.php');
 
         $names = affected_names(affected_report($project));
 
-        expect($names)->toContain('Billing.Payments', 'Billing', 'Orders');
+        expect($names)->toContain('Billing.Payments', 'Billing', 'Orders')
+            ->and($names)->toContain('Billing.Invoices');
     });
 
     it('gives the same list with the analysis cache, cold or warm, and without it', function () {

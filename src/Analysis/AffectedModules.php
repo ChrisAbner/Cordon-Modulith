@@ -11,14 +11,15 @@ use Cordon\Module\ModuleMap;
  * The modules a change can affect: the changed ones and, transitively, the
  * ones that depend on them (the graph of cordon:impact).
  *
- * A module that contains a changed nested module is affected too, since it is
- * what the outside sees, so whatever depends on the parent is. A change in a
- * parent also affects its nested modules, which may use its internals, and so
- * does a parent that is affected because it depends on a change. A parent
- * reached only because a nested module changed does not: its own code did not
- * change, and its other nested modules are affected only when they depend on
- * the one that did. The code outside the modules (host) is affected when its
- * own files change, and nothing depends on it.
+ * A module that contains an affected nested module is affected too, since it
+ * is what the outside sees, so whatever depends on the parent is. And every
+ * affected module, whatever the reason (changed, depends_on or parent), brings
+ * in all its nested modules (reason nested): they may use its internals, and a
+ * nested module using its parent is not an edge, so the graph would not reach
+ * them. That includes the other nested modules of a parent reached only
+ * because one of them is affected: over-including a sibling is acceptable,
+ * missing a test is not. The code outside the modules (host) is affected when
+ * its own files change, and nothing depends on it.
  *
  * @internal
  */
@@ -45,42 +46,34 @@ final class AffectedModules
 
         $affected = [];
         $queue = [];
-        $add = static function (string $name, string $reason, ?string $through) use (&$affected, &$queue): bool {
+        $add = static function (string $name, string $reason, ?string $through) use (&$affected, &$queue): void {
             if (isset($affected[$name])) {
-                return false;
+                return;
             }
 
             $affected[$name] = ['module' => $name, 'reason' => $reason, 'through' => $through];
             $queue[] = $name;
-
-            return true;
         };
 
         foreach ($changed as $name) {
             $add($name, self::CHANGED, null);
         }
 
-        // The nested modules of a changed module: they may use its internals.
-        foreach ($changed as $name) {
+        // Every affected module is taken off the queue once, however it came in (changed, depends_on or parent), and brings
+        // in its nested modules not yet added: they may use its internals, which a use of the parent is not an edge to follow.
+        while ($queue !== []) {
+            $name = array_shift($queue);
+
             foreach (self::descendants($modules, $name) as $nested) {
                 $add($nested, self::NESTED, $name);
             }
-        }
-
-        while ($queue !== []) {
-            $name = array_shift($queue);
 
             foreach (self::ancestors($modules, $name) as $parent) {
                 $add($parent, self::PARENT, $name);
             }
 
             foreach ($graph->direct($name) as $dependent) {
-                if ($add($dependent, self::DEPENDS_ON, $name)) {
-                    // What depends on a module may be its nested modules too: they use its internals.
-                    foreach (self::descendants($modules, $dependent) as $nested) {
-                        $add($nested, self::NESTED, $dependent);
-                    }
-                }
+                $add($dependent, self::DEPENDS_ON, $name);
             }
         }
 
