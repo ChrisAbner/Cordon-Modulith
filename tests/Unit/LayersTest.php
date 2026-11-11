@@ -11,6 +11,8 @@ use Cordon\Module\ModuleMap;
 use Cordon\Rules\LayerRule;
 use Cordon\Rules\RuleSet;
 
+mutates(LayerRule::class);
+
 const LAYERS = [['Orders', 'Billing'], ['Catalog'], ['Shared']];
 
 /**
@@ -72,4 +74,24 @@ it('builds the layer rule from the layers config', function () {
     expect($layers)->toHaveCount(1)
         ->and(iterator_to_array($layers[0]->check(layered_context([['Shared', 'Orders']])), false))->toHaveCount(1)
         ->and(iterator_to_array((new LayerRule([], true))->check(layered_context([['Shared', 'Orders']])), false))->toBe([]);
+});
+
+it('counts listeners by default', function () {
+    $context = layered_context([['Shared', 'Orders', Reference::LISTENER]]);
+
+    expect(iterator_to_array((new LayerRule(LAYERS))->check($context), false))->toHaveCount(1);
+});
+
+it('keeps the first layer of a module that is listed in several', function () {
+    $context = layered_context([['Catalog', 'Orders']]);
+
+    expect(iterator_to_array((new LayerRule([['Orders'], ['Catalog'], ['Orders']]))->check($context), false))->toHaveCount(1);
+});
+
+it('reports each module a file depends on, and each file that depends on a module', function () {
+    $sameFile = layer_violations(layered_context([['Shared', 'Orders'], ['Shared', 'Catalog'], ['Shared', 'Orders']]));
+    $sameTarget = layer_violations(layered_context([['Shared', 'Orders'], ['Catalog', 'Orders']]));
+
+    expect(array_map(fn (Violation $violation) => $violation->target, $sameFile))->toBe(['Orders', 'Catalog'])
+        ->and(array_map(fn (Violation $violation) => $violation->sourceModule, $sameTarget))->toBe(['Shared', 'Catalog']);
 });
