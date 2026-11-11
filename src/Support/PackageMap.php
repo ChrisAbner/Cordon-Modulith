@@ -18,6 +18,10 @@ use PhpToken;
  * left out by --no-dev) and anything a package merely shares a namespace with
  * belong to none. The index is read the first time it is needed.
  *
+ * @phpstan-type Mapping array{prefix: string, dirs: list<string>}
+ * @phpstan-type Package array{name: string, psr4: list<Mapping>, psr0: list<Mapping>, classmap: list<string>, replace: list<string>}
+ * @phpstan-type Entry array{prefix: string, package: string, dirs: list<string>, psr0: bool}
+ *
  * @internal
  */
 final class PackageMap
@@ -25,15 +29,15 @@ final class PackageMap
     /** Suffixes of the files a classmap entry scans, as Composer does. */
     private const CLASSMAP_EXTENSIONS = ['php', 'inc'];
 
-    /** @var array<string, array{name: string, psr4: list<array{prefix: string, dirs: list<string>}>, psr0: list<array{prefix: string, dirs: list<string>}>, classmap: list<string>, replace: list<string>}>|null */
+    /** @var array<string, Package>|null */
     private ?array $packages = null;
 
     private ?string $problem = null;
 
-    /** @var list<array{prefix: string, package: string, dirs: list<string>, psr0: bool}>|null Longest prefix first. */
+    /** @var list<Entry>|null Longest prefix first. */
     private ?array $prefixes = null;
 
-    /** @var array<string, string>|null Lowercased class name => package, from the classmap entries. */
+    /** @var array<string, string|null>|null Lowercased class name => package (null when several declare it), from the classmap entries. */
     private ?array $classmap = null;
 
     /** @var array<string, string|null> */
@@ -173,14 +177,16 @@ final class PackageMap
             }
         }
 
-        return $this->classmap()[$lower] ?? $unverifiable;
+        $classmap = $this->classmap();
+
+        return array_key_exists($lower, $classmap) ? $classmap[$lower] : $unverifiable;
     }
 
     /**
      * Whether an autoload entry holds the file of a class: true or false, or
      * null when none of its directories exists, so nothing can be checked.
      *
-     * @param  array{prefix: string, package: string, dirs: list<string>, psr0: bool}  $entry
+     * @param  Entry  $entry
      */
     private function provides(array $entry, string $fqcn): ?bool
     {
@@ -227,7 +233,7 @@ final class PackageMap
     /**
      * The psr-4 and psr-0 entries of every package, the longest prefix first.
      *
-     * @return list<array{prefix: string, package: string, dirs: list<string>, psr0: bool}>
+     * @return list<Entry>
      */
     private function prefixes(): array
     {
@@ -255,9 +261,11 @@ final class PackageMap
 
     /**
      * The classes declared by the files of the classmap entries, read with the
-     * tokenizer (nothing is included or run): lowercased name => package.
+     * tokenizer (nothing is included or run): lowercased name => package, or
+     * null for a class that more than one package declares, which no package
+     * can be said to provide.
      *
-     * @return array<string, string>
+     * @return array<string, string|null>
      */
     private function classmap(): array
     {
@@ -271,7 +279,8 @@ final class PackageMap
             foreach ($package['classmap'] as $path) {
                 foreach (self::phpFiles($path) as $file) {
                     foreach (self::declaredClasses($file) as $class) {
-                        $map[strtolower($class)] ??= $package['name'];
+                        $key = strtolower($class);
+                        $map[$key] = array_key_exists($key, $map) && $map[$key] !== $package['name'] ? null : $package['name'];
                     }
                 }
             }
@@ -281,24 +290,40 @@ final class PackageMap
     }
 
     /**
+     * The PHP files of a classmap entry (a file, or a directory searched
+     * recursively). What cannot be read, and a directory that links back to
+     * one already searched, is skipped: no file, so no class to attribute.
+     *
+     * @param  array<string, true>  $visited  The real paths of the directories already searched.
      * @return list<string>
      */
-    private static function phpFiles(string $path): array
+    private static function phpFiles(string $path, array &$visited = []): array
     {
         if (is_file($path)) {
             return [$path];
         }
 
-        if (! is_dir($path)) {
+        $real = is_dir($path) ? realpath($path) : false;
+
+        if ($real === false || isset($visited[$real])) {
             return [];
         }
 
+        $visited[$real] = true;
+        $names = is_readable($path) ? @scandir($path) : false;
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::FOLLOW_SYMLINKS));
 
-        foreach ($iterator as $file) {
-            if ($file instanceof \SplFileInfo && $file->isFile() && in_array($file->getExtension(), self::CLASSMAP_EXTENSIONS, true)) {
-                $files[] = $file->getPathname();
+        foreach ($names === false ? [] : $names as $name) {
+            if ($name === '.' || $name === '..') {
+                continue;
+            }
+
+            $child = $path.'/'.$name;
+
+            if (is_dir($child)) {
+                array_push($files, ...self::phpFiles($child, $visited));
+            } elseif (is_file($child) && in_array(strtolower(pathinfo($name, PATHINFO_EXTENSION)), self::CLASSMAP_EXTENSIONS, true)) {
+                $files[] = $child;
             }
         }
 
@@ -308,7 +333,15 @@ final class PackageMap
     }
 
     /**
-     * The classes, interfaces, traits and enums a file declares.
+     * The classes, interfaces, traits and enums a file declares unconditionally
+     * at its top level (directly, or inside a namespace block), in a namespace.
+     *
+     * A declaration inside an if, a function or any other block is conditional:
+     * polyfills declare what PHP already has under `if (PHP_VERSION_ID < ...)`,
+     * so it is not known to exist. A file that uses the alternative syntax
+     * (if: ... endif) is read as declaring nothing, and the classes of the
+     * global namespace are left out too: it is where the polyfills of PHP's
+     * own classes (Attribute, Normalizer) declare theirs, without a condition.
      *
      * @return list<string>
      */
@@ -328,27 +361,46 @@ final class PackageMap
 
         $classes = [];
         $namespace = '';
+        $depth = 0;
+        // The depth of the code a namespace holds: 1 inside `namespace X { }`, else 0.
+        $top = 0;
         $count = count($tokens);
 
         for ($i = 0; $i < $count; $i++) {
             $token = $tokens[$i];
 
-            if ($token->is(T_NAMESPACE)) {
-                $namespace = '';
+            if ($token->is([T_ENDIF, T_ENDFOREACH, T_ENDFOR, T_ENDWHILE, T_ENDSWITCH, T_ENDDECLARE])) {
+                return [];
+            }
+
+            if ($token->is(['{', T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES])) {
+                $depth++;
+            } elseif ($token->is('}')) {
+                $depth--;
+
+                // The end of a `namespace X { }` block: what follows is in the global namespace.
+                if ($depth === 0 && $top === 1) {
+                    [$namespace, $top] = ['', 0];
+                }
+            } elseif ($token->is(T_NAMESPACE) && $depth === 0) {
+                $name = '';
 
                 for ($j = $i + 1; $j < $count && ! $tokens[$j]->is([';', '{']); $j++) {
                     if ($tokens[$j]->is([T_STRING, T_NAME_QUALIFIED])) {
-                        $namespace .= $tokens[$j]->text;
+                        $name .= $tokens[$j]->text;
                     }
                 }
-            } elseif ($token->is([T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM]) && ! self::isClassConstant($tokens, $i)) {
+
+                $namespace = $name;
+                $top = $j < $count && $tokens[$j]->is('{') ? 1 : 0;
+            } elseif ($depth === $top && $namespace !== '' && $token->is([T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM]) && ! self::isClassConstant($tokens, $i)) {
                 for ($j = $i + 1; $j < $count; $j++) {
-                    if ($tokens[$j]->is(T_WHITESPACE)) {
+                    if ($tokens[$j]->is([T_WHITESPACE, T_COMMENT, T_DOC_COMMENT])) {
                         continue;
                     }
 
                     if ($tokens[$j]->is(T_STRING)) {
-                        $classes[] = ($namespace === '' ? '' : $namespace.'\\').$tokens[$j]->text;
+                        $classes[] = $namespace.'\\'.$tokens[$j]->text;
                     }
 
                     break;
@@ -378,7 +430,7 @@ final class PackageMap
     }
 
     /**
-     * @return array<string, array{name: string, psr4: list<array{prefix: string, dirs: list<string>}>, psr0: list<array{prefix: string, dirs: list<string>}>, classmap: list<string>, replace: list<string>}>
+     * @return array<string, Package>
      */
     private function load(): array
     {
@@ -423,7 +475,7 @@ final class PackageMap
 
     /**
      * @param  array<array-key, mixed>  $entry
-     * @return array{name: string, psr4: list<array{prefix: string, dirs: list<string>}>, psr0: list<array{prefix: string, dirs: list<string>}>, classmap: list<string>, replace: list<string>}
+     * @return Package
      */
     private function package(array $entry): array
     {
@@ -450,7 +502,7 @@ final class PackageMap
     }
 
     /**
-     * @return list<array{prefix: string, dirs: list<string>}>
+     * @return list<Mapping>
      */
     private static function mappings(mixed $autoload, string $dir): array
     {

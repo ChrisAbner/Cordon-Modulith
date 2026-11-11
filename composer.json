@@ -52,9 +52,9 @@
     },
     "scripts": {
         "test": "pest",
-        "analyse": "phpstan analyse",
+        "analyse": "phpstan analyse --memory-limit=512M",
         "format": "pint",
-        "check": ["pint --test", "phpstan analyse", "pest"],
+        "check": ["pint --test", "@analyse", "pest"],
         "bench": "php tests/Benchmark/run.php 1000 20 10",
         "coverage": "@php -d pcov.enabled=1 vendor/bin/pest --coverage --min=95",
         "mutate": "@php -d pcov.enabled=1 vendor/bin/pest --mutate --min=88",

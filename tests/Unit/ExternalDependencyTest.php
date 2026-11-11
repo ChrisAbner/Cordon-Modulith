@@ -427,3 +427,108 @@ it('runs after the built-in rules and is not a warning-by-default rule', functio
 
     expect($severities['external_dependency']->value)->toBe('error');
 });
+
+// Polyfills, ambiguous classmaps and unreadable directories.
+
+/**
+ * A project whose only package is a classmap one with the given files under its src/ directory.
+ *
+ * @param  array<string, string>  $sources  Path under src/ => PHP code.
+ * @param  list<array<string, mixed>>  $more
+ */
+function classmap_project(array $sources, array $more = []): string
+{
+    $root = project_with_packages(['packages' => [installed_package('poly/stubs', ['classmap' => ['src/']]), ...$more]]);
+
+    foreach ($sources as $path => $code) {
+        $file = $root.'/vendor/poly/stubs/src/'.$path;
+        is_dir(dirname($file)) || mkdir(dirname($file), 0777, true);
+        file_put_contents($file, $code);
+    }
+
+    return $root;
+}
+
+it('does not attribute a conditional declaration of a polyfill stub', function () {
+    $root = classmap_project([
+        'Thing.php' => "<?php\nnamespace Poly\\Compat;\n\nif (\\PHP_VERSION_ID < 10) {\n    interface Thing {}\n}\n",
+        'Braced.php' => "<?php\nnamespace Poly\\Compat {\n    if (PHP_VERSION_ID < 10) {\n        final class Braced {}\n    }\n}\n",
+        'Function.php' => "<?php\nnamespace Poly\\Compat;\n\nfunction make() {\n    class Inner {}\n}\n",
+        'Alt.php' => "<?php\nnamespace Poly\\Compat;\n\nif (PHP_VERSION_ID < 10):\n    class Alt {}\nendif;\n",
+        'Real.php' => "<?php\nnamespace Poly\\Compat;\n\nfinal class Real {}\n",
+        'RealBraced.php' => "<?php\nnamespace Poly\\Compat {\n    final class RealBraced { const X = Real::class; }\n    interface RealContract {}\n}\n",
+    ]);
+    $map = PackageMap::forProject($root);
+
+    expect($map->packageOf('Poly\\Compat\\Thing'))->toBeNull()
+        ->and($map->packageOf('Poly\\Compat\\Braced'))->toBeNull()
+        ->and($map->packageOf('Poly\\Compat\\Inner'))->toBeNull()
+        ->and($map->packageOf('Poly\\Compat\\Alt'))->toBeNull()
+        ->and($map->packageOf('Poly\\Compat\\Real'))->toBe('poly/stubs')
+        ->and($map->packageOf('Poly\\Compat\\RealBraced'))->toBe('poly/stubs')
+        ->and($map->packageOf('Poly\\Compat\\RealContract'))->toBe('poly/stubs');
+});
+
+it('does not attribute a class of the global namespace from a classmap, where polyfills of PHP classes live', function () {
+    $root = classmap_project([
+        'Attribute.php' => "<?php\n\n#[Attribute(Attribute::TARGET_CLASS)]\nfinal class Attribute {}\n",
+        'Stringable.php' => "<?php\n\nif (\\PHP_VERSION_ID < 80000) {\n    interface Stringable {}\n}\n",
+        'Normalizer.php' => "<?php\n\nclass Normalizer extends Symfony\\Polyfill\\Intl\\Normalizer\\Normalizer {}\n",
+    ]);
+    $map = PackageMap::forProject($root);
+
+    expect($map->packageOf('Attribute'))->toBeNull()
+        ->and($map->packageOf('Stringable'))->toBeNull()
+        ->and($map->packageOf('Normalizer'))->toBeNull();
+});
+
+it('gives no package to a class that two packages declare', function () {
+    $root = classmap_project(
+        ['Shared.php' => "<?php\nnamespace Dup;\n\nfinal class Shared {}\nfinal class Only {}\n"],
+        [installed_package('other/copy', ['classmap' => ['lib/']])],
+    );
+    mkdir($root.'/vendor/other/copy/lib', 0777, true);
+    file_put_contents($root.'/vendor/other/copy/lib/Shared.php', "<?php\nnamespace Dup;\n\nfinal class Shared {}\n");
+    $map = PackageMap::forProject($root);
+
+    expect($map->packageOf('Dup\\Shared'))->toBeNull()
+        ->and($map->packageOf('Dup\\Only'))->toBe('poly/stubs');
+});
+
+it('does not report a built-in class a polyfill declares, with packages configured', function () {
+    $root = temp_project('packages-app');
+    $tagged = array_values(array_filter(external_findings(analyse_packages_app(['Billing' => ['packages' => ['stripe/stripe-php']]], [], [], $root), $root), fn (string $finding) => str_contains($finding, 'Tagged.php')));
+
+    expect($tagged)->toBe([])
+        ->and(PackageMap::forProject($root)->packageOf('Attribute'))->toBeNull()
+        ->and(PackageMap::forProject($root)->packageOf('Stringable'))->toBeNull();
+});
+
+it('skips a classmap directory it cannot read or that loops back on itself', function () {
+    $root = classmap_project(['Real.php' => "<?php\nnamespace Loop;\n\nfinal class Real {}\n"]);
+    $src = $root.'/vendor/poly/stubs/src';
+    mkdir($src.'/Sub');
+    file_put_contents($src.'/Sub/Deep.php', "<?php\nnamespace Loop;\n\nfinal class Deep {}\n");
+
+    if (DIRECTORY_SEPARATOR === '/') {
+        symlink('..', $src.'/Sub/up');
+        symlink('.', $src.'/self');
+    }
+
+    $map = PackageMap::forProject($root);
+
+    expect($map->packageOf('Loop\\Real'))->toBe('poly/stubs')
+        ->and($map->packageOf('Loop\\Deep'))->toBe('poly/stubs');
+
+    if (DIRECTORY_SEPARATOR === '/' && function_exists('posix_geteuid') && posix_geteuid() !== 0) {
+        mkdir($src.'/Locked');
+        file_put_contents($src.'/Locked/Hidden.php', "<?php\nnamespace Loop;\n\nfinal class Hidden {}\n");
+        chmod($src.'/Locked', 0000);
+        $locked = PackageMap::forProject($root);
+
+        expect($locked->packageOf('Loop\\Real'))->toBe('poly/stubs')
+            ->and($locked->packageOf('Loop\\Hidden'))->toBeNull();
+
+        chmod($src.'/Locked', 0755);
+    }
+});
