@@ -76,11 +76,11 @@ final class AnalysisCache
     public static function installedVersions(): array
     {
         return [
-            'cordon' => self::installed('chrisabner/cordon-modulith'),
-            'parser' => self::installed('nikic/php-parser'),
-            'phpdoc' => self::installed('phpstan/phpdoc-parser'),
+            'cordon' => self::installedVersion('chrisabner/cordon-modulith'),
+            'parser' => self::installedVersion('nikic/php-parser'),
+            'phpdoc' => self::installedVersion('phpstan/phpdoc-parser'),
             'php' => PHP_VERSION,
-            'support' => self::installed('illuminate/support'),
+            'support' => self::installedVersion('illuminate/support'),
         ];
     }
 
@@ -247,12 +247,36 @@ final class AnalysisCache
         return (string) Paths::relative($this->basePath, $file);
     }
 
-    private static function installed(string $package): string
+    /**
+     * The installed version of a package, as Composer records it: "version@reference".
+     * A package that another one replaces or provides (illuminate/support in a
+     * project with laravel/framework) has none of its own, so it takes the version
+     * of the package that replaces it: updating that package changes the answer.
+     * "unknown" for a package that is neither installed nor replaced.
+     */
+    public static function installedVersion(string $package): string
     {
         if (! InstalledVersions::isInstalled($package)) {
             return 'unknown';
         }
 
-        return (string) InstalledVersions::getPrettyVersion($package).'@'.(string) InstalledVersions::getReference($package);
+        $version = InstalledVersions::getPrettyVersion($package);
+
+        if ($version !== null) {
+            return $version.'@'.(string) InstalledVersions::getReference($package);
+        }
+
+        // Composer writes the version of the replacing package under "replaced" (or "provided").
+        foreach (InstalledVersions::getAllRawData() as $data) {
+            foreach (['replaced', 'provided'] as $kind) {
+                $versions = $data['versions'][$package][$kind] ?? [];
+
+                if ($versions !== []) {
+                    return 'replaced-by@'.implode(',', $versions);
+                }
+            }
+        }
+
+        return 'unknown';
     }
 }

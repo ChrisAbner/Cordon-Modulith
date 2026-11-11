@@ -22,7 +22,7 @@ The decisions behind this release are recorded in [ADR 0021](docs/adr/0021-neste
 ### Changed
 - `Cordon::assertBoundaries()` and the `toRespectBoundaries()` expectation fail on invalid named interfaces (an interface that lists a class that is not public), as `cordon:verify` does with exit code `2`. They used to pass.
 - With `docblocks` on, the reference counts in `cordon:graph`, `cordon:why` and `cordon:impact` go up: a class named in a type and in the code is two references (one of kind `use` and one of kind `docblock`). Nothing changes while `docblocks` is `false`.
-- The analysis cache fingerprint also holds the installed versions of `phpstan/phpdoc-parser` and `illuminate/support`, so updating either starts a new cache.
+- The analysis cache fingerprint also holds the installed versions of `phpstan/phpdoc-parser` and `illuminate/support`, so updating either starts a new cache (`illuminate/support` is replaced by `laravel/framework` in a Laravel project, so it takes that package's version).
 
 ## [0.4.0] - 2026-11-11
 

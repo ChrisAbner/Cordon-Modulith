@@ -213,8 +213,22 @@ it('puts the installed phpdoc-parser and illuminate/support in the fingerprint',
 
     expect(array_keys($installed))->toEqualCanonicalizing(['cordon', 'parser', 'phpdoc', 'php', 'support'])
         ->and($installed['phpdoc'])->toContain((string) InstalledVersions::getReference('phpstan/phpdoc-parser'))
-        ->and($installed['support'])->toContain((string) InstalledVersions::getReference('illuminate/support'))
+        ->and($installed['phpdoc'])->not->toBe('@')
+        ->and($installed['support'])->not->toBe('@')
+        ->and($installed['support'])->toContain((string) InstalledVersions::getPrettyVersion('laravel/framework'))
         ->and(AnalysisCache::fingerprint(['tables' => true]))->toBe(AnalysisCache::fingerprint(['tables' => true], $installed));
+});
+
+it('uses the version of the package that replaces a package without a version of its own', function () {
+    // laravel/framework replaces illuminate/support: Composer records no version for the replaced one.
+    expect(InstalledVersions::getPrettyVersion('illuminate/support'))->toBeNull()
+        ->and(AnalysisCache::installedVersion('illuminate/support'))->not->toBe('@')->not->toBe('unknown')
+        ->and(AnalysisCache::installedVersion('illuminate/support'))->toContain((string) InstalledVersions::getPrettyVersion('laravel/framework'))
+        ->and(AnalysisCache::installedVersion('illuminate/support'))->not->toBe(AnalysisCache::installedVersion('nikic/php-parser'));
+});
+
+it('gives unknown to a package that is neither installed nor replaced', function () {
+    expect(AnalysisCache::installedVersion('nobody/nothing'))->toBe('unknown');
 });
 
 it('analyses without the cache and warns when it cannot be used', function (string $case) {
