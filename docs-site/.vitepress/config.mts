@@ -88,6 +88,8 @@ export default defineConfig({
                     { text: 'Bagisto', link: '/case-studies/bagisto' },
                     { text: 'Advising App', link: '/case-studies/advisingapp' },
                     { text: 'LaravelEcomm', link: '/case-studies/laravelecomm' },
+                    { text: 'Krayin CRM', link: '/case-studies/krayin' },
+                    { text: 'Leantime', link: '/case-studies/leantime' },
                 ],
             },
             {
