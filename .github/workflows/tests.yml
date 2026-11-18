@@ -45,7 +45,7 @@ jobs:
           composer update --prefer-dist --no-interaction ${{ matrix.dependencies == 'lowest' && '--prefer-lowest' || '' }}
 
       - name: Tests
-        run: vendor/bin/pest
+        run: vendor/bin/pest --fail-on-warning
 
   quality:
     runs-on: ubuntu-latest
