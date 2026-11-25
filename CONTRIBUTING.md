@@ -22,6 +22,8 @@ composer coverage   # the whole suite, fails below 95% line coverage
 composer mutate     # mutates the classes whose tests declare mutates(), fails below 88%
 ```
 
+Many tests run `bin/cordon` or PHPStan in a process of their own, the way a project runs them. With pcov, `tests/Coverage/SubprocessCoverage.php` counts the code those processes run and applies the mutant there too. With Xdebug it does not, so the coverage is lower than CI's.
+
 To mutate a class, add `mutates(TheClass::class);` to its test file. A surviving mutant either gets a test or, when it cannot change behaviour (an equivalent mutant), a line in the pull request saying why.
 
 The oracles in `tests/Oracle/` check the extractor against independent sources:

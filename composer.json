@@ -56,8 +56,14 @@
         "format": "pint",
         "check": ["pint --test", "@analyse", "pest"],
         "bench": "php tests/Benchmark/run.php 1000 20 10",
-        "coverage": "@php -d pcov.enabled=1 vendor/bin/pest --coverage --min=95",
-        "mutate": "@php -d pcov.enabled=1 vendor/bin/pest --mutate --min=88",
+        "coverage": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php -d pcov.enabled=1 vendor/bin/pest --coverage --min=95"
+        ],
+        "mutate": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php -d pcov.enabled=1 vendor/bin/pest --mutate --min=88"
+        ],
         "oracle": ["pest --group=oracle", "php tests/Oracle/check-matrix.php"]
     },
     "config": {
