@@ -19,14 +19,14 @@ Each entry in `violations` and `warnings` has:
 
 | Field | Meaning |
 |---|---|
-| `rule` | `internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, or the id of a custom rule |
+| `rule` | `internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, `external_dependency`, `tables`, or the id of a custom rule |
 | `severity` | `error` (in `violations`) or `warn` (in `warnings`) |
 | `file`, `line` | Where the offending reference is (null for `cycles` and `unused_dependency`) |
 | `source_module` | The module that has the problem (`host` for `host_access`: the code outside the modules) |
-| `target_module` | The module it reaches into |
-| `target` | The class used (`internal_access`, `host_access`, `layers`, `public_api_leak`), the module (`undeclared_dependency`) or the dependency, such as `Orders -> Payments` (`cycles`, `unused_dependency`) |
+| `target_module` | The module it reaches into (the owner of the table for `tables`, null for `external_dependency`) |
+| `target` | The class used (`internal_access`, `host_access`, `layers`, `public_api_leak`), the module (`undeclared_dependency`), the dependency, such as `Orders -> Payments` (`cycles`, `unused_dependency`), the Composer package (`external_dependency`) or the table (`tables`) |
 
-Run `php artisan cordon:modules` to see each module's namespace, path and declared dependencies.
+Run `php artisan cordon:modules` to see each module's namespace, path and declared dependencies. A module can be nested in another one: its name is `Parent.Child` (`Billing.Payments`), and it exists only inside its parent, so from outside `Billing.Payments` is part of `Billing`. A child lists its siblings as `Billing.Payments` in `depends_on`, and `Billing.Payments` appears in the report as the source or target module.
 
 ## 2. Rules you must follow
 
@@ -203,6 +203,8 @@ After the change, run `php artisan cordon:verify` again: a cycle is fixed only w
 - `layers`: a module depends on a module of a layer above its own, through the class in `target`. Invert the dependency with a contract or an event. Do not reorder `layers` in `config/cordon.php` to make it pass.
 - `public_api_leak`: a public class names an internal class of its own module in a public method, property or constant. Return or accept a data object or a contract instead.
 - `unused_dependency`: the module lists a dependency in `depends_on` that it never uses. Removing the entry is the fix, and the one case where editing `depends_on` is right.
+- `external_dependency`: the module uses a class of a Composer package (`target` is the package, such as `stripe/stripe-php`) that is not in its `packages` in `config/cordon.php`. **Do not just add the package to `packages`**: that is only right when the user confirms the module should depend on it. Otherwise move the use behind a class of a module that may use the package (a gateway or an adapter in the module that owns that integration) and depend on that module's contract or data object. Do not widen `shared` either.
+- `tables`: the module alters, queries or points a foreign key at a table (`target`) that another module creates (`target_module`). It is a heuristic and usually a warning. Fix it by reading or changing that data through the owner's public API (a contract that returns a data object), not through its table: replace the `DB::table('orders')` or the join by a call to the owner, and replace a foreign key by a plain id column and a lookup through the owner. If the table really belongs to this module, move the migration that creates it into this module. Do not silence it by changing which module creates the table.
 - Never silence a violation with `// @cordon-ignore` unless the user decided to accept it. The comment needs a reason, and it is a decision, not a fix.
 
 ## 7. Finish

@@ -1,6 +1,6 @@
 # Custom rules
 
-Cordon Modulith ships seven rules (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`). You can add your own architecture rules that run with them in `cordon:verify`, the Pest expectation and the baseline.
+Cordon Modulith ships nine rules (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, `external_dependency`, `tables`). You can add your own architecture rules that run with them in `cordon:verify`, the Pest expectation and the baseline.
 
 ## 1. Write the rule
 

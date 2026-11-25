@@ -3,47 +3,82 @@
 /**
  * Benchmark: generates a synthetic project and times the full analysis.
  *
- * Usage: php tests/Benchmark/run.php [files=1000] [modules=20] [max-seconds]
- * Exits with 1 when max-seconds is given and the analysis is slower.
+ * Usage: php tests/Benchmark/run.php [files=1000] [modules=20] [max-seconds] [--cache] [--tables]
+ * Exits with 1 when max-seconds is given and an analysis is slower.
+ * With --cache it times three passes: without the analysis cache, with an
+ * empty one (which writes it) and with the one the previous pass wrote.
+ * With --tables the tables rule is on: the extractor reads the tables of each
+ * file, to measure what that costs against a run without it.
  */
 
 declare(strict_types=1);
 
+use Cordon\Analysis\AnalysisCache;
 use Cordon\Analysis\Analyzer;
+use Cordon\Analysis\CachedExtractor;
 use Cordon\Analysis\FileCollector;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
+use Cordon\Contracts\DependencyExtractor;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
 
 require dirname(__DIR__, 2).'/vendor/autoload.php';
 
-$files = max(1, (int) ($argv[1] ?? 1000));
-$moduleCount = max(2, (int) ($argv[2] ?? 20));
-$maxSeconds = isset($argv[3]) ? (float) $argv[3] : null;
+$withCache = in_array('--cache', $argv, true);
+$tables = in_array('--tables', $argv, true);
+$args = array_values(array_filter(array_slice($argv, 1), static fn (string $arg): bool => ! str_starts_with($arg, '--')));
+
+$files = max(1, (int) ($args[0] ?? 1000));
+$moduleCount = max(2, (int) ($args[1] ?? 20));
+$maxSeconds = isset($args[2]) ? (float) $args[2] : null;
 
 $root = sys_get_temp_dir().'/cordon-benchmark-'.$files.'-'.$moduleCount;
 generate($root, $files, $moduleCount);
 
 $modules = (new NamespaceResolver($root.'/app/Modules', 'App\\Modules'))->resolve();
-$analyzer = new Analyzer(new PhpParserExtractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig([]));
+$slowest = 0.0;
 
-$start = hrtime(true);
-$result = $analyzer->analyze($modules, $root);
-$seconds = (hrtime(true) - $start) / 1e9;
+$pass = static function (string $label, DependencyExtractor $extractor) use ($modules, $root, $tables, &$slowest): void {
+    $analyzer = new Analyzer($extractor, new FileCollector, new PublicApiPolicy, RuleSet::fromConfig($tables ? ['tables' => 'warn'] : []));
 
-printf(
-    "%d files, %d modules, %d cross-module references, %d violations: %.2f s (%.2f ms/file, peak memory %.1f MB)\n",
-    $result->filesAnalysed,
-    count($modules),
-    $result->crossModuleReferences,
-    count($result->violations),
-    $seconds,
-    $seconds * 1000 / max(1, $result->filesAnalysed),
-    memory_get_peak_usage(true) / 1048576,
-);
+    $start = hrtime(true);
+    $result = $analyzer->analyze($modules, $root);
 
-if ($maxSeconds !== null && $seconds > $maxSeconds) {
+    if ($extractor instanceof CachedExtractor) {
+        $extractor->save();
+    }
+
+    $seconds = (hrtime(true) - $start) / 1e9;
+    $slowest = max($slowest, $seconds);
+
+    printf(
+        "%s%d files, %d modules, %d cross-module references, %d violations: %.2f s (%.2f ms/file, peak memory %.1f MB)\n",
+        $label,
+        $result->filesAnalysed,
+        count($modules),
+        $result->crossModuleReferences,
+        count($result->violations),
+        $seconds,
+        $seconds * 1000 / max(1, $result->filesAnalysed),
+        memory_get_peak_usage(true) / 1048576,
+    );
+};
+
+$pass($withCache ? 'no cache:    ' : '', new PhpParserExtractor(tables: $tables));
+
+if ($withCache) {
+    $cacheFile = $root.'/cordon-cache.json';
+    @unlink($cacheFile);
+
+    $cached = static fn (): CachedExtractor => new CachedExtractor(new PhpParserExtractor(tables: $tables), new AnalysisCache($cacheFile, $root, AnalysisCache::fingerprint(['tables' => $tables])));
+
+    $pass('cold cache:  ', $cached());
+    $pass('warm cache:  ', $cached());
+    printf("cache file: %.1f MB\n", filesize($cacheFile) / 1048576);
+}
+
+if ($maxSeconds !== null && $slowest > $maxSeconds) {
     fwrite(STDERR, sprintf("Slower than the %.1f s budget.\n", $maxSeconds));
     exit(1);
 }

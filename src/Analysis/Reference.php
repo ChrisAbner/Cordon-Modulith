@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Cordon\Analysis;
 
+use InvalidArgumentException;
+
 /**
  * One usage of a class name inside a file (new, static call, type, extends, attribute...).
  *
@@ -17,8 +19,11 @@ final readonly class Reference
     /** The event a listener handles: handle(Event $e) or Event::listen(Event::class, ...). */
     public const LISTENER = 'listener';
 
+    /** A class named only in a docblock type (@param, @var, @return, @extends...), read when `docblocks` is on. */
+    public const DOCBLOCK = 'docblock';
+
     /**
-     * @param  self::USE|self::LISTENER  $kind
+     * @param  self::USE|self::LISTENER|self::DOCBLOCK  $kind
      * @param  bool  $relation  The model of an Eloquent relation: $this->belongsTo(Target::class) and its siblings.
      * @param  ?string  $signature  In the public signature of $sourceClass, the member that names it: "find() returns", "pay() takes", "$customer has type", "DEFAULT has type".
      */
@@ -31,4 +36,43 @@ final readonly class Reference
         public bool $relation = false,
         public ?string $signature = null,
     ) {}
+
+    /**
+     * @internal
+     *
+     * @return array{sourceClass: ?string, target: string, line: int, kind: string, relation: bool, signature: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'sourceClass' => $this->sourceClass,
+            'target' => $this->target,
+            'line' => $this->line,
+            'kind' => $this->kind,
+            'relation' => $this->relation,
+            'signature' => $this->signature,
+        ];
+    }
+
+    /**
+     * @internal
+     *
+     * @param  array<array-key, mixed>  $data  What toArray() wrote; anything else throws.
+     */
+    public static function fromArray(array $data, string $sourceFile): self
+    {
+        if (! in_array($data['kind'] ?? null, [self::USE, self::LISTENER, self::DOCBLOCK], true)) {
+            throw new InvalidArgumentException('Unknown kind of reference.');
+        }
+
+        return new self(
+            $sourceFile,
+            $data['sourceClass'] ?? null,
+            $data['target'] ?? null,
+            $data['line'] ?? null,
+            $data['kind'],
+            $data['relation'] ?? null,
+            $data['signature'] ?? null,
+        );
+    }
 }

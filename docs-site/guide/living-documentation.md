@@ -5,6 +5,7 @@ Generate Markdown documentation of the real architecture, straight from the code
 ```bash
 php artisan cordon:docs                     # writes docs/architecture/
 php artisan cordon:docs --output=docs/modules
+php artisan cordon:docs --diagrams=c4       # also writes architecture.puml
 ```
 
 The output folder (`docs/architecture` by default, relative to the project root) is created if it doesn't exist. Commit it: the diffs show how the architecture changes.
@@ -14,6 +15,7 @@ The output folder (`docs/architecture` by default, relative to the project root)
 | `README.md` | Every module with its namespace, dependencies, users and violation count, and a Mermaid diagram of the dependencies. Edge labels count the classes used; edges with internal access are red. |
 | `modules/<Module>.md` | A canvas per module: its description and owner (from `metadata`), namespace, path, `depends_on`, a diagram of the module and its neighbours, its components grouped by Laravel role, its public API, the classes it uses from other modules and the ones other modules use from it (internal ones flagged), its events and its violations. |
 | `events.md` | Every module event with the classes that publish and listen to it. |
+| `architecture.puml` | Only with `--diagrams=c4` (`--diagrams=mermaid` is the default): the C4-PlantUML diagram of the modules, in the format of `cordon:graph --format=c4`, with the violations in red. Like the Markdown, it counts every violation in the code, while `cordon:graph` leaves out the ones in the baseline. See [the whole graph](./explore#the-whole-graph). |
 
 GitHub and GitLab render the Mermaid diagrams. The output is deterministic (sorted, no timestamps), so you can commit it and see architecture changes in pull request diffs.
 
@@ -52,6 +54,10 @@ Events are detected statically:
 Publishers also include `X::dispatch()` and listeners include `handle(X $event)` / `__invoke(X $event)`, but only for classes that are already events, because jobs use the same method names.
 
 String event names and wildcard listeners are not detected.
+
+## Tables
+
+With the [`tables`](./rules#tables) rule on, each canvas has a Tables section: the tables the module owns (the ones its migrations create), the tables of other modules it uses, and the tables without a single owner, with why. A table that two modules create is listed as `audit_log` (created by Billing and Catalog) in both, and in the card of a module that only uses it. A model whose `$table` is not a literal is listed with that reason. The section is not written while the rule is off, so a project that does not use it gets the same files as before. The documentation reads the modules only, so a table that a migration in `database/migrations` also creates shows its module as the owner here, while `cordon:verify`, which reads the code outside the modules too, sees two creators.
 
 ## Violations
 

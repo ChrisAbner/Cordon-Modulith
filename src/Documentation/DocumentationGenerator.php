@@ -148,11 +148,11 @@ final class DocumentationGenerator
             '',
             '## Public API',
             '',
-            ...$this->bullets($this->publicApi($module, $snapshot), 'No public classes yet.'),
+            ...$this->publicApiSection($module, $snapshot),
             '',
             '## Uses',
             '',
-            ...$this->classTable($outgoing, $snapshot, 'Does not use other modules.'),
+            ...$this->classTable($outgoing, $snapshot, 'Does not use other modules.', null, $module),
             '',
             '## Used by',
             '',
@@ -162,6 +162,7 @@ final class DocumentationGenerator
             '',
             ...$this->moduleEvents($name, $events),
             '',
+            ...$this->tables($module, $snapshot),
             '## Violations',
             '',
         ];
@@ -229,9 +230,11 @@ final class DocumentationGenerator
 
     /**
      * @param  array<string, array<string, true>>  $byModule  module => class => true
+     * @param  Module|null  $owner  The module that owns the classes, when they all belong to one.
+     * @param  Module|null  $consumer  The module that uses the classes, when it is only one.
      * @return list<string>
      */
-    private function classTable(array $byModule, Snapshot $snapshot, string $empty, ?Module $owner = null): array
+    private function classTable(array $byModule, Snapshot $snapshot, string $empty, ?Module $owner = null, ?Module $consumer = null): array
     {
         if ($byModule === []) {
             return [$empty];
@@ -245,7 +248,7 @@ final class DocumentationGenerator
 
             foreach (array_keys($classes) as $class) {
                 $public = $target === null
-                    || $snapshot->context->policy->isPublic($class, $target, $snapshot->context->symbols->get($class));
+                    || $snapshot->context->policy->isPublic($class, $target, $snapshot->context->symbols->get($class), $consumer ?? $snapshot->context->modules->get($module));
 
                 $names[] = '`'.($target === null ? $class : $target->relativeName($class)).'`'.($public ? '' : ' (internal)');
             }
@@ -279,9 +282,110 @@ final class DocumentationGenerator
     }
 
     /**
+     * The tables of a module, for the `tables` rule: what it owns, the tables
+     * of other modules it uses, and what has no single owner and why. Empty
+     * (no section) when no table was read, which is the case while the rule is off.
+     *
      * @return list<string>
      */
-    private function publicApi(Module $module, Snapshot $snapshot): array
+    private function tables(Module $module, Snapshot $snapshot): array
+    {
+        $tables = $snapshot->context->tables;
+
+        if ($tables->isEmpty()) {
+            return [];
+        }
+
+        $owns = $tables->ownedBy($module->name);
+        $uses = [];
+
+        foreach ($tables->crossings($snapshot->context->modules) as $crossing) {
+            if ($crossing['user']->name === $module->name) {
+                $uses[$crossing['use']->table] = '`'.$crossing['use']->table.'` ('.$crossing['owner']->name.')';
+            }
+        }
+
+        ksort($uses);
+        $shared = [];
+
+        foreach ($tables->ownerless() as $table => $creators) {
+            if (in_array($module->name, $creators, true)) {
+                $shared[$table] = true;
+            }
+        }
+
+        // A table with no single owner that the module only uses is as worth knowing about.
+        foreach ($tables->uses as $use) {
+            if (count($tables->creators($use->table)) > 1 && $snapshot->context->modules->forPath($use->file)?->name === $module->name) {
+                $shared[$use->table] = true;
+            }
+        }
+
+        ksort($shared);
+        $without = array_map(fn (string $table): string => sprintf('`%s` (created by %s)', $table, $this->sentence($tables->creators($table))), array_map('strval', array_keys($shared)));
+
+        foreach ($tables->dynamic() as $dynamic) {
+            if ($snapshot->context->modules->forPath($dynamic->file)?->name === $module->name) {
+                $without[] = sprintf('`%s` (%s)', $dynamic->class, $dynamic->reason);
+            }
+        }
+
+        $format = static fn (array $items): string => $items === [] ? 'none' : implode(', ', $items);
+
+        return [
+            '## Tables',
+            '',
+            '- Owns: '.$format(array_map(static fn (string $table): string => '`'.$table.'`', $owns)),
+            '- Uses tables of other modules: '.$format(array_values($uses)),
+            '- Without owner: '.$format($without),
+            '',
+        ];
+    }
+
+    /**
+     * "Billing", "Billing and Catalog", "A, B and C".
+     *
+     * @param  list<string>  $names
+     */
+    private function sentence(array $names): string
+    {
+        $last = array_pop($names);
+
+        return $names === [] ? (string) $last : implode(', ', $names).' and '.$last;
+    }
+
+    /**
+     * The body of the "Public API" section. A nested module has two: what the
+     * other modules inside its parent can use, and what the outside sees, which
+     * is only what the parent exposes.
+     *
+     * @return list<string>
+     */
+    private function publicApiSection(Module $module, Snapshot $snapshot): array
+    {
+        $parent = $snapshot->context->modules->parentOf($module);
+
+        if ($parent === null) {
+            return $this->bullets($this->publicApi($module, $snapshot, null), 'No public classes yet.');
+        }
+
+        return [
+            sprintf('Seen by the other modules inside `%s`:', $parent->name),
+            '',
+            // The parent stands for any module inside it: they all see the same.
+            ...$this->bullets($this->publicApi($module, $snapshot, $parent), 'No public classes yet.'),
+            '',
+            sprintf('Seen from outside `%s`, which exposes only what its `public` setting names:', $parent->name),
+            '',
+            ...$this->bullets($this->publicApi($module, $snapshot, null), 'No public classes yet.'),
+        ];
+    }
+
+    /**
+     * @param  Module|null  $consumer  The module that looks at the API; null for the outside.
+     * @return list<string>
+     */
+    private function publicApi(Module $module, Snapshot $snapshot, ?Module $consumer): array
     {
         $classes = [];
 
@@ -289,7 +393,7 @@ final class DocumentationGenerator
             foreach ($analysis->declarations as $declaration) {
                 if ($module->ownsClass($declaration->fqcn)
                     && $snapshot->context->modules->forClass($declaration->fqcn)?->name === $module->name
-                    && $snapshot->context->policy->isPublic($declaration->fqcn, $module, $declaration)) {
+                    && $snapshot->context->policy->isPublic($declaration->fqcn, $module, $declaration, $consumer)) {
                     $classes[] = '`'.$module->relativeName($declaration->fqcn).'`';
                 }
             }
@@ -412,7 +516,7 @@ final class DocumentationGenerator
 
         foreach ($snapshot->analyses as $analysis) {
             foreach ($analysis->declarations as $declaration) {
-                if ($module->ownsClass($declaration->fqcn)) {
+                if ($module->ownsClass($declaration->fqcn) && $snapshot->context->modules->forClass($declaration->fqcn)?->name === $module->name) {
                     $byRole[$this->role($module, $declaration, $symbols)][] = $module->relativeName($declaration->fqcn);
                 }
             }

@@ -4,7 +4,7 @@ This file is for AI agents (and agent swarms) working on the Cordon Modulith cod
 
 ## Project in one paragraph
 
-Cordon Modulith is a Laravel dev-dependency that verifies boundaries between modules. It statically parses PHP files (nikic/php-parser, never loading code), maps class references to modules, and runs rules (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, each `error`, `warn` or `off`). Entry points: `php artisan cordon:verify` (and `cordon:docs`), `vendor/bin/cordon` (the same commands without booting Laravel, `StandaloneApplication`), the Pest expectation `toRespectBoundaries()` and the PHPStan rule. Pipeline: `ModuleResolver` → `FileCollector` → `DependencyExtractor` → `Analyzer` (cross-module edges) → `Rule`s → `Baseline` → `Reporter`.
+Cordon Modulith is a Laravel dev-dependency that verifies boundaries between modules. It statically parses PHP files (nikic/php-parser, never loading code), maps class references to modules, and runs rules (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, `external_dependency` and `tables`, each `error`, `warn` or `off`; `tables` is `off` by default). A module can be nested in another one, named `Parent.Child` (the dot is the separator). Entry points: `php artisan cordon:verify` (and `cordon:docs`), `vendor/bin/cordon` (the same commands without booting Laravel, `StandaloneApplication`), the Pest expectation `toRespectBoundaries()` and the PHPStan rule. Pipeline: `ModuleResolver` → `FileCollector` → `DependencyExtractor` → `Analyzer` (cross-module edges) → `Rule`s → `Baseline` → `Reporter`.
 
 ## Hard rules
 
@@ -14,7 +14,7 @@ Cordon Modulith is a Laravel dev-dependency that verifies boundaries between mod
 4. **Zero false positives.** When unsure whether something is a dependency, don't report it and document the limitation.
 5. **Do not edit `tests/Fixtures` line layout** without updating the tests that assert line numbers.
 6. **Stay in your lane.** Agents only touch the files their task names. Integration across tasks is done by the maintainer.
-7. **Quality gate:** `composer check` (Pint, PHPStan, Pest) must pass before you open a pull request.
+7. **Quality gate:** `composer check` (Pint, PHPStan, Pest) must pass before you open a pull request. Run PHPStan through `composer analyse`: calling it directly needs `--memory-limit=512M`.
 
 ## Conventions
 

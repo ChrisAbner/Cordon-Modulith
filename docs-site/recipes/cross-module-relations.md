@@ -71,3 +71,7 @@ Reporting queries that join tables of several modules are a legitimate need. Opt
 - a read model owned by a reporting module and fed by events;
 - a query in the owning module that returns data objects;
 - accepting the dependency for a reporting module and declaring it explicitly in `depends_on`, with the model marked `#[PublicApi]` only if the owner agrees to keep it stable.
+
+## Finding the tables that are shared
+
+A relation is one way two modules end up sharing tables. The other ways are a foreign key to a table of another module, a `Schema::table` that adds a column to it, and a query (`DB::table('orders')`, a model whose `$table` is another module's table). The [`tables`](../guide/rules#tables) rule lists them as warnings, once you turn it on with `'rules' => ['tables' => 'warn']`. Fix them the same way: keep the foreign key column if you need it, drop the constraint that crosses the boundary, and ask the owning module through its public API.

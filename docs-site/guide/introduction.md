@@ -8,7 +8,7 @@ Cordon Modulith reads your code statically, builds the dependency graph between 
 - depends on a module it **did not declare** (`undeclared_dependency`), or
 - takes part in a **dependency cycle** (`cycles`).
 
-Four more [rules](./rules) start as warnings or need configuration: `unused_dependency`, `host_access` (the code outside the modules), `layers` and `public_api_leak`.
+Six more [rules](./rules) start as warnings, are off or need configuration: `unused_dependency`, `host_access` (the code outside the modules), `layers`, `public_api_leak`, `external_dependency` (the Composer packages a module may use) and `tables` (off by default).
 
 It is inspired by [Spring Modulith](https://spring.io/projects/spring-modulith) and Shopify's [Packwerk](https://github.com/Shopify/packwerk), adapted to Laravel conventions.
 

@@ -13,7 +13,7 @@ it('finds exactly the expected targets at every position, in every form and cont
     }
 
     expect($failures)->toBe([]);
-})->with(array_keys(PositionMatrix::POSITIONS));
+})->with(array_keys([...PositionMatrix::POSITIONS, ...PositionMatrix::DOCBLOCK_POSITIONS]));
 
 it('generates the same cells on every run', function () {
     $first = Temp::directory('cordon-matrix-');

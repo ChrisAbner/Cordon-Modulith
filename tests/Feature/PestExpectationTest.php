@@ -62,3 +62,11 @@ it('fails on a @cordon-ignore without a reason, as cordon:verify does', function
     expect(fn () => expect('Catalog')->toRespectBoundaries())
         ->toThrow(AssertionFailedError::class, 'Unexplained.php:5 needs a reason in parentheses');
 });
+
+it('fails on an interface that lists a class that is not public, as cordon:verify does', function () {
+    config()->set('cordon.modules', ['Shared' => ['open' => true], 'Catalog' => ['interfaces' => ['Products' => ['Models\\Product']]]]);
+    Cordon::flush();
+
+    expect(fn () => expect('Catalog')->toRespectBoundaries())
+        ->toThrow(AssertionFailedError::class, 'Module [Catalog] interface [Products] lists Models\\Product, which is not public.');
+});

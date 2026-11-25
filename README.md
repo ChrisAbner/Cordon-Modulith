@@ -9,7 +9,7 @@
 
 **Cordon off your modules.** Verifiable boundaries between the modules of a Laravel application, checked in CI.
 
-> **Status: 0.4 (alpha).** The public API may change before 1.0; see [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility). [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
+> **Status: 0.5 (alpha).** The public API may change before 1.0; see [compatibility](https://chrisabner.github.io/Cordon-Modulith/guide/compatibility). [Documentation](https://chrisabner.github.io/Cordon-Modulith/)
 
 Modular monoliths in Laravel usually rely on nwidart/laravel-modules, InterNACHI/modular or a hand-made `app/Modules` folder. All of them organise code, but none of them stops the `Billing` module from reaching into `Catalog`'s models. Six months later the "modules" are just folders.
 
@@ -164,8 +164,10 @@ Paths and namespaces can be overridden under `resolvers` in the config file.
 | `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's public API. One report per file and target class. | warn |
 | `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
 | `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
+| `external_dependency` | A module using a Composer package that is not in its `packages` or in the shared ones, with `packages` configured (it checks nothing without it). One report per file and package. | error |
+| `tables` | A module altering, querying or pointing a foreign key at a table that another module creates. A heuristic that reads literal names: off until you turn it on, and meant to run as `warn`. One report per file, table and kind of use. | off |
 
-`warn` rules are reported but do not fail the build, and the others are `error`. Set any rule to `error`, `warn` or `off` under `rules` in the config (a custom rule goes there too).
+`warn` rules are reported but do not fail the build, and the others are `error`, except `tables`, which is `off` until you set it (it is meant for `warn`). `layers` and `external_dependency` check nothing until `layers` or `packages` is configured. Set any rule to `error`, `warn` or `off` under `rules` in the config (a custom rule goes there too).
 
 You can add your own rules: list classes implementing `Cordon\Contracts\Rule` under `rules` in the config. See [docs/custom-rules.md](docs/custom-rules.md).
 
@@ -182,7 +184,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: ChrisAbner/Cordon-Modulith@v0.4.0
+      - uses: ChrisAbner/Cordon-Modulith@v0.5.0
 ```
 
 The action runs `vendor/bin/cordon verify`, which does not boot your application, so the job needs no `.env`, database or `APP_KEY`. Or add `vendor/bin/cordon verify --format=github` (or `php artisan cordon:verify --format=github`) to an existing job. `--format=json` prints a machine readable report. The command exits with `1` when there are violations or no modules are found (`--allow-empty` passes while a project has none yet), `0` otherwise and `2` on invalid options. See [docs/ci.md](docs/ci.md) for the action inputs and a job per module.
@@ -258,13 +260,13 @@ Cordon Modulith ships [Laravel Boost](https://laravel.com/docs/boost) resources 
 
 Cordon Modulith parses every PHP file inside your modules with [nikic/php-parser](https://github.com/nikic/PHP-Parser). Your code is never loaded or executed, so it works on code that doesn't boot and on classes that don't exist yet. It records every class reference (`new`, static calls, type declarations, `extends`/`implements`, traits, attributes, `instanceof`, `catch`...) and maps each one to its module by namespace. Import statements alone, function calls and constants don't count. Speed is around 1 ms per file on a typical CI runner (about a second for 1,000 files, Linux, no Xdebug). Run with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower, and the first run on Windows can be slower because of cold file reads and antivirus scanning. See [docs/architecture.md](docs/architecture.md), and [docs/adr](docs/adr) for the design decisions behind it.
 
-**Known limitations:** docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) may only use the public API of the modules, a warning by default (`host_access`). When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
+**Known limitations:** docblock-only types (`@var`, generics) unless you set `'docblocks' => true`, string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected. Code outside modules (for example `app/Http`) may only use the public API of the modules, a warning by default (`host_access`). When Cordon runs standalone (the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, the rule reports a `cordon.configuration` error and falls back to defaults; see [PHPStan](https://chrisabner.github.io/Cordon-Modulith/guide/phpstan).
 
 ## Roadmap
 
 What's next:
 
-- Filament plugin with the module graph
+- [Filament plugin](https://chrisabner.github.io/Cordon-Modulith/integrations/filament) with the module graph (in development)
 - 1.0 with a frozen public API and a SemVer policy
 - File-hash cache for large projects
 - C4 diagrams

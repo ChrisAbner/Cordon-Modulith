@@ -17,8 +17,10 @@ use Cordon\Reporters\GitlabReporter;
 use Cordon\Reporters\JsonReporter;
 use Cordon\Reporters\JunitReporter;
 use Cordon\Reporters\TextReporter;
+use Cordon\Support\GitChanges;
 use Cordon\Support\Paths;
 use Illuminate\Console\Command;
+use RuntimeException;
 use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -31,12 +33,14 @@ final class VerifyCommand extends Command
         {paths?* : Only report the violations of these files or directories; the whole project is still analysed}
         {--format=text : Output format: text, json, github, gitlab, junit or checkstyle}
         {--module=* : Only report the violations of this module (repeatable)}
+        {--since= : Only report the violations of the files that changed since this git reference, as if they were the paths}
         {--fail-on-parse-error : Fail when a file cannot be parsed, since its references are not checked}
         {--generate-baseline : Record every current violation in the baseline file and exit}
         {--prune-baseline : Remove baseline entries that no longer match the code, without adding new violations, and exit}
         {--no-baseline : Ignore the baseline file}
         {--fail-on-stale : Fail when baseline entries no longer match the code}
-        {--allow-empty : Pass when no modules are found, for projects that have none yet}';
+        {--allow-empty : Pass when no modules are found, for projects that have none yet}
+        {--no-cache : Neither read nor write the analysis cache (the cache config key), for this run}';
 
     protected $description = 'Verify that modules only depend on each other through their public API';
 
@@ -45,6 +49,10 @@ final class VerifyCommand extends Command
         $format = $this->option('format');
         $format = is_string($format) ? $format : 'text';
         $reporter = $this->reporter($format);
+
+        if ($this->option('no-cache')) {
+            $verifier->withoutCache();
+        }
 
         if ($reporter === null) {
             $this->error(sprintf('Unknown format [%s]. Use text, json, github, gitlab, junit or checkstyle.', $format));
@@ -129,6 +137,27 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
+        // The changed files are the paths. With none changed nothing is reported,
+        // which is not the same as no paths (the whole project).
+        $since = $this->option('since');
+        $since = is_string($since) && $since !== '' ? $since : null;
+
+        if ($since !== null) {
+            if ($paths !== []) {
+                return $this->failWith('The --since option cannot be combined with paths: --since is the list of changed files.', $format);
+            }
+
+            if ($this->option('generate-baseline') || $this->option('prune-baseline')) {
+                return $this->failWith('The --since option cannot be combined with --generate-baseline or --prune-baseline: the baseline must cover every module.', $format);
+            }
+
+            try {
+                $paths = $this->changedPaths($verifier->basePath(), $since);
+            } catch (RuntimeException $exception) {
+                return $this->failWith($exception->getMessage(), $format);
+            }
+        }
+
         if ($this->option('fail-on-stale') && $this->option('no-baseline')) {
             $this->error('The --fail-on-stale option needs the baseline: drop --no-baseline.');
 
@@ -145,9 +174,10 @@ final class VerifyCommand extends Command
         $basePath = $verifier->basePath();
 
         // A @cordon-ignore without a reason, or naming a rule that does not
-        // exist, is a broken decision: it fails like a config error.
-        if ($result->ignoreErrors !== []) {
-            foreach ($result->ignoreErrors as $error) {
+        // exist, is a broken decision, and so is a named interface that lists a
+        // class that is not public: they fail like a config error.
+        if (($errors = [...$result->interfaceErrors, ...$result->ignoreErrors]) !== []) {
+            foreach ($errors as $error) {
                 if ($format === 'github') {
                     $this->output->writeln('::error title=Cordon::'.$error, OutputInterface::OUTPUT_RAW);
                 } else {
@@ -158,7 +188,7 @@ final class VerifyCommand extends Command
             return self::INVALID;
         }
 
-        foreach ($result->ignoreWarnings as $warning) {
+        foreach ([...$verifier->configurationWarnings(), ...$verifier->cacheWarnings(), ...$result->interfaceWarnings, ...$result->ignoreWarnings] as $warning) {
             if ($format === 'github') {
                 $this->output->writeln('::warning title=Cordon::'.$warning, OutputInterface::OUTPUT_RAW);
             } else {
@@ -240,7 +270,7 @@ final class VerifyCommand extends Command
             $result = ModuleFilter::apply($result, $only);
         }
 
-        if ($paths !== []) {
+        if ($since !== null || $paths !== []) {
             $result = ModuleFilter::applyPaths($result, $paths);
         }
 
@@ -264,6 +294,50 @@ final class VerifyCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * An error on stderr (or a GitHub annotation), so that the report on stdout stays a report.
+     */
+    private function failWith(string $message, string $format): int
+    {
+        if ($format === 'github') {
+            $this->output->writeln('::error title=Cordon::'.$message, OutputInterface::OUTPUT_RAW);
+        } else {
+            $this->output->getErrorStyle()->writeln('<error>'.$message.'</error>');
+        }
+
+        return self::INVALID;
+    }
+
+    /**
+     * The PHP files that changed since a git reference, as the absolute paths
+     * ModuleFilter::applyPaths takes. A deleted file has no real path: the one of
+     * its nearest existing directory plus the rest, so it still matches its module.
+     *
+     * @return list<string>
+     */
+    private function changedPaths(string $basePath, string $since): array
+    {
+        $paths = [];
+
+        foreach (GitChanges::changedFiles($basePath, $since) as $file) {
+            if (! str_ends_with(strtolower($file), '.php')) {
+                continue;
+            }
+
+            $path = Paths::join($basePath, $file);
+            $rest = '';
+
+            while (($real = realpath($path)) === false && ($parent = dirname($path)) !== $path) {
+                $rest = DIRECTORY_SEPARATOR.basename($path).$rest;
+                $path = $parent;
+            }
+
+            $paths[] = ($real === false ? $path : $real).$rest;
+        }
+
+        return $paths;
     }
 
     /**

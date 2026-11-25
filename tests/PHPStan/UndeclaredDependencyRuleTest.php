@@ -82,6 +82,58 @@ final class UndeclaredDependencyRuleTest extends RuleTestCase
         $this->analyse([$this->app.self::LISTENER], []);
     }
 
+    public function test_it_reports_a_public_class_outside_the_named_interfaces(): void
+    {
+        $this->app = $this->interfacesApp(['Billing' => ['depends_on' => ['Catalog::Pricing']]]);
+        $message = 'Module [Billing] uses App\\Modules\\Catalog\\Contracts\\%s, which is not in the interfaces it declares on [Catalog] (Pricing).';
+        $tip = 'Add the class to an interface of [Catalog] that [Billing] declares, or declare the interface that has it in depends_on, in config/cordon.php. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#undeclared-dependency';
+
+        $this->analyse([$this->app.'/app/Modules/Billing/Services/Invoicer.php'], [
+            [sprintf($message, 'Stock'), 12, $tip],
+            [sprintf($message, 'Unlisted'), 12, $tip],
+        ]);
+    }
+
+    public function test_it_allows_the_whole_module_and_every_class_of_a_listed_interface(): void
+    {
+        foreach ([['Catalog'], ['Catalog::*'], ['Catalog::Pricing', 'Catalog::Inventory', 'Catalog::Rest']] as $dependsOn) {
+            $this->app = $this->interfacesApp(['Billing' => ['depends_on' => $dependsOn]], ['Rest' => ['Contracts\\Unlisted']]);
+
+            $this->analyse([$this->app.'/app/Modules/Billing/Services/Invoicer.php'], []);
+        }
+    }
+
+    public function test_it_leaves_listeners_out_of_the_interfaces_when_configured(): void
+    {
+        $this->app = $this->interfacesApp(['Orders' => ['depends_on' => ['Catalog::Pricing']]], [], "'listeners' => ['depends_on' => false]");
+
+        $this->analyse([$this->app.'/app/Modules/Orders/Listeners/OnStockChanged.php'], []);
+    }
+
+    /**
+     * A copy of the interfaces app with its own config/cordon.php.
+     *
+     * @param  array<string, array<string, mixed>>  $modules  Settings of the modules that depend on Catalog.
+     * @param  array<string, list<string>>  $more  Interfaces added to Catalog.
+     */
+    private function interfacesApp(array $modules, array $more = [], string $extra = ''): string
+    {
+        $source = __DIR__.'/../Fixtures/interfaces-app';
+        $directory = Temp::removeAtExit(sys_get_temp_dir().'/cordon-phpstan-'.bin2hex(random_bytes(4)));
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST);
+        mkdir($directory);
+
+        foreach ($files as $file) {
+            $target = $directory.substr($file->getPathname(), strlen($source));
+            $file->isDir() ? mkdir($target) : copy($file->getPathname(), $target);
+        }
+
+        $settings = var_export(['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList', 'Data\\Price*'], 'Inventory' => ['Contracts\\Stock'], ...$more]], ...$modules], true);
+        file_put_contents($directory.'/config/cordon.php', "<?php\n\nreturn ['modules' => {$settings}".($extra !== '' ? ", {$extra}" : '')."];\n");
+
+        return $directory;
+    }
+
     /**
      * A copy of the namespace app with its own config/cordon.php.
      *

@@ -7,6 +7,7 @@ namespace Cordon\Laravel;
 use Cordon\Contracts\ModuleResolver;
 use Cordon\Resolvers\InternachiResolver;
 use Cordon\Resolvers\NamespaceResolver;
+use Cordon\Resolvers\NestedResolver;
 use Cordon\Resolvers\NwidartResolver;
 use Cordon\Support\Paths;
 use Illuminate\Contracts\Config\Repository;
@@ -20,7 +21,23 @@ final class ResolverFactory
     public static function make(Repository $config, string $basePath): ModuleResolver
     {
         $driver = self::driver($config, $basePath);
+        $modules = $config->get('cordon.modules', []);
+        $public = $config->get('cordon.public_namespaces');
 
+        return new NestedResolver(
+            self::driverResolver($driver, $config, $basePath),
+            is_array($modules) ? $modules : [],
+            is_array($public) ? array_values(array_map('strval', array_filter($public, 'is_scalar'))) : ['Contracts', 'Events', 'Data', 'Enums', 'Exceptions'],
+            match ($driver) {
+                'nwidart' => 'app',
+                'internachi' => 'src',
+                default => '',
+            },
+        );
+    }
+
+    private static function driverResolver(string $driver, Repository $config, string $basePath): ModuleResolver
+    {
         return match ($driver) {
             'namespace' => new NamespaceResolver(
                 Paths::join($basePath, self::string($config->get('cordon.resolvers.namespace.path'), 'app/Modules')),

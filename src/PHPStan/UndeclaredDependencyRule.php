@@ -7,6 +7,7 @@ namespace Cordon\PHPStan;
 use Cordon\Analysis\Reference;
 use Cordon\Analysis\ReferenceCollector;
 use Cordon\Analysis\Violation;
+use Cordon\Rules\NamedInterfaces;
 use Cordon\Rules\Severity;
 use Cordon\Rules\UndeclaredDependencyRule as CordonUndeclaredDependencyRule;
 use PhpParser\Node;
@@ -47,7 +48,7 @@ final class UndeclaredDependencyRule implements Rule
         }
 
         $file = $scope->getFile();
-        $collector = new ReferenceCollector($file);
+        $collector = new ReferenceCollector($file, $this->context->docblocks());
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
         $from = $this->context->moduleOf($file);
@@ -61,14 +62,34 @@ final class UndeclaredDependencyRule implements Rule
         $violations = [];
 
         foreach ($collector->references() as $reference) {
-            $to = $this->context->modules()->forClass($reference->target);
+            $target = $this->context->modules()->forClass($reference->target);
+
+            if ($target === null || $target->name === $from->name) {
+                continue;
+            }
+
+            // A nested module exists only inside its parent: from outside, the dependency is on the parent.
+            $to = $this->context->modules()->visible($target, $from);
+
+            if ($to->isNestedIn($from) || $from->isNestedIn($to) || ($reference->kind === Reference::LISTENER && ! $countListeners)) {
+                continue;
+            }
+
+            // Listed only through named interfaces (Catalog::Pricing): a public class outside them
+            // is reported once per file and class, like cordon:verify. An internal class is internal_access's.
+            if ($from->declares($to->name)) {
+                $message = NamedInterfaces::outside($from, $to, $reference->target);
+                $key = '#'.strtolower($reference->target);
+
+                if ($message !== null && ! isset($violations[$key]) && $this->context->policy()->isPublic($reference->target, $target, $this->context->declaration($reference->target), $from)) {
+                    $violations[$key] = new Violation(CordonUndeclaredDependencyRule::ID, $message, $path, $reference->line, $from->name, $to->name, $reference->target);
+                }
+
+                continue;
+            }
 
             // One violation per file and module, like cordon:verify, so the baseline keys match.
-            if ($to === null
-                || $to->name === $from->name
-                || in_array($to->name, $from->dependsOn, true)
-                || isset($violations[$to->name])
-                || ($reference->kind === Reference::LISTENER && ! $countListeners)) {
+            if (isset($violations[$to->name])) {
                 continue;
             }
 
@@ -95,11 +116,17 @@ final class UndeclaredDependencyRule implements Rule
         return array_map(static fn (Violation $violation): IdentifierRuleError => RuleErrorBuilder::message($violation->message)
             ->identifier('cordon.undeclaredDependency')
             ->line((int) $violation->line)
-            ->tip(sprintf(
-                'Add [%s] to the depends_on of [%s] in config/cordon.php if the dependency is intended. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#undeclared-dependency',
-                $violation->targetModule,
-                $violation->sourceModule,
-            ))
+            ->tip($violation->target === $violation->targetModule
+                ? sprintf(
+                    'Add [%s] to the depends_on of [%s] in config/cordon.php if the dependency is intended. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#undeclared-dependency',
+                    $violation->targetModule,
+                    $violation->sourceModule,
+                )
+                : sprintf(
+                    'Add the class to an interface of [%s] that [%s] declares, or declare the interface that has it in depends_on, in config/cordon.php. Learn more: https://chrisabner.github.io/Cordon-Modulith/guide/rules#undeclared-dependency',
+                    $violation->targetModule,
+                    $violation->sourceModule,
+                ))
             ->build(), $kept);
     }
 }

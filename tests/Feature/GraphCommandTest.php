@@ -54,6 +54,29 @@ it('exports the module graph as DOT, with listener-only edges dashed', function 
         ->toContain('"Catalog" -> "Billing" [label="1", style="dashed"];');
 });
 
+it('exports the module graph as C4-PlantUML, with the edges that have violations in red', function () {
+    $output = graph(['--format' => 'c4']);
+
+    expect($output)->toStartWith("@startuml\n!include <C4/C4_Component>\n")
+        ->toEndWith("@enduml\n")
+        ->toContain('Container_Boundary(app, "Application") {')
+        ->toContain('    Component(m0, "Billing", "Module")')
+        ->toContain('AddRelTag("violation", $textColor="#d33", $lineColor="#d33")')
+        ->toContain('Rel(m0, m1, "4", $tags="violation")')
+        ->not->toContain('UpdateRelStyle')
+        ->toContain('Rel(m1, m0, "1")')
+        ->not->toContain('```');
+});
+
+it('keeps a module and its neighbours in C4 with --module', function () {
+    $output = graph(['--format' => 'c4', '--module' => 'Shared']);
+
+    expect($output)->toContain('Component(m0, "Billing", "Module")')
+        ->toContain('Component(m1, "Shared", "Module")')
+        ->not->toContain('"Catalog"')
+        ->toContain('Rel(m0, m1, "');
+});
+
 it('keeps a module and its neighbours with --module', function () {
     $graph = json_decode(graph(['--format' => 'json', '--module' => 'Shared']), true);
 
@@ -63,10 +86,10 @@ it('keeps a module and its neighbours with --module', function () {
 
 it('produces the same graph on every run', function (string $format) {
     expect(graph(['--format' => $format]))->toBe(graph(['--format' => $format]));
-})->with(['mermaid', 'dot', 'json']);
+})->with(['mermaid', 'dot', 'json', 'c4']);
 
 it('rejects unknown formats and modules', function () {
     expect(Artisan::call('cordon:graph', ['--format' => 'svg']))->toBe(2)
-        ->and(Artisan::output())->toContain('Unknown format [svg]. Use mermaid, dot or json.')
+        ->and(Artisan::output())->toContain('Unknown format [svg]. Use mermaid, dot, json or c4.')
         ->and(Artisan::call('cordon:graph', ['--module' => 'Biling']))->toBe(2);
 });

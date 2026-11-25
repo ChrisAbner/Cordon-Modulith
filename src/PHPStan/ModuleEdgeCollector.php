@@ -37,7 +37,7 @@ final class ModuleEdgeCollector implements Collector
     {
         $this->context->trackDependencies($scope);
 
-        $collector = new ReferenceCollector($scope->getFile());
+        $collector = new ReferenceCollector($scope->getFile(), $this->context->docblocks());
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
         $from = $this->context->moduleOf($scope->getFile());
@@ -49,9 +49,16 @@ final class ModuleEdgeCollector implements Collector
         $edges = [];
 
         foreach ($collector->references() as $reference) {
-            $to = $this->context->modules()->forClass($reference->target);
+            $target = $this->context->modules()->forClass($reference->target);
 
-            if ($to !== null && $to->name !== $from->name && ! isset($edges[$to->name.'|'.$reference->kind])) {
+            if ($target === null || $target->name === $from->name || $from->isNestedIn($target)) {
+                continue;
+            }
+
+            // A nested module exists only inside its parent: from outside, the dependency is on the parent.
+            $to = $this->context->modules()->visible($target, $from);
+
+            if (! isset($edges[$to->name.'|'.$reference->kind])) {
                 $edges[$to->name.'|'.$reference->kind] = [$to->name, $reference->line, $reference->kind];
             }
         }

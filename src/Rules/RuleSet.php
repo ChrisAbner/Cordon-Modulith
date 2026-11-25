@@ -7,6 +7,7 @@ namespace Cordon\Rules;
 use Closure;
 use Cordon\Contracts\Rule;
 use Cordon\Support\ConfigValidator;
+use Cordon\Support\PackageMap;
 use InvalidArgumentException;
 
 /**
@@ -15,14 +16,14 @@ use InvalidArgumentException;
 final class RuleSet
 {
     /** The ids of the built-in rules, in the order they run. */
-    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID, PublicApiLeakRule::ID];
+    public const BUILT_IN = [InternalAccessRule::ID, UndeclaredDependencyRule::ID, CycleRule::ID, UnusedDependencyRule::ID, HostAccessRule::ID, LayerRule::ID, PublicApiLeakRule::ID, ExternalDependencyRule::ID, TableRule::ID];
 
     /**
      * Built-in rules that start below error: checks added after 0.3 arrive as
      * warnings, so an upgrade does not fail a build that passed (see the
-     * compatibility page).
+     * compatibility page). `tables` is a heuristic and starts off.
      */
-    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn', PublicApiLeakRule::ID => 'warn'];
+    private const DEFAULTS = [UnusedDependencyRule::ID => 'warn', HostAccessRule::ID => 'warn', PublicApiLeakRule::ID => 'warn', TableRule::ID => 'off'];
 
     /**
      * Built-in rules, enabled unless set to off (or false), followed by custom rules.
@@ -35,11 +36,13 @@ final class RuleSet
      * @param  (Closure(class-string<Rule>): Rule)|null  $make  Builds custom rules (the Laravel container in the service provider).
      * @param  array<array-key, mixed>  $listeners  The `listeners` config: whether listener edges count for cycles and depends_on.
      * @param  array<array-key, mixed>  $layers  The `layers` config, from the top down; the layers rule checks nothing without it.
+     * @param  array<array-key, mixed>  $packages  The `packages` config (its `shared` list).
+     * @param  string|null  $basePath  The project root, where vendor/composer/installed.json is read; without it external_dependency checks nothing.
      * @return list<Rule>
      */
-    public static function fromConfig(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = []): array
+    public static function fromConfig(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = [], array $packages = [], ?string $basePath = null): array
     {
-        return self::build($config, $make, $listeners, $layers)[0];
+        return self::build($config, $make, $listeners, $layers, $packages, $basePath)[0];
     }
 
     /**
@@ -51,9 +54,10 @@ final class RuleSet
      * @param  (Closure(class-string<Rule>): Rule)|null  $make
      * @param  array<array-key, mixed>  $listeners
      * @param  array<array-key, mixed>  $layers
+     * @param  array<array-key, mixed>  $packages
      * @return array{0: list<Rule>, 1: array<string, Severity>}
      */
-    public static function build(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = []): array
+    public static function build(array $config = [], ?Closure $make = null, array $listeners = [], array $layers = [], array $packages = [], ?string $basePath = null): array
     {
         $severities = [];
         $available = [
@@ -64,6 +68,11 @@ final class RuleSet
             HostAccessRule::ID => static fn (): Rule => new HostAccessRule,
             LayerRule::ID => static fn (): Rule => new LayerRule(self::layers($layers), ($listeners['depends_on'] ?? true) === true),
             PublicApiLeakRule::ID => static fn (): Rule => new PublicApiLeakRule,
+            ExternalDependencyRule::ID => static fn (): Rule => new ExternalDependencyRule(
+                $basePath === null ? new PackageMap('', '') : PackageMap::forProject($basePath),
+                self::sharedPackages($packages),
+            ),
+            TableRule::ID => static fn (): Rule => new TableRule,
         ];
 
         $rules = [];
@@ -113,6 +122,22 @@ final class RuleSet
         }
 
         return [$rules, $severities];
+    }
+
+    /**
+     * Whether a built-in rule runs with this `rules` config: its severity is not
+     * off, counting the default it starts with. A value that is no severity
+     * counts as off here (ConfigValidator reports it before anything runs).
+     *
+     * @param  array<array-key, mixed>  $config
+     */
+    public static function enabled(array $config, string $id): bool
+    {
+        try {
+            return Severity::fromConfig($id, $config[$id] ?? self::DEFAULTS[$id] ?? true) !== Severity::Off;
+        } catch (InvalidArgumentException) {
+            return false;
+        }
     }
 
     /**
@@ -236,6 +261,17 @@ final class RuleSet
         }
 
         return $make !== null ? $make($class) : new $class;
+    }
+
+    /**
+     * The valid part of packages.shared (ConfigValidator reports the rest).
+     *
+     * @param  array<array-key, mixed>  $packages
+     * @return list<string>
+     */
+    private static function sharedPackages(array $packages): array
+    {
+        return is_array($packages['shared'] ?? null) ? array_values(array_filter($packages['shared'], 'is_string')) : [];
     }
 
     /**

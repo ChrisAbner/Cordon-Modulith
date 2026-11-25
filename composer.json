@@ -17,6 +17,7 @@
         "illuminate/contracts": "^12.0|^13.0",
         "illuminate/support": "^12.0|^13.0",
         "nikic/php-parser": "^5.3",
+        "phpstan/phpdoc-parser": "^2.0",
         "vlucas/phpdotenv": "^5.6.1"
     },
     "require-dev": {
@@ -36,7 +37,7 @@
         "psr-4": {
             "Cordon\\Tests\\": "tests/"
         },
-        "classmap": ["tests/Fixtures/namespace-app/app"]
+        "classmap": ["tests/Fixtures/namespace-app/app", "tests/Fixtures/nested-app/app"]
     },
     "bin": ["bin/cordon"],
     "extra": {
@@ -51,12 +52,18 @@
     },
     "scripts": {
         "test": "pest",
-        "analyse": "phpstan analyse",
+        "analyse": "phpstan analyse --memory-limit=512M",
         "format": "pint",
-        "check": ["pint --test", "phpstan analyse", "pest"],
+        "check": ["pint --test", "@analyse", "pest"],
         "bench": "php tests/Benchmark/run.php 1000 20 10",
-        "coverage": "@php -d pcov.enabled=1 vendor/bin/pest --coverage --min=95",
-        "mutate": "@php -d pcov.enabled=1 vendor/bin/pest --mutate --min=88",
+        "coverage": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php -d pcov.enabled=1 vendor/bin/pest --coverage --min=95"
+        ],
+        "mutate": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php -d pcov.enabled=1 vendor/bin/pest --mutate --min=88"
+        ],
         "oracle": ["pest --group=oracle", "php tests/Oracle/check-matrix.php"]
     },
     "config": {

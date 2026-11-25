@@ -11,6 +11,8 @@ composer check   # pint --test, phpstan, pest
 composer bench   # analyses a synthetic project of 1,000 files; fails above 10 s
 ```
 
+Run PHPStan through `composer analyse`: it passes `--memory-limit=512M`, and calling `vendor/bin/phpstan analyse` directly stops at the default memory limit.
+
 `php tests/Benchmark/run.php 5000 50` runs a larger benchmark (files, modules, optional time budget in seconds).
 
 Coverage and mutation testing need pcov (or Xdebug):
@@ -19,6 +21,8 @@ Coverage and mutation testing need pcov (or Xdebug):
 composer coverage   # the whole suite, fails below 95% line coverage
 composer mutate     # mutates the classes whose tests declare mutates(), fails below 88%
 ```
+
+Many tests run `bin/cordon` or PHPStan in a process of their own, the way a project runs them. With pcov, `tests/Coverage/SubprocessCoverage.php` counts the code those processes run and applies the mutant there too. With Xdebug it does not, so the coverage is lower than CI's.
 
 To mutate a class, add `mutates(TheClass::class);` to its test file. A surviving mutant either gets a test or, when it cannot change behaviour (an equivalent mutant), a line in the pull request saying why.
 

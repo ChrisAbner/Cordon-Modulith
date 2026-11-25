@@ -63,7 +63,7 @@ final class InternalAccessRule implements Rule
         // PHPStan already parsed the file and resolved its names: collect the
         // references from its AST instead of parsing the file again.
         $file = $scope->getFile();
-        $collector = new ReferenceCollector($file);
+        $collector = new ReferenceCollector($file, $this->context->docblocks());
         (new NodeTraverser($collector))->traverse($node->getNodes());
 
         $from = $this->context->moduleOf($file);
@@ -92,7 +92,7 @@ final class InternalAccessRule implements Rule
                 continue;
             }
 
-            if ($this->context->policy()->isPublic($target, $to, $this->context->declaration($target))) {
+            if ($this->context->policy()->isPublic($target, $to, $this->context->declaration($target), $from)) {
                 continue;
             }
 

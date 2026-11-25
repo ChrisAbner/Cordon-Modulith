@@ -27,7 +27,7 @@ final class MatrixChecker
         }
 
         $parser = (string) InstalledVersions::getVersion('nikic/php-parser');
-        $extractor = new PhpParserExtractor;
+        $extractors = [false => new PhpParserExtractor, true => new PhpParserExtractor(docblocks: true)];
         $modules = new ModuleMap([Module::make('Target', 'Matrix\\Target', '/nowhere/Target')]);
         $failures = [];
         $skipped = [];
@@ -41,7 +41,7 @@ final class MatrixChecker
 
             $file = $directory.'/'.$cell->file();
             file_put_contents($file, $cell->code);
-            $analysis = $extractor->extract($file);
+            $analysis = $extractors[$cell->docblocks]->extract($file);
 
             if ($analysis->error !== null) {
                 $failures[] = sprintf('%s: parse error (%s)', $cell->id(), $analysis->error);

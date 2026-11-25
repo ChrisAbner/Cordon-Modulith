@@ -26,4 +26,16 @@ return [
         'replace' => "    public function enterNode(Node \$node)\n    {\n        if (\$node instanceof Node\\PropertyHook) {\n            return \\PhpParser\\NodeVisitor::DONT_TRAVERSE_CHILDREN;\n        }\n\n",
         'why' => 'What php-parser 5.2 did: names inside property hooks were lost.',
     ],
+    'docblock-shape-keys' => [
+        'file' => 'Analysis/DocblockCollector.php',
+        'search' => 'if ($node instanceof ArrayShapeItemNode || $node instanceof ObjectShapeItemNode) {',
+        'replace' => 'if (false) {',
+        'why' => 'A docblock reader that takes the key of an array shape (array{Foo: int}) for a class.',
+    ],
+    'docblock-ignores-imports' => [
+        'file' => 'Analysis/DocblockCollector.php',
+        'search' => "        \$this->names->addAlias(\$name, \$alias, Node\\Stmt\\Use_::TYPE_NORMAL);\n",
+        'replace' => '',
+        'why' => 'A docblock reader that resolves names without the imports of the file.',
+    ],
 ];

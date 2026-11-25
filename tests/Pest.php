@@ -11,6 +11,7 @@ use Cordon\Rules\RuleSet;
 use Cordon\Tests\Oracle\Temp;
 use Cordon\Tests\TestCase;
 use PHPStan\File\DirectoryWalker;
+use Symfony\Component\Process\Process;
 
 if (class_exists(DirectoryWalker::class)) {
     // PHPStan's rule-test container reads this file before creating its first directory cache.
@@ -92,4 +93,20 @@ function temp_project(?string $fixture = null): string
 function add_unexplained_ignore(string $project): void
 {
     file_put_contents($project.'/app/Modules/Billing/Unexplained.php', "<?php\n\nnamespace App\\Modules\\Billing;\n\n// @cordon-ignore internal_access\nnew \\App\\Modules\\Catalog\\Models\\Stock;\n");
+}
+
+/**
+ * Runs bin/cordon as a separate process from $cwd, the way CI would.
+ *
+ * @param  list<string>  $arguments
+ * @return array{code: int, out: string, err: string}
+ */
+function run_cordon(array $arguments, string $cwd): array
+{
+    // NO_COLOR keeps the output plain wherever the suite runs: Symfony colours
+    // piped output under Git Bash on Windows (MSYSTEM) or with FORCE_COLOR set.
+    $process = new Process([PHP_BINARY, dirname(__DIR__).'/bin/cordon', ...$arguments], $cwd, ['XDEBUG_MODE' => 'off', 'NO_COLOR' => '1']);
+    $process->run();
+
+    return ['code' => (int) $process->getExitCode(), 'out' => $process->getOutput(), 'err' => $process->getErrorOutput()];
 }

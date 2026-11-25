@@ -10,6 +10,16 @@ git diff --cached --name-only --relative --diff-filter=ACMR -z -- '*.php' | xarg
 
 With no PHP file staged, the command gets no paths and checks everything; skip it in that case, as the hooks below do.
 
+## Everything that changed on the branch
+
+`--since` takes the changed files from git for you, in a pull request job or before a push:
+
+```bash
+vendor/bin/cordon verify --since=origin/main
+```
+
+It is the same as `verify <changed files>`: the PHP files committed since the branch forked from `origin/main`, plus the staged, modified and untracked ones, deleted files included. The whole project is still analysed, so cycles and the baseline work as usual. With no change it reports nothing and exits `0`. It cannot be combined with paths, `--generate-baseline` or `--prune-baseline`. An unknown reference, or a folder that is not a git repository, exits with `2`. To run only the tests of the modules a change can affect, see [run only the tests the change can affect](./affected-tests).
+
 ## Plain git hook
 
 ```bash

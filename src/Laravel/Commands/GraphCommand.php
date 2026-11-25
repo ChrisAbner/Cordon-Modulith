@@ -18,14 +18,14 @@ final class GraphCommand extends Command
     use ExploresModules;
 
     protected $signature = 'cordon:graph
-        {--format=mermaid : Output format: mermaid, dot or json}
+        {--format=mermaid : Output format: mermaid, dot, json or c4}
         {--module= : Only this module and its neighbours}';
 
-    protected $description = 'Export the module dependency graph as Mermaid, DOT (Graphviz) or JSON';
+    protected $description = 'Export the module dependency graph as Mermaid, DOT (Graphviz), JSON or C4-PlantUML';
 
     public function handle(Verifier $verifier): int
     {
-        if ($this->formatFailed(['mermaid', 'dot', 'json'])) {
+        if ($this->formatFailed(['mermaid', 'dot', 'json', 'c4'])) {
             return self::INVALID;
         }
 
@@ -44,7 +44,14 @@ final class GraphCommand extends Command
 
         $snapshot = $verifier->snapshot();
         $violations = $verifier->check($snapshot)->violations;
-        $model = GraphExporter::model($verifier->modules()->names(), $snapshot->context->edges, $violations, $focus);
+
+        if ($format === 'c4') {
+            $this->output->write(GraphExporter::c4($snapshot, $violations, $focus), false, OutputInterface::OUTPUT_RAW);
+
+            return self::SUCCESS;
+        }
+
+        $model = GraphExporter::model($verifier->modules()->names(), $snapshot->context->edges, $violations, $verifier->modules(), $focus);
 
         $output = match ($format) {
             'json' => (string) json_encode($model, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL,

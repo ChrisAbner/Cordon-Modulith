@@ -1,11 +1,13 @@
 {
-    "generator": "e89d20fe6624245843a520f384fd328760fb573c",
-    "cells": 1818,
+    "generator": "b54ae7d1437b0c52b8fc2cf2d030bb212266724e",
+    "cells": 2418,
     "php": "8.4.27",
     "php_parser": "v5.9.0",
     "mutations": {
-        "case-sensitive-modules": 234,
+        "case-sensitive-modules": 309,
         "skip-attributes": 162,
-        "skip-property-hooks": 54
+        "skip-property-hooks": 54,
+        "docblock-shape-keys": 30,
+        "docblock-ignores-imports": 225
     }
 }

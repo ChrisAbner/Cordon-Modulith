@@ -12,6 +12,7 @@ final readonly class Cell
 {
     /**
      * @param  list<string>  $expected  Lowercased targets under Matrix\Target.
+     * @param  bool  $docblocks  Whether the extractor runs with the docblocks option on.
      */
     public function __construct(
         public string $position,
@@ -22,6 +23,7 @@ final readonly class Cell
         public string $phpMin,
         public string $parserMin,
         public bool $declaration,
+        public bool $docblocks = false,
     ) {}
 
     public function id(): string

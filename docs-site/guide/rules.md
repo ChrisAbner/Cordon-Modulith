@@ -9,8 +9,10 @@
 | `host_access` | Code outside the modules (`host.paths`: `app`, `routes` and `database` by default) using a class that is not part of a module's [public API](./public-api). One report per file and target class. | warn |
 | `layers` | A module depending on a module of a layer above its own, with `layers` configured (it checks nothing without it). One report per file and target class. | error |
 | `public_api_leak` | A public class whose public signature names an internal class of its own module. One report per file and internal class. | warn |
+| `external_dependency` | A module using a Composer package that is not in its `packages` or in the shared ones, with `packages` configured (it checks nothing without it). One report per file and package. | error |
+| `tables` | A module altering, querying or pointing a foreign key at a table that another module creates. A heuristic that reads literal names: off until you turn it on, and meant to run as `warn`. One report per file, table and kind of use. | off |
 
-The built-in rules are enabled by default. `unused_dependency`, `host_access` and `public_api_leak` start as warnings (they arrived after 0.3): their violations are reported but do not fail. `layers` checks nothing until `layers` is configured. Set a rule to `error`, `warn` or `off` (`true` and `false` keep working) in the config:
+The built-in rules are enabled by default. `unused_dependency`, `host_access` and `public_api_leak` start as warnings (they arrived after 0.3): their violations are reported but do not fail. `layers` checks nothing until `layers` is configured, and `external_dependency` checks nothing until a module lists `packages`. `tables` is the exception: it is `off` until you turn it on. Set a rule to `error`, `warn` or `off` (`true` and `false` keep working) in the config:
 
 ```php
 'rules' => [
@@ -57,6 +59,17 @@ Using a module's **public** class without listing that module reports only `unde
 | `Modules\Catalog\Models\Product` (internal, `Catalog` listed) | `internal_access` only |
 | `Modules\Catalog\Models\Product` (internal, `Catalog` not listed) | both |
 
+### Named interfaces
+
+`Catalog::Pricing` in `depends_on` lists only part of `Catalog`'s public API (the [`Pricing` interface](./configuration#named-interfaces)). A public class of `Catalog` that is not in it is reported, once per file and class:
+
+```text
+x [undeclared_dependency] app/Modules/Billing/Services/Invoicer.php:12
+  Module [Billing] uses App\Modules\Catalog\Contracts\Stock, which is not in the interfaces it declares on [Catalog] (Pricing).
+```
+
+Add the class to an interface `Billing` declares, or declare the interface that has it. `Catalog` and `Catalog::*` allow the whole public API, as before.
+
 ## cycles
 
 Cordon reports each dependency that takes part in a cycle, with the shortest cycle it closes. Two modules that depend on each other give two reports:
@@ -95,7 +108,7 @@ A module lists a module in `depends_on` but none of its classes uses it. It usua
   Module [Catalog] lists [Shared] in depends_on, but does not use it. Remove it so depends_on shows the real dependencies.
 ```
 
-It is a warning by default (it arrived in 0.4); set `'unused_dependency' => 'error'` to make it fail. Listening to an event of the module counts as using it, unless `listeners.depends_on` is `false`.
+It is a warning by default (it arrived in 0.4); set `'unused_dependency' => 'error'` to make it fail. Listening to an event of the module counts as using it, unless `listeners.depends_on` is `false`. An entry for a named interface (`Catalog::Pricing`) is unused when no class of that interface is used.
 
 ## host_access
 
@@ -127,7 +140,7 @@ x [layers] app/Modules/Shared/Money.php:12
   Module [Shared] (layer 3) depends on [Orders] (layer 1) through App\Modules\Orders\Models\Order; a layer may only depend on the layers below it.
 ```
 
-A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. It reports once per file and class of the layer above, so a new class in a file already in the baseline is a new violation. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. The PHPStan rule does not report it yet.
+A module may depend on modules of its own layer and of every layer below it. Modules left out of `layers` are not checked by this rule, and `depends_on` still applies on top of it. It reports once per file and class of the layer above, so a new class in a file already in the baseline is a new violation. Listeners count as they do for `depends_on` (`listeners.depends_on`). Without `layers`, the rule checks nothing. A [nested module](./configuration#nested-modules) that `layers` does not name takes the layer of its nearest ancestor that it names, as the source and as the target of a dependency, the same inheritance `external_dependency` and `tables` use: with `Billing` in a layer, `Billing.Payments` is in it too. Naming the child in `layers` gives it a layer of its own. The use between a parent and its children is never reported. The PHPStan rule does not report it yet.
 
 ## public_api_leak
 
@@ -140,11 +153,60 @@ A public class names an internal class of its own module in its public signature
 
 The public signature is what other modules see: the parameters and return types of public methods, public properties (promoted ones too) and the types of public constants. Private and protected members, the other parameters of a constructor (the container passes them) and anonymous classes do not count. Return a class from a public namespace instead, such as a DTO in `Data`, or mark the class `#[PublicApi]` if it is meant to be shared. It is a warning by default (it arrived in 0.4).
 
+## external_dependency
+
+With `packages` in `config/cordon.php`, a module uses a Composer package it does not list:
+
+```php
+'packages' => ['shared' => ['laravel/framework', 'illuminate/*']],
+'modules' => [
+    'Billing' => ['packages' => ['stripe/stripe-php']],
+],
+```
+
+```text
+x [external_dependency] app/Modules/Billing/Services/Checkout.php:15
+  Module [Billing] uses GuzzleHttp\Client from [guzzlehttp/guzzle], which is not in its packages.
+```
+
+One report per file and package, at the first use. A module may use the packages it lists and the `shared` ones (names such as `stripe/stripe-php`, or a prefix ending in `*`: `symfony/*`, `illuminate/*`; compared without regard to case). A module without `packages` is not checked, and `packages => []` allows only the shared ones. A nested module without its own `packages` takes the list of the module it is in. Fix a report by moving the use behind a class of a module that may use the package, or by listing the package when the dependency is intended.
+
+Cordon reads `vendor/composer/installed.json` as plain data (it never loads your autoloader), so run `composer install` first: when a module lists `packages` and the file is missing, `cordon:verify` stops with exit code `2`, and a listed package that is not installed is a warning with the closest name. A class belongs to a package only when an installed package provably provides it: the file of a PSR-4 or PSR-0 class has to exist in the package, and a classmap names its classes one by one, counting only what its files declare unconditionally inside a namespace. The stubs of the polyfills (`symfony/polyfill-php80` and the like) declare PHP's own classes under `if (PHP_VERSION_ID < ...)` or in the global namespace, and a class that two packages declare cannot be said to be either's, so none of them is attributed to a package. So PHP's own classes (`DateTimeImmutable`, `PDO`), the classes of your project and of your modules, and those of a package that is not installed (a `require-dev` package left out by `--no-dev`, a PHP extension) belong to none and are never reported, even when a package shares their namespace. When two packages declare nested prefixes (`Illuminate\` and `Illuminate\Support\`), the class goes to the package that holds its file, preferring the longest prefix. A package listed under a name it replaces (`illuminate/support` for `laravel/framework`) also covers it. `laravel/framework` declares that it replaces `illuminate/*`, so a class that Composer installs in `laravel/framework` is covered by a list that names any package it replaces: listing `illuminate/support` also permits every class of `laravel/framework`, not only the ones that `illuminate/support` would hold. That is the permissive side of the rule: it never reports a class the list covers under another name, so read the `replace` list of a package that bundles others.
+
+Every reference counts the way it does for the other rules: code, [docblocks](./configuration#docblocks) when they are on, and listeners (a listener that type-hints a package's event uses that package). The code outside the modules (`host`) is not checked: it is the glue that wires the modules to the framework, so `packages` cannot be set for it. The rule is an `error` like `layers`, and it checks nothing until some module lists `packages`. `@cordon-ignore external_dependency` works as for the other rules. The PHPStan rule does not report it yet. `cordon:why Billing stripe/stripe-php` lists the uses of a package by a module, and `cordon:explain Stripe\StripeClient` says which package a class belongs to and who uses it.
+
+## tables
+
+::: warning Heuristic, off by default
+`tables` reads names out of source code, so it can be wrong in ways the other rules cannot. It is `off` until you turn it on, and `warn` is the severity it is meant for: `'rules' => ['tables' => 'warn']`.
+:::
+
+A module alters, queries or points a foreign key at a table that another module creates:
+
+```text
+! [tables] app/Modules/Billing/Database/Migrations/2024_02_01_000000_create_invoices_table.php:13 (warn)
+  Module [Billing] adds a foreign key to table [orders], which belongs to [Orders]. Read or change another module's data through its public API instead: see https://chrisabner.github.io/Cordon-Modulith/recipes/cross-module-relations
+```
+
+There are three messages, one per kind of use: `Module [Billing] alters table [orders], which belongs to [Orders].` (`Schema::table`, `drop`, `dropIfExists`, `rename`), `Module [Billing] adds a foreign key to table [orders], which belongs to [Orders].` and `Module [Billing] queries table [orders], which belongs to [Orders].` (`DB::table('orders')` and the joins that follow it, or a model of the module whose table is `orders`). One report per file, table and kind of use. A foreign key is reported even when `depends_on` lists the owner: coupling through a table is what the [cross-module relations recipe](../recipes/cross-module-relations) advises against.
+
+**Who owns a table.** The module that creates it with `Schema::create('orders', ...)`, wherever its migration lives: inside the module, or in the code outside the modules (`database/migrations`, see [`host`](./configuration#host)), which then owns it. A table that two of them create has no single owner, and a table that nobody creates has none either: neither is ever reported, and `cordon:docs` lists the first in the module cards as "without owner", with the modules that create it. The tables the host owns (`users` almost always) are never reported, and the code outside the modules is never reported either: it is the glue.
+
+**What it reads.** Only literals: `Schema::create('orders', ...)`, `->on('orders')` after `foreign()` or `foreignId()`, `->constrained('orders')` and `DB::table('orders as o')->join('items', ...)`. A table name in a variable, a constant or `config()` is not guessed and not reported. Joins count only on a chain that starts at `DB::table('...')` and stays on the query builder (`where*`, `orWhere*`, `orderBy*`, `select*`, `join*`, `leftJoin*`, `having*`, `groupBy*`, `limit`, `take`, `skip`, `distinct`, `when`...). A terminal call such as `get()`, `pluck()`, `first()`, `count()` or `paginate()`, or any method not in that list, ends it: `DB::table('a')->pluck('n')->join('orders')` is a Collection's `join`, not a table, and the same goes for `Schema` and `DB` that are not the facades.
+
+`foreignId('order_id')->constrained()`, with no table, is reported against `orders`: Cordon asks Laravel's own `Str::plural` for the table, as `constrained()` does, so `category_id` is `categories` and `person_id` is `people`. It does not guess in the cases where it cannot know the table: `foreignIdFor(Order::class)->constrained()` (the table is the model's), `constrained($table)` and `constrained(column: 'uuid')`.
+
+**Models.** A model that sets `protected $table = 'orders'` uses that table. One that sets none uses Laravel's default, `Str::snake(Str::pluralStudly($class))` (`OrderItem` is `order_items`), but only when it provably extends `Illuminate\Database\Eloquent\Model` (or the framework's `User`) through the analysed code. Cordon does not infer that default, and does not read a literal `$table` either, when anything in the model can change its table in a way it cannot follow: the class, a parent or a trait of your project that it uses (or a parent uses) declares `$table`, overrides `getTable()`, assigns `$this->table`, calls `setTable()`, or sets `$connection` (another database, where the same name is another table). A `$table = self::NAME` or a `getTable()` is the same: the table is unknown. Such a model is not reported, and the module card lists it as "without owner" with the reason. Traits that come from packages (`HasFactory`, `SoftDeletes`...) are assumed not to set `$table`: Cordon does not read vendor code. A model that extends a class from a package, or a `Pivot`, is left out. Cordon never loads the model.
+
+**Nested modules.** A table created in `Billing.Invoices` belongs to `Billing.Invoices`. A nested module may use the tables of its ancestors, as it may use their classes, so `Billing.Invoices` touching a table `Billing` created is not reported. The other way round, and between siblings, it is reported, like `internal_access`. From outside `Billing` a nested module does not exist, so `Orders` touching that table gets `which belongs to [Billing]`.
+
+`@cordon-ignore tables` works as for the other rules, and the baseline records the violations of a rule that is an `error`. The PHPStan rule does not report it. The collector only runs when the rule is on, so a project that leaves it off pays nothing, and turning it on starts a new [analysis cache](./configuration#cache).
+
 ## What counts as a dependency
 
 Counted: `new`, static calls and properties, class constants, `::class`, type declarations (parameters, returns, properties, union, intersection and DNF types), `extends`, `implements`, traits, attributes, `instanceof` and `catch`.
 
-Not counted: `use` imports on their own, function calls, constants, docblock types (`@var`, generics), class names in strings (`'App\\Foo'`, `app('...')`) and dynamic references. When unsure, Cordon Modulith reports nothing: false positives are treated as bugs.
+Not counted: `use` imports on their own, function calls, constants, class names in strings (`'App\\Foo'`, `app('...')`) and dynamic references. Class names in docblock types (`@var`, `@param`, generics) are not counted either, unless you turn on [`docblocks`](./configuration#docblocks). When unsure, Cordon Modulith reports nothing: false positives are treated as bugs.
 
 Files in `vendor`, `node_modules`, `tests` and `Tests` directories and Blade views are skipped. Code outside modules (for example `app/Http`) is checked by [`host_access`](#host-access).
 

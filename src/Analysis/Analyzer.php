@@ -64,6 +64,8 @@ final readonly class Analyzer
         $violations = $ignores->filter($violations);
         $warnings = $ignores->filter($warnings);
 
+        [$interfaceErrors, $interfaceWarnings] = InterfaceAudit::run($snapshot);
+
         return new Result(
             $snapshot->context->modules,
             $violations,
@@ -79,6 +81,8 @@ final readonly class Analyzer
             array_column($ignores->unused(), 'message'),
             $ignores->ignored(),
             array_column($ignores->unused(), 'file'),
+            $interfaceErrors,
+            $interfaceWarnings,
         );
     }
 
@@ -101,8 +105,10 @@ final readonly class Analyzer
         };
         $signatures = $context->signatures;
         usort($signatures, $compare);
+        $external = $context->externalReferences;
+        usort($external, $compare);
 
-        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures);
+        return new AnalysisContext($context->modules, $context->symbols, $context->policy, $edges($context->edges), $context->parseErrors, $edges($context->hostEdges), $signatures, $external, $context->tables);
     }
 
     /**
@@ -168,6 +174,7 @@ final readonly class Analyzer
         $edges = [];
         $hostEdges = [];
         $signatures = [];
+        $external = [];
         $hostModule = Module::host();
 
         foreach ($analyses as $analysis) {
@@ -196,14 +203,18 @@ final readonly class Analyzer
                     $signatures[] = $reference;
                 }
 
-                if ($to !== null && $to->name !== $from->name) {
+                if ($to === null) {
+                    $external[] = $reference;
+                } elseif ($to->name !== $from->name) {
                     $edges[] = new Edge($from, $to, $reference);
                 }
             }
         }
 
+        $symbols = SymbolTable::fromAnalyses($analyses);
+
         return new Snapshot(
-            new AnalysisContext($modules, SymbolTable::fromAnalyses($analyses), $this->policy, $edges, $parseErrors, $hostEdges, $signatures),
+            new AnalysisContext($modules, $symbols, $this->policy, $edges, $parseErrors, $hostEdges, $signatures, $external, TableMap::build($analyses, $modules, $host, $symbols)),
             $analyses,
             $parseErrors,
         );

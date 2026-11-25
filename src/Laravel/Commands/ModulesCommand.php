@@ -47,7 +47,7 @@ final class ModulesCommand extends Command
         $this->table(
             ['Module', 'Namespace', 'Path', 'Depends on', 'Open'],
             array_map(static fn (Module $module): array => [
-                $module->name,
+                ($module->parent === null ? '' : str_repeat('  ', substr_count($module->name, '.') - 1).'└ ').$module->name,
                 $module->namespace,
                 (string) Paths::relative($basePath, $module->path),
                 match (true) {
@@ -56,7 +56,7 @@ final class ModulesCommand extends Command
                     default => implode(', ', $module->dependsOn),
                 },
                 $module->open ? 'yes' : 'no',
-            ], $modules->all()),
+            ], $modules->hierarchy()),
         );
 
         $host = HostPaths::configured((array) $config->get('cordon', []));

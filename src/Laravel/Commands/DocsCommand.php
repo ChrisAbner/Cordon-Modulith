@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel\Commands;
 
-use Cordon\Analysis\Analyzer;
-use Cordon\Documentation\DocumentationGenerator;
-use Cordon\Documentation\EventInventory;
+use Cordon\Laravel\ModuleDocs;
 use Cordon\Laravel\Verifier;
 use Cordon\Laravel\XdebugWarning;
 use Cordon\Support\Paths;
@@ -18,12 +16,21 @@ use Illuminate\Console\Command;
 final class DocsCommand extends Command
 {
     protected $signature = 'cordon:docs
-        {--output=docs/architecture : Directory for the generated Markdown, relative to the project root}';
+        {--output=docs/architecture : Directory for the generated Markdown, relative to the project root}
+        {--diagrams=mermaid : Diagrams to generate: mermaid, or c4 to also write architecture.puml (C4-PlantUML)}';
 
     protected $description = 'Generate Markdown documentation of the modules: dependency diagrams, module canvases and an event inventory';
 
-    public function handle(Verifier $verifier, Analyzer $analyzer, XdebugWarning $xdebug): int
+    public function handle(Verifier $verifier, XdebugWarning $xdebug): int
     {
+        $diagrams = $this->option('diagrams');
+
+        if (! in_array($diagrams, ['mermaid', 'c4'], true)) {
+            $this->output->getErrorStyle()->writeln(sprintf('<error>Unknown diagrams [%s]. Use mermaid or c4.</error>', is_string($diagrams) ? $diagrams : ''));
+
+            return self::INVALID;
+        }
+
         if (($message = $xdebug->message()) !== null) {
             $this->output->getErrorStyle()->writeln('<comment>'.$message.'</comment>');
         }
@@ -39,9 +46,7 @@ final class DocsCommand extends Command
         $output = $this->option('output');
         $directory = Paths::join($verifier->basePath(), is_string($output) && $output !== '' ? $output : 'docs/architecture');
 
-        $snapshot = $analyzer->snapshot($modules);
-        $result = $analyzer->check($snapshot, $verifier->basePath());
-        $files = (new DocumentationGenerator)->generate($snapshot, $result->violations, EventInventory::build($snapshot), $verifier->basePath());
+        $files = ModuleDocs::files($verifier, $diagrams);
 
         foreach ($files as $name => $contents) {
             $path = $directory.DIRECTORY_SEPARATOR.$name;

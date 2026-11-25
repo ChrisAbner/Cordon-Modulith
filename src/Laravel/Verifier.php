@@ -6,11 +6,13 @@ namespace Cordon\Laravel;
 
 use Closure;
 use Cordon\Analysis\Analyzer;
+use Cordon\Analysis\CachedExtractor;
 use Cordon\Analysis\Result;
 use Cordon\Analysis\Snapshot;
 use Cordon\Analysis\Violation;
 use Cordon\Baseline\Baseline;
 use Cordon\Contracts\ModuleResolver;
+use Cordon\Module\Module;
 use Cordon\Module\ModuleMap;
 use Cordon\Support\ConfigValidator;
 use Cordon\Support\HostPaths;
@@ -39,12 +41,14 @@ final class Verifier
 
     /**
      * @param  Analyzer|Closure(): Analyzer  $analyzer  A closure builds it on first use.
+     * @param  ?CachedExtractor  $cache  The extractor of $analyzer when `cache` is set: saved after each snapshot.
      */
     public function __construct(
         private readonly ModuleResolver $resolver,
         private readonly Analyzer|Closure $analyzer,
         private readonly Repository $config,
         private readonly string $basePath,
+        private readonly ?CachedExtractor $cache = null,
     ) {}
 
     public function basePath(): string
@@ -71,13 +75,39 @@ final class Verifier
     }
 
     /**
+     * The directories of the code outside the modules (host.paths), whether they exist or not:
+     * a directory that was deleted still holds changes.
+     *
+     * @return list<string>
+     */
+    public function hostDirectories(): array
+    {
+        return array_map(fn (string $path): string => Paths::join($this->basePath, $path), HostPaths::configured((array) $this->config->get('cordon', [])));
+    }
+
+    /**
+     * The test folders configured for a module (its `tests` setting), or for
+     * the code outside the modules (`host.tests`) when $module is Module::HOST.
+     * Null when the setting is not there: the convention applies.
+     *
+     * @return list<string>|null
+     */
+    public function configuredTests(string $module): ?array
+    {
+        $settings = $module === Module::HOST ? $this->config->get('cordon.host') : $this->moduleConfig()[$module] ?? null;
+        $tests = is_array($settings) ? $settings['tests'] ?? null : null;
+
+        return HostPaths::valid($tests) ? $tests : null;
+    }
+
+    /**
      * Problems in config/cordon.php, such as unknown keys or module names.
      *
      * @return list<string>
      */
     public function configurationErrors(): array
     {
-        $errors = ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules());
+        $errors = ConfigValidator::errors((array) $this->config->get('cordon', []), $this->resolvedModules(), $this->basePath);
 
         // Building the rules is the only check of custom rule ids (two rules with one id).
         if ($errors === []) {
@@ -92,11 +122,55 @@ final class Verifier
     }
 
     /**
+     * Things in config/cordon.php that do not stop the analysis but are probably mistakes, such as a listed package that is not installed.
+     *
+     * @return list<string>
+     */
+    public function configurationWarnings(): array
+    {
+        return ConfigValidator::warnings((array) $this->config->get('cordon', []), $this->resolvedModules(), $this->basePath);
+    }
+
+    /**
      * The modules' declarations and cross-module references, without running the rules.
      */
     public function snapshot(): Snapshot
     {
-        return $this->analyzer()->snapshot($this->modules(), $this->hostPaths());
+        $snapshot = $this->analyzer()->snapshot($this->modules(), $this->hostPaths());
+        $this->cache?->save();
+
+        return $snapshot;
+    }
+
+    /**
+     * The snapshot of the modules alone, for the documentation: the code
+     * outside them (host.paths) is not analysed. The cache keeps what earlier
+     * runs stored for the host files.
+     */
+    public function moduleSnapshot(): Snapshot
+    {
+        $snapshot = $this->analyzer()->snapshot($this->modules());
+        $this->cache?->save(keepUnused: true);
+
+        return $snapshot;
+    }
+
+    /**
+     * Ignore the analysis cache for the rest of the run: it is neither read nor written.
+     */
+    public function withoutCache(): void
+    {
+        $this->cache?->disable();
+    }
+
+    /**
+     * Problems with the analysis cache, such as a file that cannot be read.
+     *
+     * @return list<string>
+     */
+    public function cacheWarnings(): array
+    {
+        return $this->cache?->warnings() ?? [];
     }
 
     /**
@@ -114,7 +188,7 @@ final class Verifier
      */
     public function analyze(): Result
     {
-        return $this->analyzer()->analyze($this->modules(), $this->basePath, $this->hostPaths());
+        return $this->analyzer()->check($this->snapshot(), $this->basePath);
     }
 
     /**

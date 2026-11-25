@@ -63,6 +63,25 @@ return [
     |             dependency is reported. Omit it to leave dependencies open.
     | public:     extra namespaces or classes (relative) exposed as public API.
     | open:       every class is public (useful for a shared kernel module).
+    | nested:     modules inside this one: folders directly under it
+    |             (['Invoices', 'Payments']) or true for every folder that is not
+    |             a public namespace. They are named Parent.Child (Billing.Invoices)
+    |             and configured under that name; outside the parent only its
+    |             public API exists.
+    | interfaces: named subsets of the public API, e.g.
+    |             'Pricing' => ['Contracts\\PriceList', 'Data\\Price*'] (relative
+    |             class names, a trailing * for a namespace or prefix). Another module
+    |             then lists 'Catalog::Pricing' in depends_on to use only that part;
+    |             'Catalog' and 'Catalog::*' still mean the whole public API.
+    | packages:   the Composer packages this module may use, besides the shared
+    |             ones below: names ('stripe/stripe-php') or prefixes ending in *
+    |             ('symfony/*'). Any other package it uses is an
+    |             external_dependency violation. Omit it to leave the module
+    |             unrestricted; [] allows only the shared packages. A nested
+    |             module without its own packages takes its parent's.
+    | tests:      folders with the module's tests, relative to the project root,
+    |             for cordon:affected --tests (['tests/Unit/Pricing']). Without it:
+    |             tests/<Module> and the tests folder inside the module.
     | metadata:   free-form information about the module (owner, description...).
     |             Cordon does not read it yet; the key is reserved for it.
     |
@@ -88,6 +107,10 @@ return [
     | without failing (handy while a rule is being adopted), "off" skips it.
     | true and false still work as error and off.
     |
+    | tables is a heuristic and starts off: it warns about a module that alters,
+    | queries or points a foreign key at a table another module creates (literal
+    | table names only). If you turn it on, "warn" is the severity it is meant for.
+    |
     | Add your own rules: class names that implement Cordon\Contracts\Rule
     | (see docs/custom-rules.md), listed as values, or as keys with a severity.
     |
@@ -101,6 +124,8 @@ return [
         'host_access' => 'warn',
         'layers' => 'error',
         'public_api_leak' => 'warn',
+        'external_dependency' => 'error',
+        'tables' => 'off',
         // App\Architecture\MyRule::class,
         // App\Architecture\OtherRule::class => 'warn',
     ],
@@ -124,6 +149,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Packages
+    |--------------------------------------------------------------------------
+    |
+    | Which Composer packages each module may use. A module that lists
+    | `packages` (see Per-module settings) may only use those and the shared
+    | ones here, read from vendor/composer/installed.json: run composer
+    | install first. Modules that list nothing are not checked, and neither is
+    | the code outside the modules. PHP's own classes, the project's and those of
+    | a package that is not installed never count as packages.
+    |
+    */
+
+    'packages' => [
+        // 'shared' => ['laravel/framework', 'illuminate/*'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Code outside the modules
     |--------------------------------------------------------------------------
     |
@@ -133,10 +176,16 @@ return [
     | of a module inside these directories still belong to their module.
     | Set paths to [] to leave this code unchecked.
     |
+    | tests: folders with the tests of this code, relative to the project root,
+    |        for cordon:affected --tests (['tests/Feature']). A change in the
+    |        code outside the modules affects only itself, and it has no test
+    |        folder unless you list one.
+    |
     */
 
     'host' => [
         'paths' => ['app', 'routes', 'database'],
+        // 'tests' => ['tests/Feature'],
     ],
 
     /*
@@ -171,5 +220,39 @@ return [
     'exclude' => ['vendor', 'node_modules', 'tests', 'Tests'],
 
     'baseline' => 'cordon-baseline.json',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Analysis cache
+    |--------------------------------------------------------------------------
+    |
+    | A file where Cordon Modulith keeps what it read from each PHP file, keyed
+    | by the file's content, so later runs only parse the files that changed.
+    | The result is the same with or without it. null (the default) turns it
+    | off. In Laravel a good place is 'storage/framework/cache/cordon.json';
+    | a relative path is resolved against the project root. Do not commit it.
+    | Skip it for one run with cordon:verify --no-cache.
+    |
+    */
+
+    'cache' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Class names in docblocks
+    |--------------------------------------------------------------------------
+    |
+    | false (the default): only class names in code count as dependencies.
+    | true: the class names in docblock types count too, as another kind of
+    | reference that follows the same rules: @param, @return, @var, @property,
+    | @method, @throws, @extends, @implements, @use, @mixin, the bound of
+    | @template, and generics, unions and shapes inside them. Template names,
+    | type aliases and pseudo-types (array-key, positive-int, class-string...)
+    | are never classes, and a docblock that does not parse is skipped.
+    | Turn it on when your code relies on generics such as Collection<int, Invoice>.
+    |
+    */
+
+    'docblocks' => false,
 
 ];

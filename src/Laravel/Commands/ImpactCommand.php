@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cordon\Laravel\Commands;
 
+use Cordon\Analysis\DependentGraph;
 use Cordon\Laravel\Commands\Concerns\ExploresModules;
 use Cordon\Laravel\Verifier;
 use Illuminate\Console\Command;
@@ -33,32 +34,7 @@ final class ImpactCommand extends Command
             return self::INVALID;
         }
 
-        $dependents = [];
-
-        foreach ($verifier->snapshot()->context->edges as $edge) {
-            $dependents[$edge->to->name][$edge->from->name] = true;
-        }
-
-        // Breadth first from the module, along "is depended on by".
-        $found = [];
-        $queue = [[$module->name, 0, null]];
-        $visited = [$module->name => true];
-
-        while ($queue !== []) {
-            [$name, $distance, $through] = array_shift($queue);
-            $next = array_keys($dependents[$name] ?? []);
-            sort($next);
-
-            foreach ($next as $dependent) {
-                $dependent = (string) $dependent;
-
-                if (! isset($visited[$dependent])) {
-                    $visited[$dependent] = true;
-                    $found[] = ['module' => $dependent, 'distance' => $distance + 1, 'through' => $distance === 0 ? null : $name];
-                    $queue[] = [$dependent, $distance + 1, $name];
-                }
-            }
-        }
+        $found = (new DependentGraph($verifier->snapshot()->context))->reach($module->name);
 
         if ($this->option('format') === 'json') {
             $this->json(['module' => $module->name, 'dependents' => $found]);

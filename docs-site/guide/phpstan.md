@@ -60,6 +60,14 @@ parameters:
         basePath: /path/to/project
 ```
 
+The class names in docblock types count when `docblocks` is `true` in `config/cordon.php`, as in `cordon:verify`. To decide it for PHPStan alone, set the parameter: when it is `true` or `false` it wins over the config, and when it is left out the config decides.
+
+```yaml
+parameters:
+    cordon:
+        docblocks: true
+```
+
 ## Configuration errors
 
 Project config files (`config/cordon.php`, `config/modules.php`, `config/app-modules.php`) are evaluated without booting Laravel. Helpers such as `base_path()`, `app_path()` and `config_path()` resolve against the project root, but anything that needs the framework (facades, the container, `env()` values that live in a booted app) can't be evaluated. In that case the rule reports one error with the identifier `cordon.configuration` and the resolvers fall back to their defaults.
@@ -99,3 +107,5 @@ Editors run PHPStan on the buffer you are editing as a temporary file standing i
 - PHPStan has no warnings, so each rule reports only while it is set to `error` in `config/cordon.php`. With `warn` or `off` it reports nothing; `cordon:verify` still shows the warnings.
 - `cordon-baseline.json` is applied, so PHPStan shows the same findings as `cordon:verify`; there is no need to copy them into PHPStan's baseline. A baseline file that cannot be read is reported once (identifier `cordon.configuration`) and not applied. To silence other paths, ignore the rule's identifier.
 - `listeners` in `config/cordon.php` applies too: listeners count for `undeclared_dependency` and not for cycles, by default.
+- [Nested modules](./configuration#nested-modules) and [named interfaces](./configuration#named-interfaces) in `depends_on` (`Catalog::Pricing`) are honoured by the three rules, with the same messages as `cordon:verify`. The audit of the `interfaces` definitions themselves (an interface that lists a class that is not public, or a pattern that matches no class) needs the whole analysis and does not run in PHPStan: use `cordon:verify` for it.
+- Only the three rules above run in PHPStan. `unused_dependency`, `layers`, `host_access`, `public_api_leak`, `external_dependency` and `tables` never do: use `cordon:verify` in CI for them.

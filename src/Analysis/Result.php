@@ -22,6 +22,8 @@ final readonly class Result
      * @param  list<string>  $ignoreWarnings  @cordon-ignore comments that no longer match a violation.
      * @param  list<Violation>  $ignoredViolations  What $ignored counts, so a --module or paths filter can narrow it.
      * @param  list<string>  $ignoreWarningFiles  The file of each of $ignoreWarnings, in the same order.
+     * @param  list<string>  $interfaceErrors  Named interfaces that list a class that is not public: they fail like config errors.
+     * @param  list<string>  $interfaceWarnings  Named interface patterns that match no class.
      */
     public function __construct(
         public ModuleMap $modules,
@@ -38,6 +40,8 @@ final readonly class Result
         public array $ignoreWarnings = [],
         public array $ignoredViolations = [],
         public array $ignoreWarningFiles = [],
+        public array $interfaceErrors = [],
+        public array $interfaceWarnings = [],
     ) {}
 
     public function hasViolations(): bool
@@ -64,6 +68,8 @@ final readonly class Result
             $this->ignoreWarnings,
             $this->ignoredViolations,
             $this->ignoreWarningFiles,
+            $this->interfaceErrors,
+            $this->interfaceWarnings,
         );
     }
 }

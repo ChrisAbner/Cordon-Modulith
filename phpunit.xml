@@ -29,4 +29,7 @@
             <directory>src</directory>
         </include>
     </source>
+    <extensions>
+        <bootstrap class="Cordon\Tests\Coverage\SubprocessCoverage"/>
+    </extensions>
 </phpunit>

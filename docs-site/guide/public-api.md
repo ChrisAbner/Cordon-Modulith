@@ -24,6 +24,10 @@ For a module `Modules\Catalog`:
 | `Modules\Catalog\Support\PriceFormatter` with `#[PublicApi]` | yes | attribute |
 | `Modules\Catalog\Contracts\LegacyCatalog` with `#[Internal]` | no | `#[Internal]` always wins |
 
+## Nested modules
+
+A [nested module](./configuration#nested-modules) such as `Billing.Invoices` exposes its public API to the modules inside `Billing`. To every other module it does not exist: its classes are classes of `Billing`, and none is public unless the `public` list of `Billing` names it, it has `#[PublicApi]`, or `Billing` is open.
+
 ## Marking classes
 
 ```php

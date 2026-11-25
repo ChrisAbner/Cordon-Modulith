@@ -13,13 +13,15 @@ From 1.0, the project follows [Semantic Versioning](https://semver.org) for ever
 | The command names, their options and the exit codes `0`, `1` and `2` | [Continuous integration](./ci) |
 | The JSON report: its fields, versioned with `"version"` and described by `resources/schemas/report-v1.schema.json`. A new optional field keeps the version; removing or renaming one changes it, so ignore fields you do not know | [Continuous integration](./ci) |
 | The baseline format (version 2: `rule`, `file`, `target`, `count`) | [Adopting in an existing project](./baseline) |
-| Rule ids (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`) and PHPStan identifiers (`cordon.internalAccess`, `cordon.undeclaredDependency`, `cordon.cycle`, `cordon.incompleteGraph`, `cordon.configuration`) | [Rules](./rules), [PHPStan](./phpstan) |
+| Rule ids (`internal_access`, `undeclared_dependency`, `cycles`, `unused_dependency`, `host_access`, `layers`, `public_api_leak`, `external_dependency`, `tables`) and PHPStan identifiers (`cordon.internalAccess`, `cordon.undeclaredDependency`, `cordon.cycle`, `cordon.incompleteGraph`, `cordon.configuration`) | [Rules](./rules), [PHPStan](./phpstan) |
 | `extension.neon` and its `cordon.basePath` parameter | [PHPStan](./phpstan) |
 | `toRespectBoundaries()` and `Cordon\Testing\Cordon` | [Pest](./pest) |
 | The inputs of the GitHub Action | [Continuous integration](./ci) |
 | Classes marked `@api` in `src/` | below |
 
-Classes marked `@api`: `Contracts\Rule`, `Analysis\AnalysisContext`, `Analysis\Violation`, `Analysis\Edge`, `Analysis\Reference`, `Analysis\ClassDeclaration`, `Analysis\SymbolTable`, `Analysis\PublicApiPolicy`, `Analysis\DeclaredVisibility`, `Module\Module`, `Module\ModuleMap`, `Rules\Severity`, `Attributes\PublicApi`, `Attributes\Internal` and `Testing\Cordon` (all under `Cordon\`). They are what a [custom rule](./custom-rules) needs.
+Classes marked `@api`: `Contracts\Rule`, `Analysis\AnalysisContext`, `Analysis\Violation`, `Analysis\Edge`, `Analysis\Reference`, `Analysis\ClassDeclaration`, `Analysis\SymbolTable`, `Analysis\PublicApiPolicy`, `Analysis\DeclaredVisibility`, `Module\Module`, `Module\ModuleMap`, `Rules\Severity`, `Attributes\PublicApi`, `Attributes\Internal` and `Testing\Cordon` (all under `Cordon\`). They are what a [custom rule](./custom-rules) needs. `Laravel\Architecture`, which returns the graph and the module documentation as text for tools that show them, is `@internal` for now: it becomes `@api` when the [Filament plugin](../integrations/filament) is published.
+
+`AnalysisContext::$tables` (the `TableMap` of the `tables` rule) and `AnalysisContext::$externalReferences` (the references to classes no module owns) can be read by a custom rule, but they are **not** part of the 1.0 surface yet: their types are `@internal` and may change in a minor release until they are confirmed against this page before 1.0 ([0026](https://github.com/ChrisAbner/Cordon-Modulith/blob/main/docs/adr/0026-external-packages.md) and [0027](https://github.com/ChrisAbner/Cordon-Modulith/blob/main/docs/adr/0027-tables-rule.md)). Rely on `AnalysisContext::$edges`, `$modules` and the other members listed above.
 
 ## What is never covered
 

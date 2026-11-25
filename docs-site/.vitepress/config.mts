@@ -61,6 +61,7 @@ export default defineConfig({
                     { text: 'Pest', link: '/guide/pest' },
                     { text: 'PHPStan', link: '/guide/phpstan' },
                     { text: 'AI coding agents', link: '/guide/ai-agents' },
+                    { text: 'Filament', link: '/integrations/filament' },
                 ],
             },
             {
@@ -79,6 +80,7 @@ export default defineConfig({
                     { text: 'Break a cycle with an event', link: '/recipes/break-a-cycle' },
                     { text: 'Replace a cross-module Eloquent relation', link: '/recipes/cross-module-relations' },
                     { text: 'Check boundaries before each commit', link: '/recipes/pre-commit' },
+                    { text: 'Run only the affected tests', link: '/recipes/affected-tests' },
                 ],
             },
             {

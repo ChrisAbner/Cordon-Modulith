@@ -90,6 +90,82 @@ final class ModuleMap implements Countable, IteratorAggregate
     }
 
     /**
+     * The module a nested module is nested in, or null for a top-level module.
+     */
+    public function parentOf(Module $module): ?Module
+    {
+        return $module->parent === null ? null : $this->get($module->parent);
+    }
+
+    /**
+     * The top-level module a module belongs to: itself when it is not nested.
+     */
+    public function topLevel(Module $module): Module
+    {
+        while (($parent = $this->parentOf($module)) !== null) {
+            $module = $parent;
+        }
+
+        return $module;
+    }
+
+    /**
+     * The module $consumer sees when it uses a class of $target. A nested
+     * module exists only inside its parent: from outside, a class of
+     * Billing.Invoices is a class of Billing. Without a consumer, or for the
+     * code outside the modules, every nested module is seen from outside.
+     */
+    public function visible(Module $target, ?Module $consumer): Module
+    {
+        while (($parent = $this->parentOf($target)) !== null && ! $this->isInside($consumer, $parent)) {
+            $target = $parent;
+        }
+
+        return $target;
+    }
+
+    /**
+     * Whether $module is $parent or nested in it, at any depth.
+     */
+    public function isInside(?Module $module, Module $parent): bool
+    {
+        return $module !== null && ($module->name === $parent->name || $module->isNestedIn($parent));
+    }
+
+    /**
+     * The modules with every nested module right after its parent, for listings.
+     *
+     * @return list<Module>
+     */
+    public function hierarchy(): array
+    {
+        $children = [];
+
+        foreach ($this->modules as $module) {
+            if ($this->parentOf($module) !== null) {
+                $children[(string) $module->parent][] = $module;
+            }
+        }
+
+        $ordered = [];
+        $add = function (Module $module) use (&$add, &$ordered, $children): void {
+            $ordered[] = $module;
+
+            foreach ($children[$module->name] ?? [] as $child) {
+                $add($child);
+            }
+        };
+
+        foreach ($this->modules as $module) {
+            if ($this->parentOf($module) === null) {
+                $add($module);
+            }
+        }
+
+        return $ordered;
+    }
+
+    /**
      * Apply per-module settings (depends_on, public, open) from config.
      *
      * @param  array<array-key, mixed>  $config

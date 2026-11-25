@@ -1,23 +1,5 @@
 <?php
 
-use Symfony\Component\Process\Process;
-
-/**
- * Runs bin/cordon as a separate process from $cwd, the way CI would.
- *
- * @param  list<string>  $arguments
- * @return array{code: int, out: string, err: string}
- */
-function run_cordon(array $arguments, string $cwd): array
-{
-    // NO_COLOR keeps the output plain wherever the suite runs: Symfony colours
-    // piped output under Git Bash on Windows (MSYSTEM) or with FORCE_COLOR set.
-    $process = new Process([PHP_BINARY, dirname(__DIR__, 2).'/bin/cordon', ...$arguments], $cwd, ['XDEBUG_MODE' => 'off', 'NO_COLOR' => '1']);
-    $process->run();
-
-    return ['code' => (int) $process->getExitCode(), 'out' => $process->getOutput(), 'err' => $process->getErrorOutput()];
-}
-
 it('verifies a project without artisan, .env or APP_KEY', function () {
     $project = fixture_path('namespace-app');
 
@@ -184,4 +166,97 @@ it('reports config errors even when there are no modules (M9)', function () {
         expect($run['code'])->toBe(2)
             ->and($run['err'])->toContain('Unknown key [rule] in config/cordon.php. Did you mean [rules]?');
     }
+});
+
+/**
+ * A copy of the interfaces app whose config/cordon.php has the given module settings.
+ *
+ * @param  array<string, mixed>  $modules
+ */
+function interfaces_project(array $modules): string
+{
+    $project = temp_project('interfaces-app');
+    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => $modules], true).';');
+
+    return $project;
+}
+
+it('fails a public class outside the named interfaces a module depends on', function () {
+    $project = interfaces_project([
+        'Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList', 'Data\\Price*']]],
+        'Billing' => ['depends_on' => ['Catalog::Pricing']],
+    ]);
+    $run = run_cordon(['verify', '--format=json'], $project);
+    $messages = array_column(json_decode($run['out'], true)['violations'], 'message');
+
+    expect($run['code'])->toBe(1)
+        ->and($messages)->toBe([
+            'Module [Billing] uses App\\Modules\\Catalog\\Contracts\\Stock, which is not in the interfaces it declares on [Catalog] (Pricing).',
+            'Module [Billing] uses App\\Modules\\Catalog\\Contracts\\Unlisted, which is not in the interfaces it declares on [Catalog] (Pricing).',
+        ]);
+});
+
+it('fails with exit code 2 on an interface that lists a class that is not public', function () {
+    $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Models\\Price']]]]);
+    $run = run_cordon(['verify', '--format=json'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toBe('')
+        ->and($run['err'])->toContain('Module [Catalog] interface [Pricing] lists Models\\Price, which is not public.');
+});
+
+it('annotates the pull request with an invalid interface in the github format, as the action runs it', function () {
+    $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Models\\Price']]]]);
+    $run = run_cordon(['verify', '--format=github'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toContain('::error title=Cordon::Module [Catalog] interface [Pricing] lists Models\\Price, which is not public.');
+});
+
+it('warns about an interface pattern that matches no class without failing', function () {
+    $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\Missing']]]]);
+    $run = run_cordon(['verify', '--format=json'], $project);
+
+    expect($run['code'])->toBe(0)
+        ->and($run['err'])->toContain('Module [Catalog] interface [Pricing] lists Contracts\\Missing, which matches no class.');
+});
+
+it('explains the interfaces of a class and the interfaces behind a dependency', function () {
+    $project = interfaces_project([
+        'Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\PriceList'], 'Shared' => ['Contracts\\PriceList']]],
+        'Billing' => ['depends_on' => ['Catalog::Shared']],
+    ]);
+    $explain = run_cordon(['explain', 'App\\Modules\\Catalog\\Contracts\\PriceList', '--format=json'], $project);
+    $none = run_cordon(['explain', 'App\\Modules\\Catalog\\Contracts\\Stock'], $project);
+    $why = run_cordon(['why', 'Billing', 'Catalog'], $project);
+    $plain = run_cordon(['explain', 'App\\Modules\\Billing\\Services\\Invoicer'], $project);
+
+    expect(json_decode($explain['out'], true)['interfaces'])->toBe(['Catalog::Pricing', 'Catalog::Shared'])
+        ->and($none['out'])->toContain('Interfaces:  (none)')
+        ->and($plain['out'])->not->toContain('Interfaces')
+        ->and($why['out'])->toContain('Billing lists Catalog in depends_on only through Catalog::Shared, and cordon:verify reports undeclared_dependency for references outside them.');
+});
+
+/**
+ * A copy of the docblocks app whose config/cordon.php sets docblocks.
+ */
+function docblocks_project(bool $docblocks): string
+{
+    $project = temp_project('docblocks-app');
+    file_put_contents($project.'/config/cordon.php', '<?php return '.var_export(['modules' => ['Billing' => ['depends_on' => ['Orders']]], 'docblocks' => $docblocks, 'host' => ['paths' => []]], true).';');
+
+    return $project;
+}
+
+it('reads class names from docblocks when the config says so', function () {
+    $off = run_cordon(['verify', '--format=json'], docblocks_project(false));
+    $on = run_cordon(['verify', '--format=json'], docblocks_project(true));
+    $rules = array_column(json_decode($on['out'], true)['violations'], 'rule');
+
+    sort($rules);
+
+    expect($off['code'])->toBe(0)
+        ->and(json_decode($off['out'], true)['violations'])->toBe([])
+        ->and($on['code'])->toBe(1)
+        ->and($rules)->toBe(['cycles', 'cycles', 'internal_access', 'undeclared_dependency']);
 });

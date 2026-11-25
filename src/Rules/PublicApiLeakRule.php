@@ -7,6 +7,7 @@ namespace Cordon\Rules;
 use Cordon\Analysis\AnalysisContext;
 use Cordon\Analysis\Violation;
 use Cordon\Contracts\Rule;
+use Cordon\Module\Module;
 
 /**
  * A public class whose public signature names an internal class of its own
@@ -36,8 +37,7 @@ final class PublicApiLeakRule implements Rule
 
             if ($class === null || $module === null || $reference->signature === null || isset($reported[$key])
                 || $context->modules->forClass($reference->target)?->name !== $module->name
-                || ! $context->policy->isPublic($class, $module, $context->symbols->get($class))
-                || $context->policy->isPublic($reference->target, $module, $context->symbols->get($reference->target))) {
+                || ! $this->leaks($context, $class, $reference->target, $module)) {
                 continue;
             }
 
@@ -53,5 +53,28 @@ final class PublicApiLeakRule implements Rule
                 $reference->target,
             );
         }
+    }
+
+    /**
+     * Whether $class is public and $target is not, for some consumer of the
+     * module. A nested module has several: the modules inside its parent see
+     * its public API, any other module only what the parent exposes.
+     */
+    private function leaks(AnalysisContext $context, string $class, string $target, Module $module): bool
+    {
+        $consumers = [null];
+
+        for ($parent = $context->modules->parentOf($module); $parent !== null; $parent = $context->modules->parentOf($parent)) {
+            $consumers[] = $parent;
+        }
+
+        foreach ($consumers as $consumer) {
+            if ($context->policy->isPublic($class, $module, $context->symbols->get($class), $consumer)
+                && ! $context->policy->isPublic($target, $module, $context->symbols->get($target), $consumer)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

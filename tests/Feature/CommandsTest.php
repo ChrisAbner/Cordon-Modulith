@@ -468,3 +468,86 @@ it('fails with exit code 2 when two rules share an id (M4)', function () {
         ->expectsOutputToContain('uses the id [cycles], which is already taken')
         ->assertExitCode(2);
 });
+
+it('caches file analyses between runs without changing the report', function () {
+    $cache = Temp::directory('cordon-cache-').'/framework/cordon.json';
+    config()->set('cordon.cache', $cache);
+
+    expect(Artisan::call('cordon:verify', ['--format' => 'json']))->toBe(1);
+    $cold = Artisan::output();
+
+    expect($cache)->toBeFile();
+    $written = (string) file_get_contents($cache);
+
+    expect(Artisan::call('cordon:verify', ['--format' => 'json']))->toBe(1)
+        ->and(Artisan::output())->toBe($cold)
+        ->and((string) file_get_contents($cache))->toBe($written);
+
+    config()->set('cordon.cache', null);
+
+    expect(Artisan::call('cordon:verify', ['--format' => 'json']))->toBe(1)
+        ->and(Artisan::output())->toBe($cold);
+});
+
+it('does not create a cache file when cache is null', function () {
+    $project = Temp::directory('cordon-nocache-');
+    $suggested = $project.'/storage/framework/cache/cordon.json';
+    config()->set('cordon.cache', null);
+
+    $this->artisan('cordon:verify')->assertExitCode(1);
+
+    expect($suggested)->not->toBeFile()
+        ->and(is_dir($project.'/storage'))->toBeFalse();
+});
+
+it('neither reads nor writes the cache with --no-cache', function () {
+    $cache = Temp::directory('cordon-cache-').'/cordon.json';
+    config()->set('cordon.cache', $cache);
+
+    $this->artisan('cordon:verify', ['--no-cache' => true])
+        ->doesntExpectOutputToContain('Cordon cache')
+        ->assertExitCode(1);
+
+    expect($cache)->not->toBeFile();
+
+    // A cache that is there is not even read: it would warn.
+    file_put_contents($cache, 'not json');
+
+    $this->artisan('cordon:verify', ['--no-cache' => true])
+        ->doesntExpectOutputToContain('Cordon cache')
+        ->assertExitCode(1);
+
+    expect((string) file_get_contents($cache))->toBe('not json');
+});
+
+it('warns and analyses without a cache that cannot be read', function () {
+    $cache = Temp::directory('cordon-cache-').'/cordon.json';
+    file_put_contents($cache, 'not json');
+    config()->set('cordon.cache', $cache);
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain(sprintf('Cordon cache at %s is unreadable; analysing without it.', $cache))
+        ->expectsOutputToContain('internal_access')
+        ->assertExitCode(1);
+
+    // It was replaced by a good one.
+    $this->artisan('cordon:verify')->doesntExpectOutputToContain('Cordon cache')->assertExitCode(1);
+});
+
+it('warns about a cache that cannot be read as a GitHub annotation', function () {
+    $cache = Temp::directory('cordon-cache-').'/cordon.json';
+    file_put_contents($cache, 'not json');
+    config()->set('cordon.cache', $cache);
+
+    $this->artisan('cordon:verify', ['--format' => 'github'])
+        ->expectsOutputToContain(sprintf('::warning title=Cordon::Cordon cache at %s is unreadable; analysing without it.', $cache))
+        ->assertExitCode(1);
+});
+
+it('stops before analysing when cache is not a path', function () {
+    config()->set('cordon.cache', true);
+
+    $this->artisan('cordon:verify')
+        ->expectsOutputToContain('cache in config/cordon.php must be a file path or null.')
+        ->assertExitCode(2);
+});

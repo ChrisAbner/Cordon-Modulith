@@ -8,6 +8,8 @@ No. It is a dev dependency that only runs when you call `cordon:verify`, `cordon
 
 Around 1 ms per file on a typical CI runner (Linux, no Xdebug): about a second for 1,000 files, five for 5,000. The analysis is linear in the number of files.
 
+With the [analysis cache](./guide/configuration#cache) on, a run only parses the files whose content changed. On the synthetic project of the benchmark (1,000 files, 20 modules; `composer bench -- --cache`, PHP 8.4, 2 CPUs, Xdebug off) a run without the cache took about 1.5 s, the first run with an empty cache about 1.6 s (it also writes the file), and a run with a warm cache and no changed files 0.3 s, about five times faster (medians of three runs). The remaining time is building the module graph and running the rules, which are not cached. The cache file was 4.5 MB.
+
 Run it with Xdebug off (`XDEBUG_MODE=off php artisan cordon:verify`): Xdebug makes it 3-4x slower. On Windows the first run can be slower because of cold file reads and antivirus scanning; measured there with Xdebug off, 1,000 synthetic files took 5-7 s and a real 584-file project about 3 s once warm.
 
 ## Does it load or execute my code?
@@ -20,7 +22,7 @@ An import alone is not a dependency. As soon as the class is used (type, `new`, 
 
 ## Why is `app(Product::class)` reported but `app('App\\Models\\Product')` is not?
 
-`Product::class` is a class reference. A string could be anything, so it is not reported: false positives are treated as bugs. The same applies to docblock types.
+`Product::class` is a class reference. A string could be anything, so it is not reported: false positives are treated as bugs. Docblock types are different: they are types, so with [`docblocks`](./guide/configuration#docblocks) on they are read (it is off by default).
 
 ## What about code outside modules, like `app/Http`?
 
@@ -28,7 +30,7 @@ It is not analysed: Cordon Modulith checks the boundaries between modules. Contr
 
 ## What are the known limitations?
 
-Docblock-only types (`@var`, generics), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected, and code outside modules is not analysed. When Cordon runs standalone (`vendor/bin/cordon` and the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, Cordon falls back to defaults and says so: `vendor/bin/cordon` on stderr, the PHPStan rule as a `cordon.configuration` error (see [PHPStan](./guide/phpstan#configuration-errors)).
+Docblock-only types (`@var`, generics) unless you turn on [`docblocks`](./guide/configuration#docblocks), string class names (`'App\\Foo'`, `app('...')`) and dynamic references are not detected, and code outside modules is not analysed. When Cordon runs standalone (`vendor/bin/cordon` and the PHPStan rule), project config files are evaluated without booting Laravel. If one can't be evaluated, Cordon falls back to defaults and says so: `vendor/bin/cordon` on stderr, the PHPStan rule as a `cordon.configuration` error (see [PHPStan](./guide/phpstan#configuration-errors)).
 
 ## Are tests analysed?
 
