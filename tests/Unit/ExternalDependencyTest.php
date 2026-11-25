@@ -17,6 +17,9 @@ use Cordon\Rules\RuleSet;
 use Cordon\Support\PackageMap;
 use Cordon\Tests\Oracle\Temp;
 
+// RuleSet passes packages.shared on to the rule.
+mutates(RuleSet::class);
+
 /**
  * tests/Fixtures/packages-app (modules Billing, Catalog, Reports) analysed with the given packages settings.
  *
@@ -122,7 +125,8 @@ it('reports once per file and package, at the first use', function () {
 it('adds the shared packages, with wildcards, to every restricted module', function () {
     $modules = ['Billing' => ['packages' => ['stripe/stripe-php', 'guzzlehttp/guzzle']]];
 
-    expect(external_findings(analyse_packages_app($modules, ['shared' => ['laravel/framework', 'illuminate/*']])))->toBe([])
+    // An entry that is no package name is left out (ConfigValidator reports it).
+    expect(external_findings(analyse_packages_app($modules, ['shared' => ['laravel/framework', 12, 'illuminate/*']])))->toBe([])
         ->and(external_findings(analyse_packages_app($modules, ['shared' => ['laravel/framework']])))->toBe([
             'app/Modules/Billing/Services/Checkout.php:19 Module [Billing] uses Illuminate\\Support\\Str from [illuminate/support], which is not in its packages.',
         ])

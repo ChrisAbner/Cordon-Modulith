@@ -6,10 +6,13 @@ use Cordon\Analysis\FileCollector;
 use Cordon\Analysis\PhpParserExtractor;
 use Cordon\Analysis\PublicApiPolicy;
 use Cordon\Analysis\Reference;
+use Cordon\Analysis\ReferenceCollector;
 use Cordon\Analysis\Result;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
 use Cordon\Tests\Oracle\Temp;
+
+mutates(ReferenceCollector::class);
 
 /**
  * The references of kind docblock the extractor finds in a fixture, by target.
@@ -530,4 +533,44 @@ it('reads the bound of a template that a @method tag declares, and not the templ
         CODE;
 
     expect(docblock_code_targets($code))->toBe(['Other\\Bound' => [7]]);
+});
+
+it('puts the docblock references among the others by line, after those of the same line, and anchors a class used in code to its first use', function () {
+    $file = Temp::removeAtExit(sys_get_temp_dir().'/cordon-docblock-'.bin2hex(random_bytes(4)).'.php');
+    file_put_contents($file, <<<'CODE'
+        <?php
+        namespace App;
+
+        class Holder
+        {
+            /** @var \Other\OnlyDocblock */
+            private $a;
+
+            /** @var \Other\AlsoInCode */
+            private $b;
+
+            public function run(): void
+            {
+                new \Other\First;
+                new \Other\AlsoInCode; /** @var \Other\SameLine */
+                new \Other\AlsoInCode;
+            }
+        }
+        CODE);
+
+    $references = array_map(
+        fn (Reference $reference) => $reference->target.':'.$reference->line.($reference->kind === Reference::DOCBLOCK ? ' docblock' : ''),
+        (new PhpParserExtractor(docblocks: true))->extract($file)->references,
+    );
+
+    // By hand: OnlyDocblock (6) goes first; AlsoInCode, named at 9, takes the line of its first use in
+    // code (15) and goes after the code of line 15, like SameLine; nothing is dropped.
+    expect($references)->toBe([
+        'Other\\OnlyDocblock:6 docblock',
+        'Other\\First:14',
+        'Other\\AlsoInCode:15',
+        'Other\\AlsoInCode:15 docblock',
+        'Other\\SameLine:15 docblock',
+        'Other\\AlsoInCode:16',
+    ]);
 });

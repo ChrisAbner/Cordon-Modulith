@@ -168,3 +168,20 @@ it('accepts built-in rules written as true, false and every severity', function 
 it('does not build a rule twice when the config lists a class and names it', function () {
     expect(fn () => RuleSet::fromConfig([DeclareDependenciesRule::class, 'again' => DeclareDependenciesRule::class]))->toThrow(InvalidArgumentException::class, 'uses the id [declare_dependencies], which is already taken');
 });
+
+it('says whether a built-in rule runs: its setting, else the default it starts with, and off for what is no severity', function () {
+    expect(RuleSet::enabled([], 'internal_access'))->toBeTrue()
+        ->and(RuleSet::enabled([], 'unused_dependency'))->toBeTrue()
+        ->and(RuleSet::enabled([], 'tables'))->toBeFalse()
+        ->and(RuleSet::enabled(['tables' => 'warn'], 'tables'))->toBeTrue()
+        ->and(RuleSet::enabled(['unused_dependency' => 'off'], 'unused_dependency'))->toBeFalse()
+        ->and(RuleSet::enabled(['internal_access' => false], 'internal_access'))->toBeFalse()
+        ->and(RuleSet::enabled(['internal_access' => 'loud'], 'internal_access'))->toBeFalse();
+});
+
+it('builds the tables rule when it is turned on, last of the built-in rules', function () {
+    [$rules, $severities] = RuleSet::build(['tables' => 'warn']);
+
+    expect(array_map(fn (Rule $rule) => $rule->id(), $rules))->toBe(['internal_access', 'undeclared_dependency', 'cycles', 'unused_dependency', 'host_access', 'layers', 'public_api_leak', 'external_dependency', 'tables'])
+        ->and($severities['tables'])->toBe(Severity::Warn);
+});

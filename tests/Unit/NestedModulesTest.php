@@ -20,6 +20,8 @@ use Cordon\Rules\RuleSet;
 use Cordon\Support\ConfigValidator;
 use Illuminate\Config\Repository;
 
+mutates(PublicApiPolicy::class);
+
 const NESTED_BILLING = ['Billing' => ['nested' => ['Invoices', 'Payments']]];
 
 /**
@@ -604,4 +606,27 @@ it('draws a flat graph when no module is nested', function () {
 
     expect(GraphExporter::flowchart($model))->not->toContain('subgraph')
         ->and(GraphExporter::dot($model))->not->toContain('cluster');
+});
+
+it('reads the public list of the parent by whole segments, with or without backslashes around, and says why', function () {
+    $modules = nested_modules(['Billing' => ['nested' => ['Invoices', 'Payments'], 'public' => ['\\Invoices\\Contracts\\', 'Invoices\\Serv']]]);
+    $policy = new PublicApiPolicy(['Contracts'], $modules);
+    $invoices = $modules->get('Billing.Invoices');
+    $orders = $modules->get('Orders');
+    $reader = 'App\\Modules\\Billing\\Invoices\\Contracts\\InvoiceReader';
+
+    expect($policy->isPublic($reader, $invoices, null, $orders))->toBeTrue()
+        ->and($policy->reason($reader, $invoices, null, $orders))->toBe('config/cordon.php lists [Invoices\\Contracts] in the public of module [Billing]')
+        // A prefix names whole segments: Invoices\Serv is not Invoices\Services.
+        ->and($policy->isPublic('App\\Modules\\Billing\\Invoices\\Services\\InvoiceService', $invoices, null, $orders))->toBeFalse();
+});
+
+it('says why a nested module sees the internals of its parent, and why an open parent exposes its nested classes', function () {
+    $modules = nested_modules();
+    $open = nested_modules(['Billing' => ['nested' => ['Invoices', 'Payments'], 'open' => true]]);
+
+    expect((new PublicApiPolicy(['Contracts'], $modules))->reason('App\\Modules\\Billing\\Models\\Account', $modules->get('Billing'), null, $modules->get('Billing.Invoices')))
+        ->toBe('the consumer [Billing.Invoices] is nested in module [Billing], which exposes all of it to its nested modules')
+        ->and((new PublicApiPolicy(['Contracts'], $open))->reason('App\\Modules\\Billing\\Invoices\\Models\\Invoice', $open->get('Billing.Invoices'), null, $open->get('Orders')))
+        ->toBe('its module [Billing] is open');
 });

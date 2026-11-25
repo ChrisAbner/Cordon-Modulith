@@ -12,7 +12,10 @@ use Cordon\Module\ModuleMap;
 use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Resolvers\NestedResolver;
 use Cordon\Rules\RuleSet;
+use Cordon\Rules\UndeclaredDependencyRule;
 use Cordon\Support\ConfigValidator;
+
+mutates(PublicApiPolicy::class, UndeclaredDependencyRule::class);
 
 const CATALOG_INTERFACES = ['interfaces' => [
     'Pricing' => ['Contracts\\PriceList', 'Data\\Price*'],
@@ -168,9 +171,10 @@ it('leaves an internal class to internal_access', function () {
         ->and(array_filter(messages_of($result->violations, 'undeclared_dependency'), fn (string $m) => str_contains($m, 'Models\\Price')))->toBe([]);
 });
 
-it('reports a class once per file, whatever the number of references', function () {
+it('reports a class once per file, whatever the number of references and the letter case', function () {
     $root = temp_project('interfaces-app');
-    file_put_contents($root.'/app/Modules/Billing/Services/Twice.php', "<?php\n\nnamespace App\\Modules\\Billing\\Services;\n\nuse App\\Modules\\Catalog\\Contracts\\Stock;\n\nfinal class Twice\n{\n    public function __construct(Stock \$a, Stock \$b) {}\n}\n");
+    // The third reference writes the class in lowercase: PHP reads it as the same class.
+    file_put_contents($root.'/app/Modules/Billing/Services/Twice.php', "<?php\n\nnamespace App\\Modules\\Billing\\Services;\n\nuse App\\Modules\\Catalog\\Contracts\\Stock;\n\nfinal class Twice\n{\n    public function __construct(Stock \$a, Stock \$b, \\app\\modules\\catalog\\contracts\\stock \$c) {}\n}\n");
     $result = analyse_interfaces_app(['Catalog' => CATALOG_INTERFACES, 'Billing' => ['depends_on' => ['Catalog::Pricing']]], root: $root);
     $twice = array_filter($result->violations, fn (Violation $v) => basename((string) $v->file) === 'Twice.php');
 
