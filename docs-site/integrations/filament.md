@@ -1,7 +1,7 @@
 # Filament
 
 ::: warning In development, not on Packagist yet
-The plugin described on this page is not published. `chrisabner/cordon-modulith-filament` cannot be installed with Composer today, and the snippets below show how it is meant to work once it is released. What exists now is the part of Cordon Modulith it relies on: `Cordon\Laravel\Architecture::graph()` and `docs()` (see [compatibility](../guide/compatibility)).
+The plugin described on this page is not published. `chrisabner/cordon-modulith-filament` cannot be installed with Composer today, and the snippets below show how it is meant to work once it is released. What exists now is the part of Cordon Modulith it relies on: `Cordon\Laravel\Architecture::graph()` and `docs()`, which stay `@internal` until the plugin is published (see [compatibility](../guide/compatibility)).
 :::
 
 The Filament plugin shows the modules of your application inside a [Filament](https://filamentphp.com) panel: a table with their namespace, dependencies, violations and owner, the dependency graph, and the card `cordon:docs` writes for each module.
@@ -56,7 +56,7 @@ Every page load analyses the project again. On a large codebase set the [`cache`
 
 ## For plugin authors
 
-The plugin only uses the [public API](../guide/compatibility): `Cordon\Testing\Cordon` for the modules, the configuration errors and the violations, and `Cordon\Laravel\Architecture` for the graph and the module documentation as text.
+The plugin uses `Cordon\Testing\Cordon`, part of the [public API](../guide/compatibility), for the modules, the configuration errors and the violations, and `Cordon\Laravel\Architecture` for the graph and the module documentation as text. `Architecture` becomes public API when the plugin is published.
 
 ```php
 use Cordon\Laravel\Architecture;

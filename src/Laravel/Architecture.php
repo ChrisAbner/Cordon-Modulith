@@ -16,7 +16,10 @@ use LogicException;
  * (a dashboard, an admin panel). Check Cordon::configurationErrors() first:
  * the answers describe the config as it is.
  *
- * @api
+ * Not frozen yet: it joins the public API when the Filament plugin that uses
+ * it is published (ADR 0028).
+ *
+ * @internal
  */
 final class Architecture
 {

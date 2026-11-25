@@ -1,8 +1,8 @@
 # ADR 0027: The `tables` rule
 
-**Status:** proposed (the default `off` and the heuristic nature still await the maintainer's confirmation)
+**Status:** accepted (2026-11-25)
 
-> The plan for 0.5 (approved on 2026-11-08, everything seen goes in) includes the rule, but the maintainer has not confirmed that it ships `off` by default, nor its messages. Accept this ADR, or reject what should change before 1.0 freezes it.
+> The maintainer accepted the rule as it ships: `off` by default, meant to run as `warn`, with the three messages below. Its data (`AnalysisContext::$tables`, `TableMap`) stays `@internal`, like `$externalReferences` of ADR 0026, until it is confirmed against the compatibility page before 1.0.
 
 ## Context
 Modules that share a database often couple through tables: one module alters a table another created, queries it with `DB::table`, or points a foreign key at it. That coupling is as real as a class reference and invisible to the other rules.
@@ -19,5 +19,5 @@ Modules that share a database often couple through tables: one module alters a t
 ## Consequences
 - A project that leaves `tables` off is unchanged, byte for byte.
 - The rule is a heuristic and can be wrong in ways the others cannot, hence `off`, `warn` and the zero-false-positive choices above (when unsure, say nothing). Dynamic names are the main blind spot.
-- `AnalysisContext::$tables` and `TableMap` are readable by custom rules but `@internal`, and not part of the 1.0 surface until this ADR is accepted.
+- `AnalysisContext::$tables` and `TableMap` are readable by custom rules but `@internal`, and not part of the 1.0 surface until they are confirmed against the compatibility page.
 - Turning the rule on starts a new cache.
