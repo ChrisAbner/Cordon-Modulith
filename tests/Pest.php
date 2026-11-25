@@ -10,6 +10,20 @@ use Cordon\Resolvers\NamespaceResolver;
 use Cordon\Rules\RuleSet;
 use Cordon\Tests\Oracle\Temp;
 use Cordon\Tests\TestCase;
+use PHPStan\File\DirectoryWalker;
+
+if (class_exists(DirectoryWalker::class)) {
+    // PHPStan's rule-test container reads this file before creating its first directory cache.
+    $directoryCache = sys_get_temp_dir().'/phpstan-tests/cache';
+    if (! is_dir($directoryCache)) {
+        mkdir($directoryCache, 0777, true);
+    }
+
+    $listings = $directoryCache.'/directory-listings.bin';
+    if (! is_file($listings)) {
+        file_put_contents($listings, serialize([]), LOCK_EX);
+    }
+}
 
 pest()->extend(TestCase::class)->in('Feature');
 
