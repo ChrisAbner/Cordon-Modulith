@@ -286,6 +286,42 @@ describe('cordon affected', function () {
         'an option' => [true, '--output=injected'],
     ]);
 
+    it('fails with exit code 2 when there is no module, since it would select no test', function () {
+        $project = git_project();
+        file_put_contents($project.'/config/cordon.php', "<?php return ['resolver' => 'namespace', 'resolvers' => ['namespace' => ['path' => 'app/Nowhere', 'namespace' => 'App\\\\Nowhere']]];");
+
+        $run = run_cordon(['affected', '--since=base'], $project);
+
+        expect($run['code'])->toBe(2)
+            ->and($run['out'])->toBe('')
+            ->and($run['err'])->toContain('No modules found. Check the resolver settings in config/cordon.php (vendor/bin/cordon modules).');
+    });
+
+    it('warns that a file that does not parse may hide modules that depend on the changes', function () {
+        $project = git_project();
+        file_put_contents($project.'/app/Modules/Billing/Broken.php', "<?php\n\nnamespace App\\Modules\\Billing;\n\nclass Broken {\n");
+        change($project, 'app/Modules/Catalog/Support/PriceFormatter.php');
+
+        $run = run_cordon(['affected', '--since=base', '--format=json'], $project);
+
+        expect($run['code'])->toBe(0)
+            ->and(json_decode($run['out'], true)['changed'])->toContain('Catalog')
+            ->and($run['err'])->toContain('1 file(s) could not be parsed, so their references are missing: some modules that depend on the changes may not be listed.');
+    });
+
+    it('passes on the warnings of an analysis cache it cannot use', function () {
+        $project = git_project();
+        mkdir($project.'/storage/cordon.json', 0777, true);
+        file_put_contents($project.'/config/cordon.php', "<?php return ['cache' => 'storage/cordon.json', 'modules' => ['Shared' => ['open' => true]]];");
+        change($project, 'app/Modules/Catalog/Support/PriceFormatter.php');
+
+        $run = run_cordon(['affected', '--since=base', '--format=json'], $project);
+
+        expect($run['code'])->toBe(0)
+            ->and(json_decode($run['out'], true)['changed'])->toBe(['Catalog'])
+            ->and($run['err'])->toContain('Cordon cache at')->toContain('is unreadable; analysing without it.');
+    });
+
     it('needs --since', function () {
         $run = run_cordon(['affected'], git_project());
 
@@ -342,6 +378,21 @@ describe('cordon affected --tests', function () {
         expect($run['code'])->toBe(0)
             ->and($run['out'])->toBe("tests/Unit/Pricing\n")
             ->and($run['err'])->toContain('Module [Catalog]: the tests folder [tests/Gone] does not exist.');
+    });
+
+    it('leaves out a folder inside another listed one, so that Pest does not run its tests twice', function () {
+        $project = git_project();
+        mkdir($project.'/tests/Catalog/Unit', 0777, true);
+        file_put_contents($project.'/tests/Catalog/Unit/ProductTest.php', '<?php');
+        file_put_contents($project.'/config/cordon.php', "<?php return ['modules' => ['Shared' => ['open' => true], 'Catalog' => ['tests' => ['tests/Catalog/Unit', 'tests/Catalog']], 'Billing' => ['tests' => []]]];");
+        git_in($project, 'add', '-A');
+        git_in($project, 'commit', '-q', '-m', 'tests');
+        git_in($project, 'tag', '-f', 'base');
+        change($project, 'app/Modules/Catalog/Support/PriceFormatter.php');
+
+        $run = run_cordon(['affected', '--since=base', '--tests'], $project);
+
+        expect($run['code'])->toBe(0)->and($run['out'])->toBe("tests/Catalog\n");
     });
 
     it('prints nothing when the affected modules have no test folder', function () {

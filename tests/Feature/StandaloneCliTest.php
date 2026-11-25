@@ -205,6 +205,14 @@ it('fails with exit code 2 on an interface that lists a class that is not public
         ->and($run['err'])->toContain('Module [Catalog] interface [Pricing] lists Models\\Price, which is not public.');
 });
 
+it('annotates the pull request with an invalid interface in the github format, as the action runs it', function () {
+    $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Models\\Price']]]]);
+    $run = run_cordon(['verify', '--format=github'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['out'])->toContain('::error title=Cordon::Module [Catalog] interface [Pricing] lists Models\\Price, which is not public.');
+});
+
 it('warns about an interface pattern that matches no class without failing', function () {
     $project = interfaces_project(['Catalog' => ['interfaces' => ['Pricing' => ['Contracts\\Missing']]]]);
     $run = run_cordon(['verify', '--format=json'], $project);

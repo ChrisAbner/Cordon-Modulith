@@ -256,16 +256,24 @@ it('reads psr-0, classmap and the version 1 format of installed.json', function 
     $root = project_with_packages(
         [
             installed_package('twig/twig', ['psr-0' => ['Twig_' => 'lib/']]),
+            installed_package('old/space', ['psr-0' => ['Old\\' => 'src/']]),
             installed_package('acme/mapped', ['classmap' => ['src/']]),
+            installed_package('acme/single', ['classmap' => ['lib/helpers.php']]),
         ],
-        ['twig/twig/lib/Twig/Environment.php'],
+        ['twig/twig/lib/Twig/Environment.php', 'old/space/src/Old/Name_Space/Some/Mapper.php'],
     );
     mkdir($root.'/vendor/acme/mapped/src/Deep', 0777, true);
     file_put_contents($root.'/vendor/acme/mapped/src/Deep/Thing.php', "<?php\nnamespace Mapped\\Space;\n\nfinal class Thing {}\ninterface Contract {}\nenum Mode {}\n");
+    mkdir($root.'/vendor/acme/single/lib', 0777, true);
+    file_put_contents($root.'/vendor/acme/single/lib/helpers.php', "<?php\nnamespace Single;\n\nfinal class Helper {}\n");
     $map = PackageMap::forProject($root);
 
     expect($map->packageOf('Twig_Environment'))->toBe('twig/twig')
         ->and($map->packageOf('Twig_Missing'))->toBeNull()
+        // Under PSR-0 the underscores of the class name are directories, those of its namespace are not.
+        ->and($map->packageOf('Old\\Name_Space\\Some_Mapper'))->toBe('old/space')
+        // A classmap entry may be a file rather than a directory.
+        ->and($map->packageOf('Single\\Helper'))->toBe('acme/single')
         ->and($map->packageOf('Mapped\\Space\\Thing'))->toBe('acme/mapped')
         ->and($map->packageOf('Mapped\\Space\\Contract'))->toBe('acme/mapped')
         ->and($map->packageOf('Mapped\\Space\\Mode'))->toBe('acme/mapped')

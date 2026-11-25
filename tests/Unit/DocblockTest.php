@@ -490,3 +490,44 @@ it('reports a class named only in a docblock at the docblock line', function () 
 
     expect(array_values(array_filter($found, fn (string $finding) => str_contains($finding, 'DocblockOnly.php'))))->each->toContain('DocblockOnly.php:10');
 });
+
+it('reads the class a type alias is imported from, and not the alias it imports', function () {
+    $code = <<<'CODE'
+        <?php
+        namespace App;
+
+        use Other\Types;
+
+        /**
+         * @phpstan-import-type Money from Types
+         * @psalm-import-type Price from Types as Cost
+         */
+        class Holder
+        {
+            /**
+             * @param Money $a
+             * @param Cost $b
+             */
+            public function run($a, $b): void {}
+        }
+        CODE;
+
+    // Money and Cost are the names the file declares: forgetting one would report App\Money or App\Cost.
+    expect(docblock_code_targets($code))->toBe(['Other\\Types' => [7, 8]]);
+});
+
+it('reads the bound of a template that a @method tag declares, and not the template itself', function () {
+    $code = <<<'CODE'
+        <?php
+        namespace App;
+
+        use Other\Bound;
+
+        /**
+         * @method T first<T of Bound>(class-string<T> $type)
+         */
+        class Holder {}
+        CODE;
+
+    expect(docblock_code_targets($code))->toBe(['Other\\Bound' => [7]]);
+});

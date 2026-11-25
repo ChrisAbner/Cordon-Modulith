@@ -298,6 +298,7 @@ DB::connection('x')->table('d2');
 $collection->join('d3', ', ');
 $query->join('d4', 'a', 'b');
 User::query()->join('d5', 'a', 'b');
+DB::table('e1')->{$method}()->join('e2', 'a', 'b');
 PHP;
     $file = tables_project(['Report.php' => $code]).'/Report.php';
     $uses = array_map(fn (TableUse $use) => $use->kind.' '.$use->table, (new PhpParserExtractor(tables: true))->extract($file)->tables);
@@ -307,7 +308,7 @@ PHP;
     expect($uses)->toBe([
         'alter a2', 'alter a3', 'alter a4', 'alter a5', 'create a1',
         'query c1', 'query c2', 'query c3', 'query c4', 'query c5', 'query c6',
-        'query c7', 'query c8', 'query c9',
+        'query c7', 'query c8', 'query c9', 'query e1',
     ]);
 });
 

@@ -81,20 +81,25 @@ function cached_files(string $cacheFile): array
     return array_keys(json_decode((string) file_get_contents($cacheFile), true)['files']);
 }
 
-it('extracts every file on a cold run and none on a warm one, with the same result', function () {
-    $project = temp_project('namespace-app');
+it('extracts every file on a cold run and none on a warm one, with the same result', function (string $fixture, bool $ignores) {
+    $project = temp_project($fixture);
     $cacheFile = $project.'/storage/cordon.json';
 
     [$cold] = analyse_cached($project, $cacheFile, $coldSpy = spy_extractor());
     [$warm] = analyse_cached($project, $cacheFile, $warmSpy = spy_extractor());
 
-    expect($coldSpy->calls)->not->toBeEmpty()
+    // With @cordon-ignore comments, a warm run that lost them would report what the cold run ignored.
+    expect($cold->ignored > 0)->toBe($ignores)
+        ->and($coldSpy->calls)->not->toBeEmpty()
         ->and($warmSpy->calls)->toBe([])
         ->and($warm)->toEqual($cold)
         ->and(render($warm))->toBe(render($cold))
         ->and(render($warm))->toBe(render(analyse_uncached($project)))
         ->and(cached_files($cacheFile))->toHaveCount(count($coldSpy->calls));
-});
+})->with([
+    'namespace-app' => ['namespace-app', false],
+    'ignore-app' => ['ignore-app', true],
+]);
 
 it('keeps the file layout of a cached analysis: no absolute path is stored', function () {
     $project = temp_project('namespace-app');
@@ -316,6 +321,31 @@ it('extracts a file again when an entry names a kind of reference or table that 
     'a table' => ['tables', 'bogus'],
 ]);
 
+it('extracts a file again when an ignore comment in its entry is damaged', function (string $field, mixed $value) {
+    $project = temp_project('ignore-app');
+    $cacheFile = $project.'/cordon.json';
+    analyse_cached($project, $cacheFile, spy_extractor());
+
+    $data = json_decode((string) file_get_contents($cacheFile), true);
+    $key = 'app/Modules/Billing/Invoice.php';
+
+    expect($data['files'][$key]['analysis']['ignores'])->not->toBeEmpty();
+
+    $data['files'][$key]['analysis']['ignores'][0][$field] = $value;
+    file_put_contents($cacheFile, json_encode($data));
+
+    [$result, $extractor] = analyse_cached($project, $cacheFile, $spy = spy_extractor());
+
+    expect($spy->calls)->toBe([$project.'/'.$key])
+        ->and($extractor->warnings())->toBe([])
+        ->and(render($result))->toBe(render(analyse_uncached($project)));
+})->with([
+    'rules that are not a list' => ['rules', 'internal_access'],
+    'a rule that is not a string' => ['rules', [12]],
+    'lines that are not a list' => ['lines', ['first' => 11]],
+    'a line that is not a number' => ['lines', ['11']],
+]);
+
 it('neither reads nor writes the cache when disabled', function () {
     $project = temp_project('namespace-app');
     $cacheFile = $project.'/cordon.json';
@@ -381,11 +411,11 @@ it('writes the cache atomically and leaves no temporary file', function () {
         ->toMatchArray(['version' => 1, 'fingerprint' => AnalysisCache::fingerprint()]);
 });
 
-it('round-trips every analysis of the fixture projects through the cache format', function (string $fixture, bool $docblocks, bool $tables) {
+it('round-trips every analysis of the fixture projects through the cache format', function (string $fixture, bool $docblocks, bool $tables, bool $ignores) {
     // docblocks and tables on: with the defaults the docblock references and the table uses are not extracted, so they would not be round-tripped.
     $extractor = new PhpParserExtractor(docblocks: true, tables: true);
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(fixture_path($fixture), FilesystemIterator::SKIP_DOTS));
-    $count = $docblockReferences = $tableUses = 0;
+    $count = $docblockReferences = $tableUses = $ignoreComments = 0;
 
     foreach ($files as $file) {
         if ($file->getExtension() !== 'php') {
@@ -399,15 +429,19 @@ it('round-trips every analysis of the fixture projects through the cache format'
         $count++;
         $docblockReferences += count(array_filter($analysis->references, static fn (Reference $reference): bool => $reference->kind === Reference::DOCBLOCK));
         $tableUses += count($analysis->tables);
+        $ignoreComments += count($analysis->ignores);
     }
 
     expect($count)->toBeGreaterThan(0)
         ->and($docblockReferences > 0)->toBe($docblocks)
-        ->and($tableUses > 0)->toBe($tables);
+        ->and($tableUses > 0)->toBe($tables)
+        ->and($ignoreComments > 0)->toBe($ignores);
 })->with([
-    'namespace-app' => ['namespace-app', false, false],
-    'layered-app' => ['layered-app', false, false],
-    'listeners-docblocks-app' => ['listeners-docblocks-app', true, false],
-    'docblocks-app' => ['docblocks-app', true, false],
-    'tables-app' => ['tables-app', false, true],
+    'namespace-app' => ['namespace-app', false, false, false],
+    'layered-app' => ['layered-app', false, false, false],
+    'listeners-docblocks-app' => ['listeners-docblocks-app', true, false, false],
+    'docblocks-app' => ['docblocks-app', true, false, false],
+    'tables-app' => ['tables-app', false, true, false],
+    'ignore-app' => ['ignore-app', false, false, true],
+    'docblock-ignore-app' => ['docblock-ignore-app', true, false, true],
 ]);

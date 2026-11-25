@@ -87,6 +87,31 @@ it('prints the uses of a package as text and says when there are none', function
         ->and($none['out'])->toContain('Reports does not use illuminate/support.');
 });
 
+it('says why cordon:verify does not report a package a module does not list', function () {
+    $baselined = temp_project('packages-app');
+    expect(run_cordon(['verify', '--generate-baseline'], $baselined)['code'])->toBe(0);
+
+    $off = temp_project('packages-app');
+    $config = (string) file_get_contents($off.'/config/cordon.php');
+    file_put_contents($off.'/config/cordon.php', str_replace("return [\n", "return [\n    'rules' => ['external_dependency' => 'off'],\n", $config));
+
+    expect(json_run(['why', 'Billing', 'guzzlehttp/guzzle'], $baselined)['json'])
+        ->toMatchArray(['allowed' => false, 'reported' => false, 'reason' => 'Billing does not list guzzlehttp/guzzle in packages, but cordon:verify does not report it: the baseline records it.'])
+        ->and(json_run(['why', 'Billing', 'guzzlehttp/guzzle'], $off)['json'])
+        ->toMatchArray(['allowed' => false, 'reported' => false, 'reason' => 'Billing does not list guzzlehttp/guzzle in packages, but cordon:verify does not report it: external_dependency is off.']);
+});
+
+it('fails when asked about a package and installed.json is missing, even with no packages listed', function () {
+    $project = temp_project('packages-app');
+    file_put_contents($project.'/config/cordon.php', "<?php\n\nreturn [];\n");
+    unlink($project.'/vendor/composer/installed.json');
+
+    $run = run_cordon(['why', 'Billing', 'stripe/stripe-php'], $project);
+
+    expect($run['code'])->toBe(2)
+        ->and($run['err'])->toContain('vendor/composer/installed.json does not exist');
+});
+
 it('says when a package is unknown or the module is', function () {
     $project = temp_project('packages-app');
     $package = run_cordon(['why', 'Billing', 'stripe/strip-php'], $project);
